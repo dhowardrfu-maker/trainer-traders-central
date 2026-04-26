@@ -56,7 +56,10 @@ const AuthPage = () => {
       return;
     }
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
     setBusy(false);
     if (error) {
       toast.error(error.message === "Invalid login credentials" ? "Wrong email or password" : error.message);
