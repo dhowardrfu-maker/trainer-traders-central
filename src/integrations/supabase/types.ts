@@ -74,6 +74,83 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          buyer_id: string
+          carrier: Database["public"]["Enums"]["carrier"]
+          created_at: string
+          id: string
+          listing_id: string
+          postage_pence: number
+          price_pence: number
+          qr_payload: string
+          seller_id: string
+          service_label: string
+          ship_to_city: string
+          ship_to_country: string
+          ship_to_line1: string
+          ship_to_line2: string | null
+          ship_to_name: string
+          ship_to_postcode: string
+          status: Database["public"]["Enums"]["order_status"]
+          total_pence: number
+          tracking_code: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          carrier: Database["public"]["Enums"]["carrier"]
+          created_at?: string
+          id?: string
+          listing_id: string
+          postage_pence?: number
+          price_pence: number
+          qr_payload: string
+          seller_id: string
+          service_label: string
+          ship_to_city: string
+          ship_to_country?: string
+          ship_to_line1: string
+          ship_to_line2?: string | null
+          ship_to_name: string
+          ship_to_postcode: string
+          status?: Database["public"]["Enums"]["order_status"]
+          total_pence: number
+          tracking_code: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          carrier?: Database["public"]["Enums"]["carrier"]
+          created_at?: string
+          id?: string
+          listing_id?: string
+          postage_pence?: number
+          price_pence?: number
+          qr_payload?: string
+          seller_id?: string
+          service_label?: string
+          ship_to_city?: string
+          ship_to_country?: string
+          ship_to_line1?: string
+          ship_to_line2?: string | null
+          ship_to_name?: string
+          ship_to_postcode?: string
+          status?: Database["public"]["Enums"]["order_status"]
+          total_pence?: number
+          tracking_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -146,6 +223,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      carrier: "royal_mail" | "inpost" | "evri"
       listing_condition:
         | "new_with_tags"
         | "like_new"
@@ -154,6 +232,12 @@ export type Database = {
         | "worn"
       listing_gender: "mens" | "womens" | "unisex" | "kids"
       listing_status: "draft" | "active" | "sold" | "removed"
+      order_status:
+        | "pending_postage"
+        | "label_created"
+        | "shipped"
+        | "delivered"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -282,6 +366,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      carrier: ["royal_mail", "inpost", "evri"],
       listing_condition: [
         "new_with_tags",
         "like_new",
@@ -291,6 +376,13 @@ export const Constants = {
       ],
       listing_gender: ["mens", "womens", "unisex", "kids"],
       listing_status: ["draft", "active", "sold", "removed"],
+      order_status: [
+        "pending_postage",
+        "label_created",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ],
     },
   },
 } as const
