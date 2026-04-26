@@ -82,9 +82,7 @@ const ListingDetail = () => {
       toast.error("You can't buy your own listing");
       return;
     }
-    toast.success("Postage flow coming next!", {
-      description: "Royal Mail · InPost · Evri with QR codes — building this in the next step.",
-    });
+    navigate(`/checkout/${listing!.id}`);
   };
 
   const handleShare = async () => {
