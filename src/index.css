@@ -1,96 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Trnrs design system — Vinted-inspired marketplace for second-hand trainers.
+   All colors HSL. Tokens drive the entire UI — never use raw colors in components. */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Surfaces */
+    --background: 40 33% 98%;            /* warm off-white #faf9f6-ish */
+    --foreground: 200 18% 12%;           /* deep ink */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 200 18% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 200 18% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Brand — soft teal (Vinted-feel, not green-on-the-nose) */
+    --primary: 178 62% 32%;              /* deep teal */
+    --primary-foreground: 40 33% 98%;
+    --primary-soft: 178 50% 94%;
+    --primary-glow: 174 70% 45%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Secondary surfaces */
+    --secondary: 40 20% 95%;
+    --secondary-foreground: 200 18% 18%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 40 15% 93%;
+    --muted-foreground: 200 8% 42%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 22 92% 58%;                /* hot coral for sale tags / hearts */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --success: 152 55% 38%;
+    --success-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    --border: 40 12% 88%;
+    --input: 40 12% 88%;
+    --ring: 178 62% 32%;
 
+    --radius: 1rem;
+
+    /* Effects */
+    --shadow-card: 0 1px 2px hsl(200 18% 12% / 0.04), 0 4px 16px hsl(200 18% 12% / 0.06);
+    --shadow-pop: 0 8px 28px hsl(200 18% 12% / 0.12);
+    --shadow-soft: 0 1px 0 hsl(200 18% 12% / 0.04);
+
+    --gradient-hero: linear-gradient(135deg, hsl(178 62% 32%) 0%, hsl(174 70% 45%) 100%);
+    --gradient-soft: linear-gradient(180deg, hsl(40 33% 98%) 0%, hsl(178 30% 96%) 100%);
+
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Sidebar (kept default) */
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 200 20% 8%;
+    --foreground: 40 33% 96%;
+    --card: 200 18% 11%;
+    --card-foreground: 40 33% 96%;
+    --popover: 200 18% 11%;
+    --popover-foreground: 40 33% 96%;
+    --primary: 174 70% 45%;
+    --primary-foreground: 200 20% 8%;
+    --primary-soft: 178 40% 18%;
+    --primary-glow: 174 70% 55%;
+    --secondary: 200 15% 16%;
+    --secondary-foreground: 40 33% 96%;
+    --muted: 200 15% 16%;
+    --muted-foreground: 40 10% 65%;
+    --accent: 22 92% 60%;
+    --accent-foreground: 0 0% 100%;
+    --success: 152 55% 45%;
+    --success-foreground: 0 0% 100%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 200 15% 20%;
+    --input: 200 15% 20%;
+    --ring: 174 70% 45%;
   }
 }
 
@@ -99,7 +100,36 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer components {
+  .product-card {
+    @apply relative bg-card rounded-2xl overflow-hidden transition-all duration-200;
+    box-shadow: var(--shadow-soft);
+  }
+  .product-card:hover {
+    box-shadow: var(--shadow-card);
+    transform: translateY(-2px);
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-medium
+           bg-secondary text-secondary-foreground hover:bg-muted transition-colors whitespace-nowrap;
+  }
+  .chip-active {
+    @apply bg-primary text-primary-foreground hover:bg-primary;
   }
 }
