@@ -33,10 +33,10 @@ export const Header = () => {
     <header className="sticky top-0 z-40 w-full bg-background/85 backdrop-blur-md border-b border-border">
       <div className="container flex items-center gap-4 h-16">
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div className="h-9 w-9 rounded-xl bg-gradient-hero flex items-center justify-center text-primary-foreground font-display font-bold text-lg">
-            T
+          <div className="h-9 w-9 rounded-xl bg-gradient-hero flex items-center justify-center text-primary-foreground font-display font-bold text-base">
+            PK
           </div>
-          <span className="font-display font-bold text-xl tracking-tight">trnrs</span>
+          <span className="font-display font-bold text-xl tracking-tight hidden sm:inline">PrelovedKicks</span>
         </Link>
 
         <div className="flex-1 max-w-xl hidden md:block">
