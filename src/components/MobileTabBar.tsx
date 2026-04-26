@@ -1,20 +1,31 @@
 import { Heart, Home, Plus, MessageCircle, User } from "lucide-react";
-
-const items = [
-  { icon: Home, label: "Home" },
-  { icon: Heart, label: "Saved" },
-  { icon: Plus, label: "Sell", primary: true },
-  { icon: MessageCircle, label: "Inbox" },
-  { icon: User, label: "Profile" },
-];
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 export const MobileTabBar = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const requireAuth = (path: string) => {
+    if (!user) navigate("/auth");
+    else navigate(path);
+  };
+
+  const items = [
+    { icon: Home, label: "Home", onClick: () => navigate("/") },
+    { icon: Heart, label: "Saved", onClick: () => requireAuth("/") },
+    { icon: Plus, label: "Sell", primary: true, onClick: () => requireAuth("/sell") },
+    { icon: MessageCircle, label: "Inbox", onClick: () => requireAuth("/") },
+    { icon: User, label: "Profile", onClick: () => requireAuth("/auth") },
+  ];
+
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur border-t border-border">
       <ul className="grid grid-cols-5 h-16">
         {items.map((it) => (
           <li key={it.label} className="flex items-center justify-center">
             <button
+              onClick={it.onClick}
               className={
                 it.primary
                   ? "h-12 w-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-card -mt-4"

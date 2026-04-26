@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      listings: {
+        Row: {
+          brand: string
+          color: string | null
+          condition: Database["public"]["Enums"]["listing_condition"]
+          created_at: string
+          description: string | null
+          gender: Database["public"]["Enums"]["listing_gender"]
+          id: string
+          model: string | null
+          photos: string[]
+          price_pence: number
+          seller_id: string
+          size_eu: number | null
+          size_uk: number
+          status: Database["public"]["Enums"]["listing_status"]
+          title: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          brand: string
+          color?: string | null
+          condition: Database["public"]["Enums"]["listing_condition"]
+          created_at?: string
+          description?: string | null
+          gender?: Database["public"]["Enums"]["listing_gender"]
+          id?: string
+          model?: string | null
+          photos?: string[]
+          price_pence: number
+          seller_id: string
+          size_eu?: number | null
+          size_uk: number
+          status?: Database["public"]["Enums"]["listing_status"]
+          title: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          brand?: string
+          color?: string | null
+          condition?: Database["public"]["Enums"]["listing_condition"]
+          created_at?: string
+          description?: string | null
+          gender?: Database["public"]["Enums"]["listing_gender"]
+          id?: string
+          model?: string | null
+          photos?: string[]
+          price_pence?: number
+          seller_id?: string
+          size_eu?: number | null
+          size_uk?: number
+          status?: Database["public"]["Enums"]["listing_status"]
+          title?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -86,6 +146,14 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      listing_condition:
+        | "new_with_tags"
+        | "like_new"
+        | "very_good"
+        | "good"
+        | "worn"
+      listing_gender: "mens" | "womens" | "unisex" | "kids"
+      listing_status: "draft" | "active" | "sold" | "removed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -214,6 +282,15 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      listing_condition: [
+        "new_with_tags",
+        "like_new",
+        "very_good",
+        "good",
+        "worn",
+      ],
+      listing_gender: ["mens", "womens", "unisex", "kids"],
+      listing_status: ["draft", "active", "sold", "removed"],
     },
   },
 } as const
