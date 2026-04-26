@@ -91,7 +91,7 @@ const ListingDetail = () => {
     const url = window.location.href;
     try {
       if (navigator.share) {
-        await navigator.share({ title: listing?.title ?? "Trnrs", url });
+        await navigator.share({ title: listing?.title ?? "PrelovedKicks", url });
       } else {
         await navigator.clipboard.writeText(url);
         toast.success("Link copied");

@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Trnrs design system — Vinted-inspired marketplace for second-hand trainers.
+/* PrelovedKicks design system — Vinted-inspired marketplace for second-hand trainers.
    All colors HSL. Tokens drive the entire UI — never use raw colors in components. */
 
 @layer base {

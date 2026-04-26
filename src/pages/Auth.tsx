@@ -192,7 +192,7 @@ const AuthPage = () => {
                     id="su-username"
                     type="text"
                     autoComplete="username"
-                    placeholder="trnr_jay"
+                    placeholder="kicks_jay"
                     className="h-11 rounded-xl"
                     value={signUpData.username}
                     onChange={(e) => setSignUpData({ ...signUpData, username: e.target.value })}
