@@ -23,7 +23,7 @@ export const Header = () => {
       navigate("/auth");
       return;
     }
-    toast.info("Listing flow coming next 🚧");
+    navigate("/sell");
   };
 
   const initial = user?.email?.[0]?.toUpperCase() ?? "U";
