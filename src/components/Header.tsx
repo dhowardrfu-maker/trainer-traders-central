@@ -78,14 +78,14 @@ export const Header = () => {
                   <p className="font-semibold truncate">{user.email}</p>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => toast.info("Profile page coming soon")}>
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
                   <User className="h-4 w-4 mr-2" /> Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.info("My listings coming soon")}>
+                <DropdownMenuItem onClick={() => navigate("/profile?tab=listings")}>
                   <ShoppingBag className="h-4 w-4 mr-2" /> My listings
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.info("Favourites coming soon")}>
-                  <Heart className="h-4 w-4 mr-2" /> Favourites
+                <DropdownMenuItem onClick={() => navigate("/profile?tab=orders")}>
+                  <Heart className="h-4 w-4 mr-2" /> Orders
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

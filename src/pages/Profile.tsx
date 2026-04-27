@@ -1,0 +1,485 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Header } from "@/components/Header";
+import { MobileTabBar } from "@/components/MobileTabBar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Package, Plus, QrCode, ShoppingBag, Trash2, User as UserIcon } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { carrierLabel } from "@/data/carriers";
+
+interface ProfileRow {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  bio: string | null;
+  location: string | null;
+  avatar_url: string | null;
+}
+
+interface MyListing {
+  id: string;
+  title: string;
+  brand: string;
+  price_pence: number;
+  status: string;
+  photos: string[];
+  created_at: string;
+}
+
+interface OrderRow {
+  id: string;
+  listing_id: string;
+  buyer_id: string;
+  seller_id: string;
+  carrier: "royal_mail" | "inpost" | "evri";
+  service_label: string;
+  status: string;
+  total_pence: number;
+  tracking_code: string;
+  created_at: string;
+  ship_to_name: string;
+  ship_to_city: string;
+  ship_to_postcode: string;
+}
+
+const formatGbp = (pence: number) => `£${(pence / 100).toFixed(2)}`;
+
+const statusLabel = (status: string) =>
+  status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+const Profile = () => {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") ?? "profile";
+  const [tab, setTab] = useState(initialTab);
+
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [location, setLocation] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+
+  const [listings, setListings] = useState<MyListing[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
+
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+
+  // Redirect unauthenticated users
+  useEffect(() => {
+    if (!authLoading && !user) navigate("/auth");
+  }, [authLoading, user, navigate]);
+
+  // Sync tab back to URL
+  useEffect(() => {
+    if (tab !== initialTab) setSearchParams({ tab }, { replace: true });
+  }, [tab, initialTab, setSearchParams]);
+
+  // Load profile
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, username, display_name, bio, location, avatar_url")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        setProfile(data);
+        setDisplayName(data.display_name ?? "");
+        setUsername(data.username ?? "");
+        setBio(data.bio ?? "");
+        setLocation(data.location ?? "");
+        setAvatarUrl(data.avatar_url ?? "");
+      }
+      setProfileLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Load my listings
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("id, title, brand, price_pence, status, photos, created_at")
+        .eq("seller_id", user.id)
+        .order("created_at", { ascending: false });
+      if (cancelled) return;
+      if (!error && data) setListings(data as MyListing[]);
+      setListingsLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Load orders (buyer + seller)
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_city, ship_to_postcode")
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+        .order("created_at", { ascending: false });
+      if (cancelled) return;
+      if (!error && data) setOrders(data as OrderRow[]);
+      setOrdersLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const purchases = useMemo(() => orders.filter((o) => o.buyer_id === user?.id), [orders, user]);
+  const sales = useMemo(() => orders.filter((o) => o.seller_id === user?.id), [orders, user]);
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+    const trimmedUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        display_name: displayName.trim() || null,
+        username: trimmedUsername || null,
+        bio: bio.trim() || null,
+        location: location.trim() || null,
+        avatar_url: avatarUrl.trim() || null,
+      })
+      .eq("user_id", user.id);
+    setSaving(false);
+    if (error) {
+      toast.error(error.message.includes("duplicate") ? "Username already taken" : "Couldn't save profile");
+      return;
+    }
+    toast.success("Profile updated");
+    setUsername(trimmedUsername);
+  };
+
+  const handleDeleteListing = async (id: string) => {
+    const { error } = await supabase.from("listings").delete().eq("id", id);
+    if (error) {
+      toast.error("Couldn't delete listing");
+      return;
+    }
+    setListings((prev) => prev.filter((l) => l.id !== id));
+    toast.success("Listing deleted");
+  };
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const initial = (displayName || username || user.email || "U")[0].toUpperCase();
+
+  return (
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
+      <Header />
+      <main className="container py-6 md:py-10 max-w-3xl">
+        <div className="flex items-center gap-4 mb-6">
+          <Avatar className="h-16 w-16 border border-border">
+            {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
+            <AvatarFallback className="bg-primary-soft text-primary font-display font-bold text-xl">
+              {initial}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <h1 className="font-display font-bold text-2xl md:text-3xl tracking-tight truncate">
+              {displayName || username || "Your profile"}
+            </h1>
+            <p className="text-sm text-muted-foreground truncate">
+              {username ? `@${username}` : user.email}
+            </p>
+          </div>
+        </div>
+
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="grid grid-cols-3 w-full mb-6">
+            <TabsTrigger value="profile" className="gap-1.5">
+              <UserIcon className="h-4 w-4" /> Profile
+            </TabsTrigger>
+            <TabsTrigger value="listings" className="gap-1.5">
+              <ShoppingBag className="h-4 w-4" /> Listings
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="gap-1.5">
+              <Package className="h-4 w-4" /> Orders
+            </TabsTrigger>
+          </TabsList>
+
+          {/* PROFILE */}
+          <TabsContent value="profile">
+            {profileLoading ? (
+              <div className="py-10 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <Card className="p-6 space-y-5 rounded-2xl">
+                <div className="grid gap-2">
+                  <Label htmlFor="display_name">Display name</Label>
+                  <Input
+                    id="display_name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="How should buyers see you?"
+                    maxLength={60}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="lowercase, letters/numbers"
+                    maxLength={30}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Lowercase letters, numbers and underscores only.
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="London, UK"
+                    maxLength={80}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="avatar">Avatar URL</Label>
+                  <Input
+                    id="avatar"
+                    value={avatarUrl}
+                    onChange={(e) => setAvatarUrl(e.target.value)}
+                    placeholder="https://…"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Tell buyers about your collection…"
+                    rows={4}
+                    maxLength={300}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveProfile} disabled={saving} className="rounded-full font-semibold">
+                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Save changes
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* LISTINGS */}
+          <TabsContent value="listings">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-muted-foreground">
+                {listingsLoading ? "Loading…" : `${listings.length} listing${listings.length === 1 ? "" : "s"}`}
+              </p>
+              <Button
+                size="sm"
+                className="rounded-full gap-1.5 font-semibold"
+                onClick={() => navigate("/sell")}
+              >
+                <Plus className="h-4 w-4" /> New listing
+              </Button>
+            </div>
+
+            {listingsLoading ? (
+              <div className="py-10 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : listings.length === 0 ? (
+              <Card className="p-10 text-center rounded-2xl">
+                <ShoppingBag className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="font-semibold">No listings yet</p>
+                <p className="text-sm text-muted-foreground mt-1">List your first pair to get started.</p>
+                <Button className="mt-4 rounded-full font-semibold" onClick={() => navigate("/sell")}>
+                  <Plus className="h-4 w-4 mr-1.5" /> Sell something
+                </Button>
+              </Card>
+            ) : (
+              <div className="grid gap-3">
+                {listings.map((l) => (
+                  <Card key={l.id} className="p-3 rounded-2xl flex items-center gap-3">
+                    <Link to={`/listing/${l.id}`} className="shrink-0">
+                      <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
+                        {l.photos?.[0] ? (
+                          <img src={l.photos[0]} alt={l.title} className="h-full w-full object-cover" />
+                        ) : null}
+                      </div>
+                    </Link>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Link to={`/listing/${l.id}`} className="font-semibold truncate hover:underline">
+                          {l.title}
+                        </Link>
+                        <Badge
+                          variant={l.status === "active" ? "default" : "secondary"}
+                          className="rounded-full text-[10px] uppercase tracking-wide"
+                        >
+                          {l.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {l.brand} · {formatGbp(l.price_pence)}
+                      </p>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-destructive shrink-0"
+                          aria-label="Delete listing"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="rounded-2xl">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this listing?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            "{l.title}" will be removed permanently. This can't be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteListing(l.id)}
+                            className="rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ORDERS */}
+          <TabsContent value="orders">
+            {ordersLoading ? (
+              <div className="py-10 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <OrderSection
+                  title="Purchases"
+                  empty="You haven't bought anything yet."
+                  rows={purchases}
+                />
+                <OrderSection
+                  title="Sales"
+                  empty="No sales yet — keep listing!"
+                  rows={sales}
+                />
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </main>
+      <MobileTabBar />
+    </div>
+  );
+};
+
+const OrderSection = ({
+  title,
+  empty,
+  rows,
+}: {
+  title: string;
+  empty: string;
+  rows: OrderRow[];
+}) => (
+  <section>
+    <h2 className="font-display font-bold text-lg mb-3">{title}</h2>
+    {rows.length === 0 ? (
+      <Card className="p-6 text-center rounded-2xl">
+        <p className="text-sm text-muted-foreground">{empty}</p>
+      </Card>
+    ) : (
+      <div className="grid gap-3">
+        {rows.map((o) => (
+          <Card key={o.id} className="p-4 rounded-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-sm">
+                    {carrierLabel(o.carrier)} · {o.service_label}
+                  </span>
+                  <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wide">
+                    {statusLabel(o.status)}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
+                  {o.tracking_code}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  To {o.ship_to_name} · {o.ship_to_city} {o.ship_to_postcode}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="font-display font-bold">{formatGbp(o.total_pence)}</p>
+                <Link
+                  to={`/order/${o.id}`}
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-1"
+                >
+                  <QrCode className="h-3 w-3" /> Label
+                </Link>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    )}
+  </section>
+);
+
+export default Profile;

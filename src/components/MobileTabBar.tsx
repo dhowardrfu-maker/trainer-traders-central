@@ -13,10 +13,10 @@ export const MobileTabBar = () => {
 
   const items = [
     { icon: Home, label: "Home", onClick: () => navigate("/") },
-    { icon: Heart, label: "Saved", onClick: () => requireAuth("/") },
+    { icon: Heart, label: "Saved", onClick: () => requireAuth("/profile?tab=orders") },
     { icon: Plus, label: "Sell", primary: true, onClick: () => requireAuth("/sell") },
-    { icon: MessageCircle, label: "Inbox", onClick: () => requireAuth("/") },
-    { icon: User, label: "Profile", onClick: () => requireAuth("/auth") },
+    { icon: MessageCircle, label: "Inbox", onClick: () => requireAuth("/profile?tab=orders") },
+    { icon: User, label: "Profile", onClick: () => requireAuth("/profile") },
   ];
 
   return (
