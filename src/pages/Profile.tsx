@@ -21,11 +21,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Package, Plus, QrCode, ShoppingBag, Trash2, User as UserIcon } from "lucide-react";
+import { Heart, Loader2, Package, Plus, QrCode, ShoppingBag, Trash2, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useFavourites } from "@/hooks/useFavourites";
 import { supabase } from "@/integrations/supabase/client";
 import { carrierLabel } from "@/data/carriers";
+import { ProductCard } from "@/components/ProductCard";
+import { mapDbListing, type Listing } from "@/data/listings";
 
 interface ProfileRow {
   user_id: string;
@@ -69,10 +72,14 @@ const statusLabel = (status: string) =>
 
 const Profile = () => {
   const { user, loading: authLoading } = useAuth();
+  const { ids: favIds } = useFavourites();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") ?? "profile";
   const [tab, setTab] = useState(initialTab);
+
+  const [savedListings, setSavedListings] = useState<Listing[]>([]);
+  const [savedLoading, setSavedLoading] = useState(true);
 
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
