@@ -219,7 +219,7 @@ const ListingDetail = () => {
                 <Button onClick={handleBuy} size="lg" className="flex-1">
                   Buy now · £{listing.price}
                 </Button>
-                <Button variant="outline" size="lg" onClick={() => setLiked((l) => !l)} aria-label="Favourite">
+                <Button variant="outline" size="lg" onClick={handleFavourite} aria-label="Favourite">
                   <Heart className={cn("h-5 w-5", liked && "fill-accent stroke-accent")} />
                 </Button>
                 <Button variant="outline" size="lg" onClick={handleShare} aria-label="Share">
@@ -234,7 +234,7 @@ const ListingDetail = () => {
       {/* Sticky mobile CTA */}
       {listing && (
         <div className="md:hidden fixed bottom-16 inset-x-0 bg-background/95 backdrop-blur border-t border-border p-3 flex gap-2 z-40">
-          <Button variant="outline" size="lg" onClick={() => setLiked((l) => !l)} aria-label="Favourite">
+          <Button variant="outline" size="lg" onClick={handleFavourite} aria-label="Favourite">
             <Heart className={cn("h-5 w-5", liked && "fill-accent stroke-accent")} />
           </Button>
           <Button onClick={handleBuy} size="lg" className="flex-1">
