@@ -164,6 +164,51 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
+  // Load favourited listings (full data)
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setSavedLoading(true);
+    (async () => {
+      const idArr = Array.from(favIds);
+      if (idArr.length === 0) {
+        if (!cancelled) {
+          setSavedListings([]);
+          setSavedLoading(false);
+        }
+        return;
+      }
+      const { data: rows } = await supabase
+        .from("listings")
+        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, photos, created_at, seller_id")
+        .in("id", idArr);
+      if (cancelled) return;
+      if (!rows) {
+        setSavedListings([]);
+        setSavedLoading(false);
+        return;
+      }
+      const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id)));
+      let profiles: Record<string, { username: string | null; display_name: string | null }> = {};
+      if (sellerIds.length > 0) {
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("user_id, username, display_name")
+          .in("user_id", sellerIds);
+        if (profileRows) {
+          profiles = Object.fromEntries(
+            profileRows.map((p) => [p.user_id, { username: p.username, display_name: p.display_name }])
+          );
+        }
+      }
+      setSavedListings(
+        rows.map((r) => mapDbListing({ ...r, profile: profiles[r.seller_id] ?? null }))
+      );
+      setSavedLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user, favIds]);
+
   const purchases = useMemo(() => orders.filter((o) => o.buyer_id === user?.id), [orders, user]);
   const sales = useMemo(() => orders.filter((o) => o.seller_id === user?.id), [orders, user]);
 
