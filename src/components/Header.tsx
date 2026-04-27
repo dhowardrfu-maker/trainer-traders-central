@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import logo from "@/assets/logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,11 +33,14 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-40 w-full bg-background/85 backdrop-blur-md border-b border-border">
       <div className="container flex items-center gap-4 h-16">
-        <Link to="/" className="flex items-center gap-2 shrink-0">
-          <div className="h-9 w-9 rounded-xl bg-gradient-hero flex items-center justify-center text-primary-foreground font-display font-bold text-base">
-            PK
-          </div>
-          <span className="font-display font-bold text-xl tracking-tight hidden sm:inline">PrelovedKicks</span>
+        <Link to="/" className="flex items-center shrink-0" aria-label="PrelovedKicks home">
+          <img
+            src={logo}
+            alt="PrelovedKicks"
+            className="h-11 md:h-12 w-auto object-contain"
+            loading="eager"
+            decoding="async"
+          />
         </Link>
 
         <div className="flex-1 max-w-xl hidden md:block">
