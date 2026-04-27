@@ -277,12 +277,15 @@ const Profile = () => {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid grid-cols-3 w-full mb-6">
+          <TabsList className="grid grid-cols-4 w-full mb-6">
             <TabsTrigger value="profile" className="gap-1.5">
               <UserIcon className="h-4 w-4" /> Profile
             </TabsTrigger>
             <TabsTrigger value="listings" className="gap-1.5">
               <ShoppingBag className="h-4 w-4" /> Listings
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="gap-1.5">
+              <Heart className="h-4 w-4" /> Saved
             </TabsTrigger>
             <TabsTrigger value="orders" className="gap-1.5">
               <Package className="h-4 w-4" /> Orders
