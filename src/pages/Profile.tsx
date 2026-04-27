@@ -21,11 +21,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Package, Plus, QrCode, ShoppingBag, Trash2, User as UserIcon } from "lucide-react";
+import { Heart, Loader2, Package, Plus, QrCode, ShoppingBag, Trash2, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useFavourites } from "@/hooks/useFavourites";
 import { supabase } from "@/integrations/supabase/client";
 import { carrierLabel } from "@/data/carriers";
+import { ProductCard } from "@/components/ProductCard";
+import { mapDbListing, type Listing } from "@/data/listings";
 
 interface ProfileRow {
   user_id: string;
@@ -69,10 +72,14 @@ const statusLabel = (status: string) =>
 
 const Profile = () => {
   const { user, loading: authLoading } = useAuth();
+  const { ids: favIds } = useFavourites();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") ?? "profile";
   const [tab, setTab] = useState(initialTab);
+
+  const [savedListings, setSavedListings] = useState<Listing[]>([]);
+  const [savedLoading, setSavedLoading] = useState(true);
 
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -157,6 +164,51 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
+  // Load favourited listings (full data)
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setSavedLoading(true);
+    (async () => {
+      const idArr = Array.from(favIds);
+      if (idArr.length === 0) {
+        if (!cancelled) {
+          setSavedListings([]);
+          setSavedLoading(false);
+        }
+        return;
+      }
+      const { data: rows } = await supabase
+        .from("listings")
+        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, photos, created_at, seller_id")
+        .in("id", idArr);
+      if (cancelled) return;
+      if (!rows) {
+        setSavedListings([]);
+        setSavedLoading(false);
+        return;
+      }
+      const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id)));
+      let profiles: Record<string, { username: string | null; display_name: string | null }> = {};
+      if (sellerIds.length > 0) {
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("user_id, username, display_name")
+          .in("user_id", sellerIds);
+        if (profileRows) {
+          profiles = Object.fromEntries(
+            profileRows.map((p) => [p.user_id, { username: p.username, display_name: p.display_name }])
+          );
+        }
+      }
+      setSavedListings(
+        rows.map((r) => mapDbListing({ ...r, profile: profiles[r.seller_id] ?? null }))
+      );
+      setSavedLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user, favIds]);
+
   const purchases = useMemo(() => orders.filter((o) => o.buyer_id === user?.id), [orders, user]);
   const sales = useMemo(() => orders.filter((o) => o.seller_id === user?.id), [orders, user]);
 
@@ -225,12 +277,15 @@ const Profile = () => {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid grid-cols-3 w-full mb-6">
+          <TabsList className="grid grid-cols-4 w-full mb-6">
             <TabsTrigger value="profile" className="gap-1.5">
               <UserIcon className="h-4 w-4" /> Profile
             </TabsTrigger>
             <TabsTrigger value="listings" className="gap-1.5">
               <ShoppingBag className="h-4 w-4" /> Listings
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="gap-1.5">
+              <Heart className="h-4 w-4" /> Saved
             </TabsTrigger>
             <TabsTrigger value="orders" className="gap-1.5">
               <Package className="h-4 w-4" /> Orders
@@ -393,6 +448,32 @@ const Profile = () => {
                       </AlertDialogContent>
                     </AlertDialog>
                   </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* SAVED */}
+          <TabsContent value="saved">
+            {savedLoading ? (
+              <div className="py-10 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : savedListings.length === 0 ? (
+              <Card className="p-10 text-center rounded-2xl">
+                <Heart className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="font-semibold">No saved listings yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Tap the heart on any pair to save them for later.
+                </p>
+                <Button className="mt-4 rounded-full font-semibold" onClick={() => navigate("/")}>
+                  Browse kicks
+                </Button>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-5">
+                {savedListings.map((l) => (
+                  <ProductCard key={l.id} listing={l} />
                 ))}
               </div>
             )}

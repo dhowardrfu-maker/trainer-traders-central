@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
+import { FavouritesProvider } from "@/hooks/useFavourites";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Sell from "./pages/Sell.tsx";
@@ -22,7 +23,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
+          <FavouritesProvider>
+            <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/sell" element={<Sell />} />
@@ -31,8 +33,9 @@ const App = () => (
             <Route path="/order/:id" element={<OrderConfirmation />} />
             <Route path="/profile" element={<Profile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </FavouritesProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

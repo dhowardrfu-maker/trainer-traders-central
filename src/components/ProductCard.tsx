@@ -1,11 +1,39 @@
 import { Heart, Star } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import type { Listing } from "@/data/listings";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { useFavourites } from "@/hooks/useFavourites";
+
+// Sample listings have non-UUID ids (e.g. "s1") and can't be saved to the DB
+const isDbId = (id: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
 export const ProductCard = ({ listing }: { listing: Listing }) => {
-  const [liked, setLiked] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { isFavourited, toggle } = useFavourites();
+  const liked = isFavourited(listing.id);
+
+  const handleHeart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    if (!isDbId(listing.id)) {
+      toast.info("Sample listings can't be saved");
+      return;
+    }
+    try {
+      const next = await toggle(listing.id);
+      toast.success(next ? "Saved to favourites" : "Removed from favourites");
+    } catch {
+      toast.error("Couldn't update favourites");
+    }
+  };
 
   return (
     <Link to={`/listing/${listing.id}`} className="block">
@@ -20,11 +48,7 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
           <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setLiked((l) => !l);
-            }}
+            onClick={handleHeart}
             className="absolute top-2.5 right-2.5 h-9 w-9 rounded-full bg-background/85 backdrop-blur flex items-center justify-center hover:bg-background transition-colors"
             aria-label={liked ? "Remove from favourites" : "Add to favourites"}
           >
