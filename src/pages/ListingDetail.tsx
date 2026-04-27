@@ -19,6 +19,7 @@ const isDbId = (id: string) =>
 const ListingDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { isFavourited, toggle: toggleFav } = useFavourites();
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
