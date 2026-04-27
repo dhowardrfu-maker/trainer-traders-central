@@ -453,6 +453,32 @@ const Profile = () => {
             )}
           </TabsContent>
 
+          {/* SAVED */}
+          <TabsContent value="saved">
+            {savedLoading ? (
+              <div className="py-10 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : savedListings.length === 0 ? (
+              <Card className="p-10 text-center rounded-2xl">
+                <Heart className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="font-semibold">No saved listings yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Tap the heart on any pair to save them for later.
+                </p>
+                <Button className="mt-4 rounded-full font-semibold" onClick={() => navigate("/")}>
+                  Browse kicks
+                </Button>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-5">
+                {savedListings.map((l) => (
+                  <ProductCard key={l.id} listing={l} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
           {/* ORDERS */}
           <TabsContent value="orders">
             {ordersLoading ? (
