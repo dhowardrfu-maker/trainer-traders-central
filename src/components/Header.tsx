@@ -27,6 +27,14 @@ export const Header = () => {
     navigate("/sell");
   };
 
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const input = form.elements.namedItem("q") as HTMLInputElement | null;
+    const q = (input?.value ?? "").trim();
+    navigate(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+  };
+
   const initial = user?.email?.[0]?.toUpperCase() ?? "U";
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
 
@@ -43,21 +51,34 @@ export const Header = () => {
           />
         </Link>
 
-        <div className="flex-1 max-w-xl hidden md:block">
+        <form onSubmit={handleSearchSubmit} className="flex-1 max-w-xl hidden md:block">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              name="q"
               placeholder="Search Nike, Jordan, size 9…"
               className="pl-10 h-11 rounded-full bg-muted border-transparent focus-visible:bg-background"
             />
           </div>
-        </div>
+        </form>
 
         <nav className="flex items-center gap-1 ml-auto">
-          <Button variant="ghost" size="icon" className="md:hidden rounded-full" aria-label="Search">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden rounded-full"
+            aria-label="Search"
+            onClick={() => navigate("/search")}
+          >
             <Search className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="rounded-full hidden sm:inline-flex" aria-label="Favourites">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full hidden sm:inline-flex"
+            aria-label="Favourites"
+            onClick={() => (user ? navigate("/profile?tab=saved") : navigate("/auth"))}
+          >
             <Heart className="h-5 w-5" />
           </Button>
           <Button variant="ghost" size="icon" className="rounded-full hidden sm:inline-flex" aria-label="Bag">
