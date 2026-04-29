@@ -296,6 +296,12 @@ const ListingDetail = () => {
                   <Share2 className="h-5 w-5" />
                 </Button>
               </div>
+
+              {!isOwnListing && isDbListing && (
+                <div className="mt-4">
+                  <ReportDialog targetType="listing" targetId={listing.id} />
+                </div>
+              )}
             </div>
           </div>
         )}
