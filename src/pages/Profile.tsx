@@ -487,6 +487,55 @@ const Profile = () => {
             )}
           </TabsContent>
 
+          {/* OFFERS */}
+          <TabsContent value="offers">
+            {offersLoading ? (
+              <div className="py-10 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : offerRows.length === 0 ? (
+              <Card className="p-10 text-center rounded-2xl">
+                <Tag className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="font-semibold">No offers yet</p>
+                <p className="text-sm text-muted-foreground mt-1">When you make or receive offers, they'll show here.</p>
+              </Card>
+            ) : (
+              <div className="grid gap-3">
+                {offerRows.map((o) => {
+                  const role = o.buyer_id === user.id ? "Sent" : "Received";
+                  return (
+                    <Card key={o.id} className="p-3 rounded-2xl flex items-center gap-3">
+                      <Link to={`/listing/${o.listing_id}`} className="shrink-0">
+                        <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
+                          {o.listing_photo ? (
+                            <img src={o.listing_photo} alt="" className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                      </Link>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Link to={`/listing/${o.listing_id}`} className="font-semibold truncate hover:underline">
+                            {o.listing_title ?? "Listing"}
+                          </Link>
+                          <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wide">{role}</Badge>
+                          <Badge variant={o.status === "accepted" ? "default" : "outline"} className="rounded-full text-[10px] uppercase tracking-wide">{o.status}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          £{(o.amount_pence / 100).toFixed(2)} · {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </p>
+                      </div>
+                      {o.status === "accepted" && o.buyer_id === user.id && (
+                        <Button size="sm" className="rounded-full" onClick={() => navigate(`/checkout/${o.listing_id}?offer=${o.id}`)}>
+                          Buy
+                        </Button>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </TabsContent>
+
           {/* SAVED */}
           <TabsContent value="saved">
             {savedLoading ? (
