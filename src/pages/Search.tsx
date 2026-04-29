@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
+import { useSEO } from "@/hooks/useSEO";
 
 const POPULAR = ["Nike", "Jordan", "adidas", "Dunk", "Air Max", "Samba", "New Balance", "Yeezy"];
 
