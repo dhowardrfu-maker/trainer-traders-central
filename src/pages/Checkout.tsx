@@ -84,12 +84,32 @@ const Checkout = () => {
     return () => { cancelled = true; };
   }, [id]);
 
+  // Load accepted offer if provided
+  useEffect(() => {
+    if (!offerId || !user || !id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("offers")
+        .select("amount_pence, status, buyer_id, listing_id")
+        .eq("id", offerId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      if (data.status === "accepted" && data.buyer_id === user.id && data.listing_id === id) {
+        setAcceptedOfferPence(data.amount_pence);
+        toast.success(`Offer applied — £${(data.amount_pence / 100).toFixed(2)}`);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [offerId, user, id]);
+
   const carrier = useMemo(
     () => CARRIERS.find((c) => c.id === carrierId)!,
     [carrierId]
   );
 
-  const total = listing ? listing.price + carrier.pricePence / 100 : 0;
+  const itemPrice = acceptedOfferPence != null ? acceptedOfferPence / 100 : (listing?.price ?? 0);
+  const total = listing ? itemPrice + carrier.pricePence / 100 : 0;
   const isSample = listing?.isSample === true;
   const isOwn = !!(user && listing?.seller.id && user.id === listing.seller.id);
 
