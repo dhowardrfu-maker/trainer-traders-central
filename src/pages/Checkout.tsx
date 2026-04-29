@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { z } from "zod";
 import { ArrowLeft, Loader2, Check, ShieldCheck } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -29,12 +29,15 @@ const addressSchema = z.object({
 
 const Checkout = () => {
   const { id } = useParams<{ id: string }>();
+  const [params] = useSearchParams();
+  const offerId = params.get("offer");
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [carrierId, setCarrierId] = useState<CarrierId>("royal_mail");
   const [busy, setBusy] = useState(false);
+  const [acceptedOfferPence, setAcceptedOfferPence] = useState<number | null>(null);
   const [address, setAddress] = useState({
     ship_to_name: "",
     ship_to_line1: "",
