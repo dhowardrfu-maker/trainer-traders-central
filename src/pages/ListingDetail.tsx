@@ -13,6 +13,8 @@ import { useFavourites } from "@/hooks/useFavourites";
 import { MakeOfferDialog } from "@/components/MakeOfferDialog";
 import { OfferPanel } from "@/components/OfferPanel";
 import { SellerReviews } from "@/components/SellerReviews";
+import { ReportDialog } from "@/components/ReportDialog";
+import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -140,6 +142,29 @@ const ListingDetail = () => {
       }
     } catch { /* user cancelled */ }
   };
+
+  useSEO({
+    title: listing ? `${listing.brand} ${listing.title} — UK ${listing.sizeUk} · £${listing.price}` : "Listing — PrelovedKicks",
+    description: listing
+      ? `${listing.condition} ${listing.brand} ${listing.title}, UK size ${listing.sizeUk}. £${listing.price} on PrelovedKicks — buy second-hand trainers with QR-label shipping.`
+      : undefined,
+    image: listing?.image,
+    jsonLd: listing ? {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: `${listing.brand} ${listing.title}`,
+      image: listing.image,
+      description: listing.description ?? `${listing.condition} ${listing.brand} ${listing.title}`,
+      brand: { "@type": "Brand", name: listing.brand },
+      offers: {
+        "@type": "Offer",
+        priceCurrency: "GBP",
+        price: listing.price,
+        availability: "https://schema.org/InStock",
+        url: typeof window !== "undefined" ? window.location.href : undefined,
+      },
+    } : undefined,
+  });
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
@@ -271,6 +296,12 @@ const ListingDetail = () => {
                   <Share2 className="h-5 w-5" />
                 </Button>
               </div>
+
+              {!isOwnListing && isDbListing && (
+                <div className="mt-4">
+                  <ReportDialog targetType="listing" targetId={listing.id} />
+                </div>
+              )}
             </div>
           </div>
         )}

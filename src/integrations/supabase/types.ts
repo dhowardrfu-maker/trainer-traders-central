@@ -334,6 +334,42 @@ export type Database = {
         }
         Relationships: []
       }
+      reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          status: Database["public"]["Enums"]["report_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["report_target"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          status?: Database["public"]["Enums"]["report_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["report_target"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          status?: Database["public"]["Enums"]["report_status"]
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["report_target"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           buyer_id: string
@@ -470,6 +506,8 @@ export type Database = {
         | "shipped"
         | "delivered"
         | "cancelled"
+      report_status: "open" | "reviewing" | "resolved" | "dismissed"
+      report_target: "listing" | "message" | "user" | "thread"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -635,6 +673,8 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
+      report_status: ["open", "reviewing", "resolved", "dismissed"],
+      report_target: ["listing", "message", "user", "thread"],
     },
   },
 } as const

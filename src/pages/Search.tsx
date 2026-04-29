@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
+import { useSEO } from "@/hooks/useSEO";
 
 const POPULAR = ["Nike", "Jordan", "adidas", "Dunk", "Air Max", "Samba", "New Balance", "Yeezy"];
 
@@ -28,6 +29,13 @@ const SearchPage = () => {
   const [query, setQuery] = useState(initialQ);
   const [dbListings, setDbListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useSEO({
+    title: query ? `“${query}” — PrelovedKicks search` : "Search trainers — PrelovedKicks",
+    description: query
+      ? `Search results for “${query}” on PrelovedKicks — second-hand trainers from real UK sellers.`
+      : "Search thousands of pre-loved trainers from UK sellers on PrelovedKicks.",
+  });
 
   useEffect(() => {
     let cancelled = false;
