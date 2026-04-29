@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ReportDialog } from "@/components/ReportDialog";
 
 interface Message {
   id: string;
@@ -140,6 +141,7 @@ const MessageThread = () => {
               <img src={info.listing_photo} alt="" className="h-10 w-10 rounded-lg object-cover bg-muted" />
             </Link>
           )}
+          <ReportDialog targetType="thread" targetId={info.id} />
         </div>
       </div>
 

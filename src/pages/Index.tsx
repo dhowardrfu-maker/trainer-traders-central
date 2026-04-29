@@ -7,6 +7,7 @@ import { MobileTabBar } from "@/components/MobileTabBar";
 import { FilterBar, DEFAULT_FILTERS, type Filters, type SortKey } from "@/components/FilterBar";
 import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
 import { supabase } from "@/integrations/supabase/client";
+import { useSEO } from "@/hooks/useSEO";
 
 const Index = () => {
   const [activeCategory, setActiveCategory] = useState("All");
