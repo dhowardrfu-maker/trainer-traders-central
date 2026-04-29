@@ -105,6 +105,30 @@ const ListingDetail = () => {
     navigate(`/checkout/${listing!.id}`);
   };
 
+  const isDbListing = listing && isDbId(listing.id);
+
+  const handleMessageSeller = async () => {
+    if (!user) { navigate("/auth"); return; }
+    if (!listing || !listing.seller.id) return;
+    if (isOwnListing) { toast.error("You can't message yourself"); return; }
+    if (!isDbListing) { toast.info("Sample listings can't be messaged"); return; }
+    // find or create thread
+    const { data: existing } = await supabase
+      .from("threads")
+      .select("id")
+      .eq("listing_id", listing.id)
+      .eq("buyer_id", user.id)
+      .eq("seller_id", listing.seller.id)
+      .maybeSingle();
+    if (existing) { navigate(`/messages/${existing.id}`); return; }
+    const { data: created, error } = await supabase
+      .from("threads")
+      .insert({ listing_id: listing.id, buyer_id: user.id, seller_id: listing.seller.id })
+      .select("id").single();
+    if (error || !created) { toast.error("Couldn't start chat"); return; }
+    navigate(`/messages/${created.id}`);
+  };
+
   const handleShare = async () => {
     const url = window.location.href;
     try {
