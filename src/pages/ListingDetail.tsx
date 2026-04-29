@@ -242,18 +242,51 @@ const ListingDetail = () => {
               </div>
 
               {/* Desktop CTAs */}
-              <div className="hidden md:flex gap-2 mt-6">
-                <Button onClick={handleBuy} size="lg" className="flex-1">
+              <div className="hidden md:flex gap-2 mt-6 flex-wrap">
+                <Button onClick={handleBuy} size="lg" className="flex-1 min-w-[180px]">
                   Buy now · £{listing.price}
                 </Button>
-                <Button variant="outline" size="lg" onClick={handleFavourite} aria-label="Favourite">
+                {!isOwnListing && isDbListing && user && listing.seller.id && (
+                  <MakeOfferDialog
+                    listingId={listing.id}
+                    sellerId={listing.seller.id}
+                    buyerId={user.id}
+                    askingPrice={listing.price}
+                    trigger={
+                      <Button variant="secondary" size="lg" className="gap-1.5">
+                        <Tag className="h-4 w-4" /> Make offer
+                      </Button>
+                    }
+                  />
+                )}
+                {!isOwnListing && (
+                  <Button variant="outline" size="lg" onClick={handleMessageSeller} className="gap-1.5">
+                    <MessageCircle className="h-4 w-4" /> Message
+                  </Button>
+                )}
+                <Button variant="outline" size="icon" className="h-11 w-11" onClick={handleFavourite} aria-label="Favourite">
                   <Heart className={cn("h-5 w-5", liked && "fill-accent stroke-accent")} />
                 </Button>
-                <Button variant="outline" size="lg" onClick={handleShare} aria-label="Share">
+                <Button variant="outline" size="icon" className="h-11 w-11" onClick={handleShare} aria-label="Share">
                   <Share2 className="h-5 w-5" />
                 </Button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Offers + reviews */}
+        {listing && isDbListing && listing.seller.id && (
+          <div className="mt-8 grid md:grid-cols-2 gap-6 items-start">
+            {user && (
+              <OfferPanel
+                listingId={listing.id}
+                sellerId={listing.seller.id}
+                userId={user.id}
+                askingPrice={listing.price}
+              />
+            )}
+            <SellerReviews sellerId={listing.seller.id} />
           </div>
         )}
       </main>
