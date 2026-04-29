@@ -157,9 +157,9 @@ const Checkout = () => {
         listing_id: listing.id,
         buyer_id: user.id,
         seller_id: listing.seller.id!,
-        price_pence: Math.round(listing.price * 100),
+        price_pence: Math.round(itemPrice * 100),
         postage_pence: carrier.pricePence,
-        total_pence: Math.round(listing.price * 100) + carrier.pricePence,
+        total_pence: Math.round(itemPrice * 100) + carrier.pricePence,
         carrier: carrierId,
         service_label: `${carrier.name} · ${carrier.service}`,
         ship_to_name: parsed.data.ship_to_name,
@@ -310,7 +310,7 @@ const Checkout = () => {
                 </div>
 
                 <div className="border-t border-border pt-4 space-y-2 text-sm">
-                  <Row label="Item" value={`£${listing.price.toFixed(2)}`} />
+                  <Row label={acceptedOfferPence != null ? "Item (offer accepted)" : "Item"} value={`£${itemPrice.toFixed(2)}`} />
                   <Row label={`Postage (${carrier.name})`} value={`£${(carrier.pricePence / 100).toFixed(2)}`} />
                 </div>
                 <div className="border-t border-border pt-4 flex justify-between items-baseline">
