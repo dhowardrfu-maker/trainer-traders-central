@@ -10,10 +10,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { carrierLabel, type CarrierId } from "@/data/carriers";
 import { toast } from "sonner";
+import { ReviewForm } from "@/components/ReviewForm";
 
 interface OrderRow {
   id: string;
   listing_id: string;
+  buyer_id: string;
+  seller_id: string;
   carrier: CarrierId;
   service_label: string;
   total_pence: number;
