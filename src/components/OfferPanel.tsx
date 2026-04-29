@@ -56,7 +56,7 @@ export const OfferPanel = ({ listingId, sellerId, userId, askingPrice }: Props) 
 
   useEffect(() => { void load(); }, [listingId]);
 
-  const update = async (id: string, status: string) => {
+  const update = async (id: string, status: "accepted" | "rejected" | "countered" | "withdrawn" | "expired" | "pending") => {
     setBusy(id);
     const { error } = await supabase.from("offers").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
     setBusy(null);
