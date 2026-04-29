@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Heart, Share2, Star, ShieldCheck, Truck, Package } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Star, ShieldCheck, Truck, Package, MessageCircle, Tag } from "lucide-react";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,9 @@ import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
 import { ukToEu } from "@/data/listing-options";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
+import { MakeOfferDialog } from "@/components/MakeOfferDialog";
+import { OfferPanel } from "@/components/OfferPanel";
+import { SellerReviews } from "@/components/SellerReviews";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
