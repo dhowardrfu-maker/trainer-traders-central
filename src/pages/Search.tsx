@@ -30,6 +30,13 @@ const SearchPage = () => {
   const [dbListings, setDbListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useSEO({
+    title: query ? `“${query}” — PrelovedKicks search` : "Search trainers — PrelovedKicks",
+    description: query
+      ? `Search results for “${query}” on PrelovedKicks — second-hand trainers from real UK sellers.`
+      : "Search thousands of pre-loved trainers from UK sellers on PrelovedKicks.",
+  });
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
