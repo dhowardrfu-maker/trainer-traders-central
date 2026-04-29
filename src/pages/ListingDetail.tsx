@@ -13,6 +13,8 @@ import { useFavourites } from "@/hooks/useFavourites";
 import { MakeOfferDialog } from "@/components/MakeOfferDialog";
 import { OfferPanel } from "@/components/OfferPanel";
 import { SellerReviews } from "@/components/SellerReviews";
+import { ReportDialog } from "@/components/ReportDialog";
+import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
