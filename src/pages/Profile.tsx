@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Heart, Loader2, Package, Plus, QrCode, ShoppingBag, Trash2, User as UserIcon } from "lucide-react";
+import { Heart, Loader2, Package, Plus, QrCode, ShoppingBag, Tag, Trash2, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
@@ -95,6 +95,12 @@ const Profile = () => {
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+
+  const [offerRows, setOfferRows] = useState<Array<{
+    id: string; amount_pence: number; status: string; buyer_id: string; seller_id: string;
+    listing_id: string; created_at: string; listing_title?: string; listing_photo?: string | null;
+  }>>([]);
+  const [offersLoading, setOffersLoading] = useState(true);
 
   // Redirect unauthenticated users
   useEffect(() => {
