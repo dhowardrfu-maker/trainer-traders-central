@@ -103,6 +103,124 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_id: string
+          thread_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id: string
+          thread_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          data: Json
+          id: string
+          link: string | null
+          read_at: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      offers: {
+        Row: {
+          amount_pence: number
+          buyer_id: string
+          created_at: string
+          id: string
+          listing_id: string
+          message: string | null
+          parent_offer_id: string | null
+          seller_id: string
+          status: Database["public"]["Enums"]["offer_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount_pence: number
+          buyer_id: string
+          created_at?: string
+          id?: string
+          listing_id: string
+          message?: string | null
+          parent_offer_id?: string | null
+          seller_id: string
+          status?: Database["public"]["Enums"]["offer_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount_pence?: number
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          listing_id?: string
+          message?: string | null
+          parent_offer_id?: string | null
+          seller_id?: string
+          status?: Database["public"]["Enums"]["offer_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_parent_offer_id_fkey"
+            columns: ["parent_offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           buyer_id: string
@@ -216,6 +334,69 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          buyer_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          order_id: string
+          rating: number
+          seller_id: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          rating: number
+          seller_id: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          rating?: number
+          seller_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      threads: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          id: string
+          last_message_at: string
+          listing_id: string
+          seller_id: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          listing_id: string
+          seller_id: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          listing_id?: string
+          seller_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -249,6 +430,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_thread_participant: {
+        Args: { _thread_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
@@ -261,6 +446,24 @@ export type Database = {
         | "worn"
       listing_gender: "mens" | "womens" | "unisex" | "kids"
       listing_status: "draft" | "active" | "sold" | "removed"
+      notification_type:
+        | "offer_new"
+        | "offer_accepted"
+        | "offer_rejected"
+        | "offer_countered"
+        | "message_new"
+        | "review_new"
+        | "order_placed"
+        | "order_shipped"
+        | "order_delivered"
+        | "favourite_new"
+      offer_status:
+        | "pending"
+        | "accepted"
+        | "rejected"
+        | "countered"
+        | "withdrawn"
+        | "expired"
       order_status:
         | "pending_postage"
         | "label_created"
@@ -405,6 +608,26 @@ export const Constants = {
       ],
       listing_gender: ["mens", "womens", "unisex", "kids"],
       listing_status: ["draft", "active", "sold", "removed"],
+      notification_type: [
+        "offer_new",
+        "offer_accepted",
+        "offer_rejected",
+        "offer_countered",
+        "message_new",
+        "review_new",
+        "order_placed",
+        "order_shipped",
+        "order_delivered",
+        "favourite_new",
+      ],
+      offer_status: [
+        "pending",
+        "accepted",
+        "rejected",
+        "countered",
+        "withdrawn",
+        "expired",
+      ],
       order_status: [
         "pending_postage",
         "label_created",

@@ -1,9 +1,10 @@
-import { Heart, Search, ShoppingBag, Plus, User, LogOut } from "lucide-react";
+import { Heart, Search, MessageCircle, Plus, User, LogOut, ShoppingBag } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.png";
+import { NotificationsBell } from "@/components/NotificationsBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,9 +82,18 @@ export const Header = () => {
           >
             <Heart className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="rounded-full hidden sm:inline-flex" aria-label="Bag">
-            <ShoppingBag className="h-5 w-5" />
-          </Button>
+          {user && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full hidden sm:inline-flex"
+              aria-label="Messages"
+              onClick={() => navigate("/messages")}
+            >
+              <MessageCircle className="h-5 w-5" />
+            </Button>
+          )}
+          {user && <NotificationsBell />}
 
           {user ? (
             <DropdownMenu>

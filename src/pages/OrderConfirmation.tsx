@@ -10,10 +10,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { carrierLabel, type CarrierId } from "@/data/carriers";
 import { toast } from "sonner";
+import { ReviewForm } from "@/components/ReviewForm";
 
 interface OrderRow {
   id: string;
   listing_id: string;
+  buyer_id: string;
+  seller_id: string;
   carrier: CarrierId;
   service_label: string;
   total_pence: number;
@@ -193,6 +196,11 @@ const OrderConfirmation = () => {
                 Order ref: <span className="font-mono">{order.id.slice(0, 8)}</span>
               </p>
             </div>
+            {user && order.buyer_id === user.id && (
+              <div className="mt-6 print:hidden">
+                <ReviewForm orderId={order.id} buyerId={order.buyer_id} sellerId={order.seller_id} />
+              </div>
+            )}
           </>
         )}
       </main>

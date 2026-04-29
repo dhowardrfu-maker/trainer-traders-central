@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { z } from "zod";
 import { ArrowLeft, Loader2, Check, ShieldCheck } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -29,12 +29,15 @@ const addressSchema = z.object({
 
 const Checkout = () => {
   const { id } = useParams<{ id: string }>();
+  const [params] = useSearchParams();
+  const offerId = params.get("offer");
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [carrierId, setCarrierId] = useState<CarrierId>("royal_mail");
   const [busy, setBusy] = useState(false);
+  const [acceptedOfferPence, setAcceptedOfferPence] = useState<number | null>(null);
   const [address, setAddress] = useState({
     ship_to_name: "",
     ship_to_line1: "",
@@ -81,12 +84,32 @@ const Checkout = () => {
     return () => { cancelled = true; };
   }, [id]);
 
+  // Load accepted offer if provided
+  useEffect(() => {
+    if (!offerId || !user || !id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("offers")
+        .select("amount_pence, status, buyer_id, listing_id")
+        .eq("id", offerId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      if (data.status === "accepted" && data.buyer_id === user.id && data.listing_id === id) {
+        setAcceptedOfferPence(data.amount_pence);
+        toast.success(`Offer applied — £${(data.amount_pence / 100).toFixed(2)}`);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [offerId, user, id]);
+
   const carrier = useMemo(
     () => CARRIERS.find((c) => c.id === carrierId)!,
     [carrierId]
   );
 
-  const total = listing ? listing.price + carrier.pricePence / 100 : 0;
+  const itemPrice = acceptedOfferPence != null ? acceptedOfferPence / 100 : (listing?.price ?? 0);
+  const total = listing ? itemPrice + carrier.pricePence / 100 : 0;
   const isSample = listing?.isSample === true;
   const isOwn = !!(user && listing?.seller.id && user.id === listing.seller.id);
 
@@ -134,9 +157,9 @@ const Checkout = () => {
         listing_id: listing.id,
         buyer_id: user.id,
         seller_id: listing.seller.id!,
-        price_pence: Math.round(listing.price * 100),
+        price_pence: Math.round(itemPrice * 100),
         postage_pence: carrier.pricePence,
-        total_pence: Math.round(listing.price * 100) + carrier.pricePence,
+        total_pence: Math.round(itemPrice * 100) + carrier.pricePence,
         carrier: carrierId,
         service_label: `${carrier.name} · ${carrier.service}`,
         ship_to_name: parsed.data.ship_to_name,
@@ -287,7 +310,7 @@ const Checkout = () => {
                 </div>
 
                 <div className="border-t border-border pt-4 space-y-2 text-sm">
-                  <Row label="Item" value={`£${listing.price.toFixed(2)}`} />
+                  <Row label={acceptedOfferPence != null ? "Item (offer accepted)" : "Item"} value={`£${itemPrice.toFixed(2)}`} />
                   <Row label={`Postage (${carrier.name})`} value={`£${(carrier.pricePence / 100).toFixed(2)}`} />
                 </div>
                 <div className="border-t border-border pt-4 flex justify-between items-baseline">

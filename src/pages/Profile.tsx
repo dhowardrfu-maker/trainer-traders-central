@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Heart, Loader2, Package, Plus, QrCode, ShoppingBag, Trash2, User as UserIcon } from "lucide-react";
+import { Heart, Loader2, Package, Plus, QrCode, ShoppingBag, Tag, Trash2, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
@@ -96,6 +96,12 @@ const Profile = () => {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
 
+  const [offerRows, setOfferRows] = useState<Array<{
+    id: string; amount_pence: number; status: string; buyer_id: string; seller_id: string;
+    listing_id: string; created_at: string; listing_title?: string; listing_photo?: string | null;
+  }>>([]);
+  const [offersLoading, setOffersLoading] = useState(true);
+
   // Redirect unauthenticated users
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -164,7 +170,32 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // Load favourited listings (full data)
+  // Load offers (buyer + seller)
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data: rows } = await supabase
+        .from("offers")
+        .select("id, amount_pence, status, buyer_id, seller_id, listing_id, created_at")
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+        .order("created_at", { ascending: false });
+      if (cancelled || !rows) { setOffersLoading(false); return; }
+      const listingIds = Array.from(new Set(rows.map((r) => r.listing_id)));
+      let listingMap: Record<string, { title: string; photos: string[] }> = {};
+      if (listingIds.length) {
+        const { data: ls } = await supabase.from("listings").select("id, title, photos").in("id", listingIds);
+        listingMap = Object.fromEntries((ls ?? []).map((l: any) => [l.id, l]));
+      }
+      setOfferRows(rows.map((r) => ({
+        ...r,
+        listing_title: listingMap[r.listing_id]?.title,
+        listing_photo: listingMap[r.listing_id]?.photos?.[0] ?? null,
+      })));
+      setOffersLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -277,18 +308,21 @@ const Profile = () => {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid grid-cols-4 w-full mb-6">
+          <TabsList className="grid grid-cols-5 w-full mb-6">
             <TabsTrigger value="profile" className="gap-1.5">
-              <UserIcon className="h-4 w-4" /> Profile
+              <UserIcon className="h-4 w-4" /> <span className="hidden sm:inline">Profile</span>
             </TabsTrigger>
             <TabsTrigger value="listings" className="gap-1.5">
-              <ShoppingBag className="h-4 w-4" /> Listings
+              <ShoppingBag className="h-4 w-4" /> <span className="hidden sm:inline">Listings</span>
+            </TabsTrigger>
+            <TabsTrigger value="offers" className="gap-1.5">
+              <Tag className="h-4 w-4" /> <span className="hidden sm:inline">Offers</span>
             </TabsTrigger>
             <TabsTrigger value="saved" className="gap-1.5">
-              <Heart className="h-4 w-4" /> Saved
+              <Heart className="h-4 w-4" /> <span className="hidden sm:inline">Saved</span>
             </TabsTrigger>
             <TabsTrigger value="orders" className="gap-1.5">
-              <Package className="h-4 w-4" /> Orders
+              <Package className="h-4 w-4" /> <span className="hidden sm:inline">Orders</span>
             </TabsTrigger>
           </TabsList>
 
@@ -449,6 +483,55 @@ const Profile = () => {
                     </AlertDialog>
                   </Card>
                 ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* OFFERS */}
+          <TabsContent value="offers">
+            {offersLoading ? (
+              <div className="py-10 flex justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : offerRows.length === 0 ? (
+              <Card className="p-10 text-center rounded-2xl">
+                <Tag className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                <p className="font-semibold">No offers yet</p>
+                <p className="text-sm text-muted-foreground mt-1">When you make or receive offers, they'll show here.</p>
+              </Card>
+            ) : (
+              <div className="grid gap-3">
+                {offerRows.map((o) => {
+                  const role = o.buyer_id === user.id ? "Sent" : "Received";
+                  return (
+                    <Card key={o.id} className="p-3 rounded-2xl flex items-center gap-3">
+                      <Link to={`/listing/${o.listing_id}`} className="shrink-0">
+                        <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
+                          {o.listing_photo ? (
+                            <img src={o.listing_photo} alt="" className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                      </Link>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Link to={`/listing/${o.listing_id}`} className="font-semibold truncate hover:underline">
+                            {o.listing_title ?? "Listing"}
+                          </Link>
+                          <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wide">{role}</Badge>
+                          <Badge variant={o.status === "accepted" ? "default" : "outline"} className="rounded-full text-[10px] uppercase tracking-wide">{o.status}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          £{(o.amount_pence / 100).toFixed(2)} · {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </p>
+                      </div>
+                      {o.status === "accepted" && o.buyer_id === user.id && (
+                        <Button size="sm" className="rounded-full" onClick={() => navigate(`/checkout/${o.listing_id}?offer=${o.id}`)}>
+                          Buy
+                        </Button>
+                      )}
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
