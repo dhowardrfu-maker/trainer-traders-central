@@ -170,7 +170,32 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // Load favourited listings (full data)
+  // Load offers (buyer + seller)
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data: rows } = await supabase
+        .from("offers")
+        .select("id, amount_pence, status, buyer_id, seller_id, listing_id, created_at")
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+        .order("created_at", { ascending: false });
+      if (cancelled || !rows) { setOffersLoading(false); return; }
+      const listingIds = Array.from(new Set(rows.map((r) => r.listing_id)));
+      let listingMap: Record<string, { title: string; photos: string[] }> = {};
+      if (listingIds.length) {
+        const { data: ls } = await supabase.from("listings").select("id, title, photos").in("id", listingIds);
+        listingMap = Object.fromEntries((ls ?? []).map((l: any) => [l.id, l]));
+      }
+      setOfferRows(rows.map((r) => ({
+        ...r,
+        listing_title: listingMap[r.listing_id]?.title,
+        listing_photo: listingMap[r.listing_id]?.photos?.[0] ?? null,
+      })));
+      setOffersLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
