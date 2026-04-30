@@ -17,10 +17,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // CRITICAL: subscribe BEFORE getSession to avoid missed events
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
+      setLoading(false);
     });
 
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
