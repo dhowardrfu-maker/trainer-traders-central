@@ -9,18 +9,28 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { BRANDS, CONDITIONS, GENDERS, UK_SIZES, ukToEu } from "@/data/listing-options";
+import {
+  BRANDS,
+  CONDITIONS,
+  GENDERS,
+  UK_SIZES,
+  ukToEu,
+} from "@/data/listing-options";
 
 const MAX_PHOTOS = 6;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-// FIXED schema (no empty-string crashes)
+/* ---------------- SAFE VALIDATION ---------------- */
 const schema = z.object({
-  title: z.string().min(3, "Title required").max(80),
+  title: z.string().min(3, "Title required"),
   brand: z.string().min(1, "Brand required"),
   model: z.string().optional(),
   size_uk: z.number().min(1, "Size required"),
@@ -33,48 +43,53 @@ const schema = z.object({
 
 const Sell = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading } = useAuth();
 
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  /* ---------------- FORM STATE (SAFE DEFAULTS) ---------------- */
   const [form, setForm] = useState({
     title: "",
     brand: "",
     model: "",
     size_uk: "" as number | "",
-    condition: "" as any,
-    gender: "unisex" as any,
+    condition: "" as string,
+    gender: "unisex",
     color: "",
     price: "" as number | "",
     description: "",
   });
 
   useEffect(() => {
-    if (!authLoading && !user) navigate("/auth", { replace: true });
-  }, [user, authLoading, navigate]);
+    if (!loading && !user) navigate("/auth");
+  }, [user, loading]);
 
   useEffect(() => {
     const urls = photos.map((f) => URL.createObjectURL(f));
     setPreviews(urls);
-    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+    return () => urls.forEach(URL.revokeObjectURL);
   }, [photos]);
 
+  /* ---------------- PHOTO HANDLING ---------------- */
   const onAddPhotos = (files: FileList | null) => {
     if (!files) return;
+
     const incoming = Array.from(files).filter((f) => {
       if (!f.type.startsWith("image/")) return false;
       if (f.size > MAX_FILE_BYTES) return false;
       return true;
     });
+
     setPhotos((prev) => [...prev, ...incoming].slice(0, MAX_PHOTOS));
   };
 
   const removePhoto = (idx: number) =>
     setPhotos((prev) => prev.filter((_, i) => i !== idx));
 
-  const uploadAllPhotos = async (): Promise<string[]> => {
+  /* ---------------- UPLOAD ---------------- */
+  const uploadPhotos = async (): Promise<string[]> => {
     if (!user) throw new Error("Not signed in");
 
     const urls: string[] = [];
@@ -99,6 +114,7 @@ const Sell = () => {
     return urls;
   };
 
+  /* ---------------- SUBMIT ---------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -108,7 +124,7 @@ const Sell = () => {
       return;
     }
 
-    // CLEAN DATA BEFORE ZOD
+    /* CLEAN DATA (IMPORTANT FIX) */
     const cleaned = {
       title: form.title.trim(),
       brand: form.brand,
@@ -131,7 +147,7 @@ const Sell = () => {
     setSubmitting(true);
 
     try {
-      const photoUrls = await uploadAllPhotos();
+      const photoUrls = await uploadPhotos();
 
       const d = parsed.data;
 
@@ -163,9 +179,11 @@ const Sell = () => {
     }
   };
 
+  /* ---------------- UI ---------------- */
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-30 bg-background/90 backdrop-blur border-b border-border">
+
+      <header className="sticky top-0 z-30 bg-background/90 backdrop-blur border-b">
         <div className="container h-16 flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft />
@@ -180,7 +198,7 @@ const Sell = () => {
         <div className="grid grid-cols-3 gap-3">
           {previews.map((src, i) => (
             <div key={i} className="relative aspect-square">
-              <img src={src} className="object-cover w-full h-full rounded-xl" />
+              <img src={src} className="w-full h-full object-cover rounded-xl" />
               <button type="button" onClick={() => removePhoto(i)}>
                 <X />
               </button>
@@ -190,7 +208,12 @@ const Sell = () => {
           {photos.length < MAX_PHOTOS && (
             <label className="border rounded-xl flex items-center justify-center">
               <Camera />
-              <input type="file" hidden multiple onChange={(e) => onAddPhotos(e.target.files)} />
+              <input
+                type="file"
+                hidden
+                multiple
+                onChange={(e) => onAddPhotos(e.target.files)}
+              />
             </label>
           )}
         </div>
@@ -204,24 +227,92 @@ const Sell = () => {
 
         {/* BRAND */}
         <Select onValueChange={(v) => setForm({ ...form, brand: v })}>
-          <SelectTrigger><SelectValue placeholder="Brand" /></SelectTrigger>
+          <SelectTrigger>
+            <SelectValue placeholder="Brand" />
+          </SelectTrigger>
           <SelectContent>
-            {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+            {BRANDS.map((b) => (
+              <SelectItem key={b} value={b}>{b}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
+
+        {/* MODEL */}
+        <Input
+          placeholder="Model (optional)"
+          value={form.model}
+          onChange={(e) => setForm({ ...form, model: e.target.value })}
+        />
+
+        {/* SIZE */}
+        <Select onValueChange={(v) => setForm({ ...form, size_uk: Number(v) })}>
+          <SelectTrigger>
+            <SelectValue placeholder="UK Size" />
+          </SelectTrigger>
+          <SelectContent>
+            {UK_SIZES.map((s) => (
+              <SelectItem key={s} value={String(s)}>
+                UK {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* CONDITION */}
+        <Select onValueChange={(v) => setForm({ ...form, condition: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Condition" />
+          </SelectTrigger>
+          <SelectContent>
+            {CONDITIONS.map((c) => (
+              <SelectItem key={c.value} value={c.value}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* GENDER */}
+        <Select onValueChange={(v) => setForm({ ...form, gender: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Gender" />
+          </SelectTrigger>
+          <SelectContent>
+            {GENDERS.map((g) => (
+              <SelectItem key={g.value} value={g.value}>
+                {g.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* COLOR */}
+        <Input
+          placeholder="Colour (optional)"
+          value={form.color}
+          onChange={(e) => setForm({ ...form, color: e.target.value })}
+        />
 
         {/* PRICE */}
         <Input
           type="number"
           placeholder="Price"
-          value={form.price}
           onChange={(e) =>
             setForm({ ...form, price: Number(e.target.value) })
           }
         />
 
+        {/* DESCRIPTION */}
+        <Textarea
+          placeholder="Description (optional)"
+          value={form.description}
+          onChange={(e) =>
+            setForm({ ...form, description: e.target.value })
+          }
+        />
+
         <Button disabled={submitting}>
-          {submitting ? <Loader2 /> : "Post listing"}
+          {submitting ? <Loader2 className="animate-spin" /> : "Post listing"}
         </Button>
       </form>
     </div>
