@@ -41,7 +41,11 @@ const AuthPage = () => {
   const [busy, setBusy] = useState(false);
 
   const [signInData, setSignInData] = useState({ email: "", password: "" });
-  const [signUpData, setSignUpData] = useState({ email: "", password: "", username: "" });
+  const [signUpData, setSignUpData] = useState({
+    email: "",
+    password: "",
+    username: "",
+  });
 
   useEffect(() => {
     if (!loading && user) navigate("/", { replace: true });
@@ -82,7 +86,7 @@ const AuthPage = () => {
   };
 
   // =========================
-  // SIGN UP (FIXED)
+  // SIGN UP (FINAL FIX)
   // =========================
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,37 +100,39 @@ const AuthPage = () => {
     setBusy(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { error: signUpError } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
           data: { username: parsed.data.username },
         },
       });
 
-      if (error) {
+      if (signUpError) {
         toast.error(
-          error.message.includes("already")
+          signUpError.message.includes("already")
             ? "That email is already registered"
-            : error.message
+            : signUpError.message
         );
         return;
       }
 
-      // 🔥 Wait for session (if auto-login works)
-      const { data: sessionData } = await supabase.auth.getSession();
+      // 🔥 wait for Supabase to persist user
+      await new Promise((res) => setTimeout(res, 500));
 
-      if (sessionData.session) {
-        toast.success("Account created 🎉");
-        navigate("/");
+      // 🔥 then sign in properly
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: parsed.data.email,
+        password: parsed.data.password,
+      });
+
+      if (signInError) {
+        toast.error("Account created, but login failed. Try signing in.");
         return;
       }
 
-      // 🔥 No fake login attempt (this was causing your bug)
-      toast.success("Account created 🎉 Please sign in.");
-      navigate("/auth");
-
+      toast.success("Account created 🎉");
+      navigate("/");
     } finally {
       setBusy(false);
     }
@@ -202,7 +208,6 @@ const AuthPage = () => {
           </div>
 
           <Tabs defaultValue="signin">
-
             <TabsList className="grid w-full grid-cols-2 rounded-full bg-muted h-11 p-1">
               <TabsTrigger value="signin" className="rounded-full">
                 Sign in
@@ -271,8 +276,8 @@ const AuthPage = () => {
                 </Button>
               </form>
             </TabsContent>
-
           </Tabs>
+
         </div>
       </main>
     </div>
