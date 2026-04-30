@@ -74,6 +74,7 @@ const AuthPage = () => {
     navigate("/");
   };
 
+  // ✅ FIXED SIGNUP LOGIC
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -85,36 +86,51 @@ const AuthPage = () => {
 
     setBusy(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email: parsed.data.email,
-      password: parsed.data.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-        data: { username: parsed.data.username },
-      },
-    });
+    try {
+      // Create account
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: parsed.data.email,
+        password: parsed.data.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: { username: parsed.data.username },
+        },
+      });
 
-    setBusy(false);
+      if (signUpError) {
+        toast.error(
+          signUpError.message.includes("already")
+            ? "That email is already registered"
+            : signUpError.message
+        );
+        return;
+      }
 
-    if (error) {
-      toast.error(
-        error.message.includes("already")
-          ? "That email is already registered"
-          : error.message
-      );
-      return;
-    }
+      // Check session immediately
+      const { data: sessionData } = await supabase.auth.getSession();
 
-    // ✅ FIXED LOGIC
-    if (data.session) {
+      if (sessionData.session) {
+        toast.success("Account created 🎉");
+        navigate("/");
+        return;
+      }
+
+      // Fallback for email-confirm-off setup
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: parsed.data.email,
+        password: parsed.data.password,
+      });
+
+      if (signInError) {
+        toast.error(signInError.message);
+        return;
+      }
+
       toast.success("Account created 🎉");
       navigate("/");
-      return;
+    } finally {
+      setBusy(false);
     }
-
-    // fallback (only if Supabase still requires confirmation)
-    toast.success("Account created 🎉 You are now signed in.");
-    navigate("/");
   };
 
   const handleGoogle = async () => {
