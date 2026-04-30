@@ -51,9 +51,9 @@ const AuthPage = () => {
     if (!loading && user) navigate("/", { replace: true });
   }, [user, loading, navigate]);
 
-  // =========================
+  // ======================
   // SIGN IN
-  // =========================
+  // ======================
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -85,9 +85,9 @@ const AuthPage = () => {
     navigate("/");
   };
 
-  // =========================
+  // ======================
   // SIGN UP (FINAL FIX)
-  // =========================
+  // ======================
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -99,48 +99,38 @@ const AuthPage = () => {
 
     setBusy(true);
 
-    try {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: parsed.data.email,
-        password: parsed.data.password,
-        options: {
-          data: { username: parsed.data.username },
-        },
-      });
+    const { data, error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: {
+        data: { username: parsed.data.username },
+      },
+    });
 
-      if (signUpError) {
-        toast.error(
-          signUpError.message.includes("already")
-            ? "That email is already registered"
-            : signUpError.message
-        );
-        return;
-      }
+    setBusy(false);
 
-      // 🔥 wait for Supabase to persist user
-      await new Promise((res) => setTimeout(res, 500));
+    if (error) {
+      toast.error(
+        error.message.includes("already")
+          ? "That email is already registered"
+          : error.message
+      );
+      return;
+    }
 
-      // 🔥 then sign in properly
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: parsed.data.email,
-        password: parsed.data.password,
-      });
-
-      if (signInError) {
-        toast.error("Account created, but login failed. Try signing in.");
-        return;
-      }
-
+    // 🔥 FINAL FIX: DO NOT force login
+    if (data.session) {
       toast.success("Account created 🎉");
       navigate("/");
-    } finally {
-      setBusy(false);
+    } else {
+      toast.success("Account created 🎉 Please sign in.");
+      navigate("/auth");
     }
   };
 
-  // =========================
+  // ======================
   // GOOGLE LOGIN
-  // =========================
+  // ======================
   const handleGoogle = async () => {
     setBusy(true);
 
@@ -209,72 +199,62 @@ const AuthPage = () => {
 
           <Tabs defaultValue="signin">
             <TabsList className="grid w-full grid-cols-2 rounded-full bg-muted h-11 p-1">
-              <TabsTrigger value="signin" className="rounded-full">
-                Sign in
-              </TabsTrigger>
-              <TabsTrigger value="signup" className="rounded-full">
-                Sign up
-              </TabsTrigger>
+              <TabsTrigger value="signin">Sign in</TabsTrigger>
+              <TabsTrigger value="signup">Sign up</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="signin" className="mt-5">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={signInData.email}
-                  onChange={(e) =>
-                    setSignInData({ ...signInData, email: e.target.value })
-                  }
-                />
+            <TabsContent value="signin" className="mt-5 space-y-4">
+              <Input
+                placeholder="Email"
+                value={signInData.email}
+                onChange={(e) =>
+                  setSignInData({ ...signInData, email: e.target.value })
+                }
+              />
 
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={signInData.password}
-                  onChange={(e) =>
-                    setSignInData({ ...signInData, password: e.target.value })
-                  }
-                />
+              <Input
+                type="password"
+                placeholder="Password"
+                value={signInData.password}
+                onChange={(e) =>
+                  setSignInData({ ...signInData, password: e.target.value })
+                }
+              />
 
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
-                </Button>
-              </form>
+              <Button onClick={handleSignIn} className="w-full" disabled={busy}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+              </Button>
             </TabsContent>
 
-            <TabsContent value="signup" className="mt-5">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <Input
-                  placeholder="Username"
-                  value={signUpData.username}
-                  onChange={(e) =>
-                    setSignUpData({ ...signUpData, username: e.target.value })
-                  }
-                />
+            <TabsContent value="signup" className="mt-5 space-y-4">
+              <Input
+                placeholder="Username"
+                value={signUpData.username}
+                onChange={(e) =>
+                  setSignUpData({ ...signUpData, username: e.target.value })
+                }
+              />
 
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={signUpData.email}
-                  onChange={(e) =>
-                    setSignUpData({ ...signUpData, email: e.target.value })
-                  }
-                />
+              <Input
+                placeholder="Email"
+                value={signUpData.email}
+                onChange={(e) =>
+                  setSignUpData({ ...signUpData, email: e.target.value })
+                }
+              />
 
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={signUpData.password}
-                  onChange={(e) =>
-                    setSignUpData({ ...signUpData, password: e.target.value })
-                  }
-                />
+              <Input
+                type="password"
+                placeholder="Password"
+                value={signUpData.password}
+                onChange={(e) =>
+                  setSignUpData({ ...signUpData, password: e.target.value })
+                }
+              />
 
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
-                </Button>
-              </form>
+              <Button onClick={handleSignUp} className="w-full" disabled={busy}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
+              </Button>
             </TabsContent>
           </Tabs>
 
