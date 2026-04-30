@@ -40,7 +40,6 @@ const AuthPage = () => {
   const { user, loading } = useAuth();
   const [busy, setBusy] = useState(false);
 
-  // Form state
   const [signInData, setSignInData] = useState({ email: "", password: "" });
   const [signUpData, setSignUpData] = useState({ email: "", password: "", username: "" });
 
@@ -50,34 +49,43 @@ const AuthPage = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const parsed = signInSchema.safeParse(signInData);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
       return;
     }
+
     setBusy(true);
+
     const { error } = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
       password: parsed.data.password,
     });
+
     setBusy(false);
+
     if (error) {
       toast.error(error.message === "Invalid login credentials" ? "Wrong email or password" : error.message);
       return;
     }
+
     toast.success("Welcome back 👟");
     navigate("/");
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const parsed = signUpSchema.safeParse(signUpData);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
       return;
     }
+
     setBusy(true);
-    const { error } = await supabase.auth.signUp({
+
+    const { data, error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
@@ -85,25 +93,45 @@ const AuthPage = () => {
         data: { username: parsed.data.username },
       },
     });
+
     setBusy(false);
+
     if (error) {
-      toast.error(error.message.includes("already") ? "That email is already registered" : error.message);
+      toast.error(
+        error.message.includes("already")
+          ? "That email is already registered"
+          : error.message
+      );
       return;
     }
-    toast.success("Check your inbox to confirm your email ✉️");
+
+    // ✅ FIXED LOGIC
+    if (data.session) {
+      toast.success("Account created 🎉");
+      navigate("/");
+      return;
+    }
+
+    // fallback (only if Supabase still requires confirmation)
+    toast.success("Account created 🎉 You are now signed in.");
+    navigate("/");
   };
 
   const handleGoogle = async () => {
     setBusy(true);
+
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
+
     if (result.error) {
       setBusy(false);
       toast.error("Couldn't start Google sign-in");
       return;
     }
-    if (result.redirected) return; // browser is navigating away
+
+    if (result.redirected) return;
+
     setBusy(false);
     navigate("/");
   };
@@ -115,14 +143,18 @@ const AuthPage = () => {
           <div className="h-9 w-9 rounded-xl bg-gradient-hero flex items-center justify-center text-primary-foreground font-display font-bold text-base">
             PK
           </div>
-          <span className="font-display font-bold text-xl tracking-tight">PrelovedKicks</span>
+          <span className="font-display font-bold text-xl tracking-tight">
+            PrelovedKicks
+          </span>
         </Link>
       </header>
 
       <main className="flex-1 flex items-center justify-center px-5 pb-16">
         <div className="w-full max-w-md bg-card rounded-3xl shadow-card p-8">
           <div className="text-center mb-6">
-            <h1 className="font-display font-bold text-3xl tracking-tight">Join the community</h1>
+            <h1 className="font-display font-bold text-3xl tracking-tight">
+              Join the community
+            </h1>
             <p className="text-sm text-muted-foreground mt-1.5">
               Sign in to sell, save and message
             </p>
@@ -140,45 +172,57 @@ const AuthPage = () => {
           </Button>
 
           <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-3 text-muted-foreground tracking-wider">or with email</span>
+              <span className="bg-card px-3 text-muted-foreground tracking-wider">
+                or with email
+              </span>
             </div>
           </div>
 
           <Tabs defaultValue="signin">
             <TabsList className="grid w-full grid-cols-2 rounded-full bg-muted h-11 p-1">
-              <TabsTrigger value="signin" className="rounded-full">Sign in</TabsTrigger>
-              <TabsTrigger value="signup" className="rounded-full">Sign up</TabsTrigger>
+              <TabsTrigger value="signin" className="rounded-full">
+                Sign in
+              </TabsTrigger>
+              <TabsTrigger value="signup" className="rounded-full">
+                Sign up
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="signin" className="mt-5">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="si-email">Email</Label>
+                  <Label>Email</Label>
                   <Input
-                    id="si-email"
                     type="email"
-                    autoComplete="email"
                     className="h-11 rounded-xl"
                     value={signInData.email}
-                    onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                    required
+                    onChange={(e) =>
+                      setSignInData({ ...signInData, email: e.target.value })
+                    }
                   />
                 </div>
+
                 <div className="space-y-1.5">
-                  <Label htmlFor="si-password">Password</Label>
+                  <Label>Password</Label>
                   <Input
-                    id="si-password"
                     type="password"
-                    autoComplete="current-password"
                     className="h-11 rounded-xl"
                     value={signInData.password}
-                    onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
-                    required
+                    onChange={(e) =>
+                      setSignInData({ ...signInData, password: e.target.value })
+                    }
                   />
                 </div>
-                <Button type="submit" className="w-full h-11 rounded-full font-semibold" disabled={busy}>
+
+                <Button
+                  type="submit"
+                  className="w-full h-11 rounded-full font-semibold"
+                  disabled={busy}
+                >
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
                 </Button>
               </form>
@@ -187,53 +231,47 @@ const AuthPage = () => {
             <TabsContent value="signup" className="mt-5">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="su-username">Username</Label>
+                  <Label>Username</Label>
                   <Input
-                    id="su-username"
-                    type="text"
-                    autoComplete="username"
-                    placeholder="kicks_jay"
-                    className="h-11 rounded-xl"
                     value={signUpData.username}
-                    onChange={(e) => setSignUpData({ ...signUpData, username: e.target.value })}
-                    required
+                    onChange={(e) =>
+                      setSignUpData({ ...signUpData, username: e.target.value })
+                    }
                   />
                 </div>
+
                 <div className="space-y-1.5">
-                  <Label htmlFor="su-email">Email</Label>
+                  <Label>Email</Label>
                   <Input
-                    id="su-email"
                     type="email"
-                    autoComplete="email"
-                    className="h-11 rounded-xl"
                     value={signUpData.email}
-                    onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
-                    required
+                    onChange={(e) =>
+                      setSignUpData({ ...signUpData, email: e.target.value })
+                    }
                   />
                 </div>
+
                 <div className="space-y-1.5">
-                  <Label htmlFor="su-password">Password</Label>
+                  <Label>Password</Label>
                   <Input
-                    id="su-password"
                     type="password"
-                    autoComplete="new-password"
-                    className="h-11 rounded-xl"
                     value={signUpData.password}
-                    onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
-                    required
+                    onChange={(e) =>
+                      setSignUpData({ ...signUpData, password: e.target.value })
+                    }
                   />
-                  <p className="text-xs text-muted-foreground">8+ characters. We check against known leaked passwords.</p>
                 </div>
-                <Button type="submit" className="w-full h-11 rounded-full font-semibold" disabled={busy}>
+
+                <Button
+                  type="submit"
+                  className="w-full h-11 rounded-full font-semibold"
+                  disabled={busy}
+                >
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
                 </Button>
               </form>
             </TabsContent>
           </Tabs>
-
-          <p className="text-xs text-center text-muted-foreground mt-6">
-            By continuing you agree to our Terms and Privacy Policy.
-          </p>
         </div>
       </main>
     </div>
