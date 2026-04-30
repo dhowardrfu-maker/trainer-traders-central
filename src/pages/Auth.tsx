@@ -47,6 +47,9 @@ const AuthPage = () => {
     if (!loading && user) navigate("/", { replace: true });
   }, [user, loading, navigate]);
 
+  // =========================
+  // SIGN IN
+  // =========================
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -78,7 +81,9 @@ const AuthPage = () => {
     navigate("/");
   };
 
-  // ✅ FIXED SIGNUP (NO FALLBACK LOGIN, NO RACE CONDITION)
+  // =========================
+  // SIGN UP (FIXED)
+  // =========================
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -91,7 +96,7 @@ const AuthPage = () => {
     setBusy(true);
 
     try {
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
         options: {
@@ -100,16 +105,16 @@ const AuthPage = () => {
         },
       });
 
-      if (signUpError) {
+      if (error) {
         toast.error(
-          signUpError.message.includes("already")
+          error.message.includes("already")
             ? "That email is already registered"
-            : signUpError.message
+            : error.message
         );
         return;
       }
 
-      // wait for session to exist
+      // 🔥 Wait for session (if auto-login works)
       const { data: sessionData } = await supabase.auth.getSession();
 
       if (sessionData.session) {
@@ -118,23 +123,18 @@ const AuthPage = () => {
         return;
       }
 
-      // small delay retry (Supabase hydration timing fix)
-      setTimeout(async () => {
-        const { data: retry } = await supabase.auth.getSession();
+      // 🔥 No fake login attempt (this was causing your bug)
+      toast.success("Account created 🎉 Please sign in.");
+      navigate("/auth");
 
-        if (retry.session) {
-          toast.success("Account created 🎉");
-          navigate("/");
-        } else {
-          toast.success("Account created 🎉 Please sign in.");
-          navigate("/auth");
-        }
-      }, 500);
     } finally {
       setBusy(false);
     }
   };
 
+  // =========================
+  // GOOGLE LOGIN
+  // =========================
   const handleGoogle = async () => {
     setBusy(true);
 
