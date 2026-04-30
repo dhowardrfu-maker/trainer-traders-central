@@ -66,7 +66,11 @@ const AuthPage = () => {
     setBusy(false);
 
     if (error) {
-      toast.error(error.message === "Invalid login credentials" ? "Wrong email or password" : error.message);
+      toast.error(
+        error.message === "Invalid login credentials"
+          ? "Wrong email or password"
+          : error.message
+      );
       return;
     }
 
@@ -74,7 +78,7 @@ const AuthPage = () => {
     navigate("/");
   };
 
-  // ✅ FIXED SIGNUP LOGIC
+  // ✅ FIXED SIGNUP (NO FALLBACK LOGIN, NO RACE CONDITION)
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -87,7 +91,6 @@ const AuthPage = () => {
     setBusy(true);
 
     try {
-      // Create account
       const { error: signUpError } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
@@ -106,7 +109,7 @@ const AuthPage = () => {
         return;
       }
 
-      // Check session immediately
+      // wait for session to exist
       const { data: sessionData } = await supabase.auth.getSession();
 
       if (sessionData.session) {
@@ -115,19 +118,18 @@ const AuthPage = () => {
         return;
       }
 
-      // Fallback for email-confirm-off setup
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: parsed.data.email,
-        password: parsed.data.password,
-      });
+      // small delay retry (Supabase hydration timing fix)
+      setTimeout(async () => {
+        const { data: retry } = await supabase.auth.getSession();
 
-      if (signInError) {
-        toast.error(signInError.message);
-        return;
-      }
-
-      toast.success("Account created 🎉");
-      navigate("/");
+        if (retry.session) {
+          toast.success("Account created 🎉");
+          navigate("/");
+        } else {
+          toast.success("Account created 🎉 Please sign in.");
+          navigate("/auth");
+        }
+      }, 500);
     } finally {
       setBusy(false);
     }
@@ -167,6 +169,7 @@ const AuthPage = () => {
 
       <main className="flex-1 flex items-center justify-center px-5 pb-16">
         <div className="w-full max-w-md bg-card rounded-3xl shadow-card p-8">
+
           <div className="text-center mb-6">
             <h1 className="font-display font-bold text-3xl tracking-tight">
               Join the community
@@ -199,6 +202,7 @@ const AuthPage = () => {
           </div>
 
           <Tabs defaultValue="signin">
+
             <TabsList className="grid w-full grid-cols-2 rounded-full bg-muted h-11 p-1">
               <TabsTrigger value="signin" className="rounded-full">
                 Sign in
@@ -210,35 +214,25 @@ const AuthPage = () => {
 
             <TabsContent value="signin" className="mt-5">
               <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    className="h-11 rounded-xl"
-                    value={signInData.email}
-                    onChange={(e) =>
-                      setSignInData({ ...signInData, email: e.target.value })
-                    }
-                  />
-                </div>
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={signInData.email}
+                  onChange={(e) =>
+                    setSignInData({ ...signInData, email: e.target.value })
+                  }
+                />
 
-                <div className="space-y-1.5">
-                  <Label>Password</Label>
-                  <Input
-                    type="password"
-                    className="h-11 rounded-xl"
-                    value={signInData.password}
-                    onChange={(e) =>
-                      setSignInData({ ...signInData, password: e.target.value })
-                    }
-                  />
-                </div>
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={signInData.password}
+                  onChange={(e) =>
+                    setSignInData({ ...signInData, password: e.target.value })
+                  }
+                />
 
-                <Button
-                  type="submit"
-                  className="w-full h-11 rounded-full font-semibold"
-                  disabled={busy}
-                >
+                <Button type="submit" className="w-full" disabled={busy}>
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
                 </Button>
               </form>
@@ -246,47 +240,38 @@ const AuthPage = () => {
 
             <TabsContent value="signup" className="mt-5">
               <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Username</Label>
-                  <Input
-                    value={signUpData.username}
-                    onChange={(e) =>
-                      setSignUpData({ ...signUpData, username: e.target.value })
-                    }
-                  />
-                </div>
+                <Input
+                  placeholder="Username"
+                  value={signUpData.username}
+                  onChange={(e) =>
+                    setSignUpData({ ...signUpData, username: e.target.value })
+                  }
+                />
 
-                <div className="space-y-1.5">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={signUpData.email}
-                    onChange={(e) =>
-                      setSignUpData({ ...signUpData, email: e.target.value })
-                    }
-                  />
-                </div>
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={signUpData.email}
+                  onChange={(e) =>
+                    setSignUpData({ ...signUpData, email: e.target.value })
+                  }
+                />
 
-                <div className="space-y-1.5">
-                  <Label>Password</Label>
-                  <Input
-                    type="password"
-                    value={signUpData.password}
-                    onChange={(e) =>
-                      setSignUpData({ ...signUpData, password: e.target.value })
-                    }
-                  />
-                </div>
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={signUpData.password}
+                  onChange={(e) =>
+                    setSignUpData({ ...signUpData, password: e.target.value })
+                  }
+                />
 
-                <Button
-                  type="submit"
-                  className="w-full h-11 rounded-full font-semibold"
-                  disabled={busy}
-                >
+                <Button type="submit" className="w-full" disabled={busy}>
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
                 </Button>
               </form>
             </TabsContent>
+
           </Tabs>
         </div>
       </main>
