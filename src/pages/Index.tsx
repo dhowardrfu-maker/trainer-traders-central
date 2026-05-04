@@ -18,6 +18,7 @@ const Index = () => {
 
   useEffect(() => {
     let cancelled = false;
+
     const load = async () => {
       const { data: rows, error } = await supabase
         .from("listings")
@@ -27,33 +28,66 @@ const Index = () => {
         .limit(60);
 
       if (cancelled) return;
+
       if (error || !rows) {
+        console.error(error);
         setLoading(false);
         return;
       }
 
       const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id)));
+
       let profiles: Record<string, { username: string | null; display_name: string | null }> = {};
+
       if (sellerIds.length > 0) {
         const { data: profileRows } = await supabase
           .from("profiles")
           .select("user_id, username, display_name")
           .in("user_id", sellerIds);
+
         if (profileRows) {
           profiles = Object.fromEntries(
-            profileRows.map((p) => [p.user_id, { username: p.username, display_name: p.display_name }])
+            profileRows.map((p) => [
+              p.user_id,
+              { username: p.username, display_name: p.display_name },
+            ])
           );
         }
       }
 
-      const mapped = rows.map((r) =>
-        mapDbListing({ ...r, profile: profiles[r.seller_id] ?? null })
-      );
+      const mapped = rows.map((r) => {
+        // 🧠 SAFE PHOTO NORMALISATION (THIS FIXES YOUR BROKEN IMAGES)
+        const photos =
+          Array.isArray(r.photos)
+            ? r.photos
+            : typeof r.photos === "string"
+              ? [r.photos]
+              : [];
+
+        const cleanPhotos = photos.filter(Boolean);
+
+        const listing = mapDbListing({
+          ...r,
+          photos: cleanPhotos.length ? cleanPhotos : ["/placeholder.jpg"],
+          profile: profiles[r.seller_id] ?? null,
+        });
+
+        // 🔒 extra safety fallback
+        return {
+          ...listing,
+          image: listing.image || "/placeholder.jpg",
+        };
+      });
+
       setDbListings(mapped);
       setLoading(false);
     };
+
     void load();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const all = useMemo<Listing[]>(
@@ -69,27 +103,35 @@ const Index = () => {
         (l) => l.brand.toLowerCase() === activeCategory.toLowerCase()
       );
     }
+
     if (filters.sizes.length > 0) {
       list = list.filter((l) => filters.sizes.includes(l.sizeUk));
     }
+
     if (filters.conditions.length > 0) {
       list = list.filter((l) =>
         l.conditionRaw
           ? filters.conditions.includes(l.conditionRaw)
-          : filters.conditions.includes(l.condition.toLowerCase().replace(/ /g, "_"))
+          : filters.conditions.includes(
+              l.condition.toLowerCase().replace(/ /g, "_")
+            )
       );
     }
+
     if (filters.genders.length > 0) {
-      list = list.filter((l) => l.gender && filters.genders.includes(l.gender));
+      list = list.filter(
+        (l) => l.gender && filters.genders.includes(l.gender)
+      );
     }
+
     if (filters.priceMax < DEFAULT_FILTERS.priceMax) {
       list = list.filter((l) => l.price <= filters.priceMax);
     }
 
     const sorted = [...list];
+
     if (sort === "price_asc") sorted.sort((a, b) => a.price - b.price);
     else if (sort === "price_desc") sorted.sort((a, b) => b.price - a.price);
-    // "newest" = preserve incoming order (db rows already newest-first, then samples)
 
     return sorted;
   }, [all, activeCategory, filters, sort]);
@@ -97,6 +139,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Header />
+
       <main>
         <Hero />
         <CategoryChips active={activeCategory} onChange={setActiveCategory} />
@@ -108,7 +151,9 @@ const Index = () => {
                 {activeCategory === "All" ? "Newly listed" : activeCategory}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                {loading ? "Loading…" : `${filtered.length} pair${filtered.length === 1 ? "" : "s"} of fresh kicks`}
+                {loading
+                  ? "Loading…"
+                  : `${filtered.length} pair${filtered.length === 1 ? "" : "s"} of fresh kicks`}
               </p>
             </div>
           </div>
@@ -126,7 +171,9 @@ const Index = () => {
           {filtered.length === 0 ? (
             <div className="py-20 text-center">
               <p className="font-semibold">No matches</p>
-              <p className="text-muted-foreground text-sm mt-1">Try clearing some filters.</p>
+              <p className="text-muted-foreground text-sm mt-1">
+                Try clearing some filters.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
@@ -137,6 +184,7 @@ const Index = () => {
           )}
         </section>
       </main>
+
       <MobileTabBar />
     </div>
   );
