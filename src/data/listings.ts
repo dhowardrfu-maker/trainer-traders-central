@@ -118,8 +118,7 @@ export const mapDbListing = (row: DbListingRow): Listing => {
   const photos = normalisePhotos(row.photos);
 
   // fallback image (safe, never empty string)
-  const fallback =
-    "https://via.placeholder.com/600x600?text=No+Image";
+  const fallback = "/placeholder.svg";
 
   return {
     id: row.id,

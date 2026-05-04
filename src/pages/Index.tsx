@@ -68,14 +68,14 @@ const Index = () => {
 
         const listing = mapDbListing({
           ...r,
-          photos: cleanPhotos.length ? cleanPhotos : ["/placeholder.jpg"],
+          photos: cleanPhotos.length ? cleanPhotos : ["/placeholder.svg"],
           profile: profiles[r.seller_id] ?? null,
         });
 
         // 🔒 extra safety fallback
         return {
           ...listing,
-          image: listing.image || "/placeholder.jpg",
+          image: listing.image || "/placeholder.svg",
         };
       });
 
