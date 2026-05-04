@@ -29,8 +29,7 @@ export interface Listing {
   description?: string | null;
   price: number;
 
-  // IMPORTANT: allow null (prevents grey boxes)
-  image: string | null;
+  image: string;        // NEVER NULL ANYMORE
   images?: string[];
 
   seller: { name: string; rating: number; id?: string };
@@ -103,7 +102,7 @@ interface DbListingRow {
   } | null;
 }
 
-// normalise image array safely
+// CLEAN NORMALISATION
 const normalisePhotos = (photos: any): string[] => {
   if (!photos) return [];
 
@@ -112,11 +111,15 @@ const normalisePhotos = (photos: any): string[] => {
   return arr
     .filter(Boolean)
     .map(String)
-    .filter((url) => url.startsWith("http"));
+    .filter((url) => url.startsWith("http")); // only real images
 };
 
 export const mapDbListing = (row: DbListingRow): Listing => {
   const photos = normalisePhotos(row.photos);
+
+  // fallback image (safe, never empty string)
+  const fallback =
+    "https://via.placeholder.com/600x600?text=No+Image";
 
   return {
     id: row.id,
@@ -131,9 +134,9 @@ export const mapDbListing = (row: DbListingRow): Listing => {
     description: row.description ?? null,
     price: Math.round(row.price_pence / 100),
 
-    // KEY FIX: NEVER EMPTY STRING
-    image: photos.length > 0 ? photos[0] : null,
-    images: photos,
+    // 🔥 GUARANTEED SAFE
+    image: photos[0] || fallback,
+    images: photos.length ? photos : [fallback],
 
     seller: {
       name:
