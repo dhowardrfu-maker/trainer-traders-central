@@ -9,10 +9,28 @@ import { useFavourites } from "@/hooks/useFavourites";
 const isDbId = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-// only accept real http(s) images
-const isValidImage = (url?: string) =>
-  typeof url === "string" &&
-  url.startsWith("http");
+// 🔥 SAFE NORMALISATION (THIS IS THE REAL FIX)
+const extractImages = (input: unknown): string[] => {
+  if (!input) return [];
+
+  let arr: any = [];
+
+  if (Array.isArray(input)) {
+    arr = input;
+  } else if (typeof input === "string") {
+    try {
+      // handles stringified arrays
+      const parsed = JSON.parse(input);
+      arr = Array.isArray(parsed) ? parsed : [input];
+    } catch {
+      arr = [input];
+    }
+  }
+
+  return arr
+    .map(String)
+    .filter((url) => typeof url === "string" && url.length > 10);
+};
 
 export const ProductCard = ({ listing }: { listing: Listing }) => {
   const { user } = useAuth();
@@ -20,10 +38,11 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
   const { isFavourited, toggle } = useFavourites();
   const liked = isFavourited(listing.id);
 
-  // SAFE IMAGE RESOLUTION (NO FALLBACK FILES EVER)
+  // 🔥 FINAL IMAGE RESOLUTION (ROBUST)
+  const images = extractImages(listing.images);
   const image =
-    listing.images?.find(isValidImage) ||
-    (isValidImage(listing.image ?? undefined) ? listing.image : null);
+    images[0] ||
+    (typeof listing.image === "string" ? listing.image : "");
 
   const handleHeart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -51,7 +70,6 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
     <Link to={`/listing/${listing.id}`} className="block">
       <article className="product-card group cursor-pointer animate-fade-in">
 
-        {/* IMAGE WRAPPER ALWAYS SAME SIZE (prevents grey layout shift) */}
         <div className="relative aspect-square bg-muted overflow-hidden">
 
           {image ? (
@@ -60,9 +78,12 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
               alt={`${listing.brand} ${listing.title}`}
               loading="lazy"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={(e) => {
+                // fallback WITHOUT network request
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
             />
           ) : (
-            // TRUE EMPTY STATE (NO NETWORK REQUESTS, NO BROKEN IMAGE)
             <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground">
               No image
             </div>
@@ -71,7 +92,6 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
           <button
             onClick={handleHeart}
             className="absolute top-2.5 right-2.5 h-9 w-9 rounded-full bg-background/85 backdrop-blur flex items-center justify-center hover:bg-background transition-colors"
-            aria-label={liked ? "Remove from favourites" : "Add to favourites"}
           >
             <Heart
               className={cn(
