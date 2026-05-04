@@ -28,8 +28,11 @@ export interface Listing {
   color?: string | null;
   description?: string | null;
   price: number;
-  image: string;
+
+  // IMPORTANT: allow null (prevents grey boxes)
+  image: string | null;
   images?: string[];
+
   seller: { name: string; rating: number; id?: string };
   postedAgo: string;
   createdAt?: string;
@@ -51,7 +54,7 @@ export const SAMPLE_LISTINGS: Listing[] = [
     seller: { name: "alex_k", rating: 4.9 },
     postedAgo: "2h",
     isSample: true,
-  }
+  },
 ];
 
 export const CATEGORIES = [
@@ -100,22 +103,20 @@ interface DbListingRow {
   } | null;
 }
 
-// 🔥 CLEAN URL VALIDATION (CRITICAL FIX)
-const isValidImage = (url: string) =>
-  typeof url === "string" &&
-  url.startsWith("http") &&
-  !url.includes("placeholder");
+// normalise image array safely
+const normalisePhotos = (photos: any): string[] => {
+  if (!photos) return [];
+
+  const arr = Array.isArray(photos) ? photos : [photos];
+
+  return arr
+    .filter(Boolean)
+    .map(String)
+    .filter((url) => url.startsWith("http"));
+};
 
 export const mapDbListing = (row: DbListingRow): Listing => {
-  let photos: string[] = [];
-
-  if (Array.isArray(row.photos)) {
-    photos = row.photos;
-  } else if (typeof row.photos === "string") {
-    photos = [row.photos];
-  }
-
-  photos = photos.filter(isValidImage);
+  const photos = normalisePhotos(row.photos);
 
   return {
     id: row.id,
@@ -130,8 +131,8 @@ export const mapDbListing = (row: DbListingRow): Listing => {
     description: row.description ?? null,
     price: Math.round(row.price_pence / 100),
 
-    // 🔥 ONLY USE REAL SUPABASE URLS
-    image: photos[0] ?? "",
+    // KEY FIX: NEVER EMPTY STRING
+    image: photos.length > 0 ? photos[0] : null,
     images: photos,
 
     seller: {
