@@ -304,7 +304,7 @@ const Sell = () => {
           }
         />
 
-        <Button disabled={submitting}>
+        <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? <Loader2 className="animate-spin" /> : "Post listing"}
         </Button>
       </form>
