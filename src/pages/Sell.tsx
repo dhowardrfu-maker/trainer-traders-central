@@ -109,11 +109,11 @@ const Sell = () => {
       title: form.title.trim(),
       brand: form.brand,
       model: form.model.trim() || undefined,
-      size_uk: typeof form.size_uk === "number" ? form.size_uk : undefined,
+      size_uk: typeof form.size_uk === "number" ? Number(form.size_uk) : undefined,
       condition: form.condition,
       gender: form.gender,
       color: form.color.trim() || undefined,
-      price: typeof form.price === "number" ? form.price : undefined,
+      price: typeof form.price === "number" ? Number(form.price) : undefined,
       description: form.description.trim() || undefined,
     };
 
@@ -131,17 +131,22 @@ const Sell = () => {
       const photoUrls = await uploadPhotos();
       const d = parsed.data;
 
+      // 🔥 FINAL TYPE-SAFE FIX
+      const sizeUk = Number(d.size_uk);
+      const sizeEu = Number(ukToEu(sizeUk));
+      const pricePence = Math.round(Number(d.price) * 100);
+
       const { error } = await supabase.from("listings").insert({
         seller_id: user.id,
         title: d.title,
         brand: d.brand,
         model: d.model || null,
-        size_uk: d.size_uk,
-        size_eu: ukToEu(d.size_uk),
+        size_uk: sizeUk,
+        size_eu: sizeEu,
         condition: d.condition,
         gender: d.gender,
         color: d.color || null,
-        price_pence: Math.round(d.price * 100),
+        price_pence: pricePence,
         description: d.description || null,
         photos: photoUrls,
         status: "active",
