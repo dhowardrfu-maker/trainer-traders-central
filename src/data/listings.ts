@@ -206,7 +206,7 @@ interface DbListingRow {
   color?: string | null;
   description?: string | null;
   price_pence: number;
-  photos: string[] | string | null; // 🔥 FIXED SAFETY
+  photos: string[] | string | null;
   created_at: string;
   seller_id?: string;
   profile?: {
@@ -216,12 +216,12 @@ interface DbListingRow {
 }
 
 export const mapDbListing = (row: DbListingRow): Listing => {
-  // 🔥 HARD FIX: always force array
+  // 🔥 SAFE NORMALISATION (CRITICAL FIX)
   let safePhotos: string[] = [];
 
   if (Array.isArray(row.photos)) {
-    safePhotos = row.photos;
-  } else if (typeof row.photos === "string" && row.photos.length > 0) {
+    safePhotos = row.photos.filter(Boolean);
+  } else if (typeof row.photos === "string" && row.photos.trim() !== "") {
     safePhotos = [row.photos];
   }
 
@@ -238,9 +238,9 @@ export const mapDbListing = (row: DbListingRow): Listing => {
     description: row.description ?? null,
     price: Math.round(row.price_pence / 100),
 
-    // 🔥 FIXED IMAGE SAFETY
+    // 🔥 GUARANTEED SAFE IMAGE OUTPUT
     image: safePhotos[0] || "/placeholder.jpg",
-    images: safePhotos,
+    images: safePhotos.length ? safePhotos : ["/placeholder.jpg"],
 
     seller: {
       name:
