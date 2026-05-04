@@ -80,8 +80,6 @@ const Sell = () => {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
 
-      console.log("[Sell] uploading", path, file.type, file.size);
-
       const { error: upErr } = await supabase.storage
         .from("listing-photos")
         .upload(path, file, {
@@ -100,6 +98,25 @@ const Sell = () => {
         .getPublicUrl(path);
 
       if (!data?.publicUrl) throw new Error("Could not get photo URL");
+
+      // AI moderation (fail-open on errors)
+      try {
+        const { data: mod } = await supabase.functions.invoke("moderate-image", {
+          body: { imageUrl: data.publicUrl },
+        });
+        if (mod && mod.allowed === false) {
+          await supabase.storage.from("listing-photos").remove([path]);
+          throw new Error(
+            `Photo rejected by moderation${mod.reason ? `: ${mod.reason}` : ""}`
+          );
+        }
+      } catch (modErr) {
+        if (modErr instanceof Error && modErr.message.startsWith("Photo rejected")) {
+          throw modErr;
+        }
+        console.warn("[Sell] moderation skipped", modErr);
+      }
+
       urls.push(data.publicUrl);
     }
 
