@@ -7,28 +7,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import {
-  BRANDS,
-  CONDITIONS,
-  GENDERS,
-  UK_SIZES,
-  ukToEu,
-} from "@/data/listing-options";
+import { ukToEu, BRANDS, CONDITIONS, GENDERS, UK_SIZES } from "@/data/listing-options";
 
 const MAX_PHOTOS = 6;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-/* ---------------- SAFE VALIDATION ---------------- */
 const schema = z.object({
   title: z.string().min(3, "Title required"),
   brand: z.string().min(1, "Brand required"),
@@ -49,13 +34,12 @@ const Sell = () => {
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  /* ---------------- FORM STATE (SAFE DEFAULTS) ---------------- */
   const [form, setForm] = useState({
     title: "",
     brand: "",
     model: "",
     size_uk: "" as number | "",
-    condition: "" as string,
+    condition: "",
     gender: "unisex",
     color: "",
     price: "" as number | "",
@@ -72,7 +56,6 @@ const Sell = () => {
     return () => urls.forEach(URL.revokeObjectURL);
   }, [photos]);
 
-  /* ---------------- PHOTO HANDLING ---------------- */
   const onAddPhotos = (files: FileList | null) => {
     if (!files) return;
 
@@ -88,7 +71,6 @@ const Sell = () => {
   const removePhoto = (idx: number) =>
     setPhotos((prev) => prev.filter((_, i) => i !== idx));
 
-  /* ---------------- UPLOAD ---------------- */
   const uploadPhotos = async (): Promise<string[]> => {
     if (!user) throw new Error("Not signed in");
 
@@ -114,7 +96,6 @@ const Sell = () => {
     return urls;
   };
 
-  /* ---------------- SUBMIT ---------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -124,13 +105,12 @@ const Sell = () => {
       return;
     }
 
-    /* CLEAN DATA (IMPORTANT FIX) */
     const cleaned = {
       title: form.title.trim(),
       brand: form.brand,
       model: form.model.trim() || undefined,
       size_uk: typeof form.size_uk === "number" ? form.size_uk : undefined,
-      condition: form.condition || undefined,
+      condition: form.condition,
       gender: form.gender,
       color: form.color.trim() || undefined,
       price: typeof form.price === "number" ? form.price : undefined,
@@ -140,7 +120,8 @@ const Sell = () => {
     const parsed = schema.safeParse(cleaned);
 
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
+      console.log(parsed.error.issues);
+      toast.error(parsed.error.issues.map((i) => i.message).join(", "));
       return;
     }
 
@@ -148,7 +129,6 @@ const Sell = () => {
 
     try {
       const photoUrls = await uploadPhotos();
-
       const d = parsed.data;
 
       const { error } = await supabase.from("listings").insert({
@@ -179,7 +159,6 @@ const Sell = () => {
     }
   };
 
-  /* ---------------- UI ---------------- */
   return (
     <div className="min-h-screen bg-background pb-20">
 
@@ -208,12 +187,7 @@ const Sell = () => {
           {photos.length < MAX_PHOTOS && (
             <label className="border rounded-xl flex items-center justify-center">
               <Camera />
-              <input
-                type="file"
-                hidden
-                multiple
-                onChange={(e) => onAddPhotos(e.target.files)}
-              />
+              <input type="file" hidden multiple onChange={(e) => onAddPhotos(e.target.files)} />
             </label>
           )}
         </div>
@@ -226,7 +200,7 @@ const Sell = () => {
         />
 
         {/* BRAND */}
-        <Select onValueChange={(v) => setForm({ ...form, brand: v })}>
+        <Select value={form.brand} onValueChange={(v) => setForm({ ...form, brand: v })}>
           <SelectTrigger>
             <SelectValue placeholder="Brand" />
           </SelectTrigger>
@@ -245,7 +219,10 @@ const Sell = () => {
         />
 
         {/* SIZE */}
-        <Select onValueChange={(v) => setForm({ ...form, size_uk: Number(v) })}>
+        <Select
+          value={form.size_uk ? String(form.size_uk) : ""}
+          onValueChange={(v) => setForm({ ...form, size_uk: Number(v) })}
+        >
           <SelectTrigger>
             <SelectValue placeholder="UK Size" />
           </SelectTrigger>
@@ -259,7 +236,7 @@ const Sell = () => {
         </Select>
 
         {/* CONDITION */}
-        <Select onValueChange={(v) => setForm({ ...form, condition: v })}>
+        <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v })}>
           <SelectTrigger>
             <SelectValue placeholder="Condition" />
           </SelectTrigger>
@@ -273,7 +250,7 @@ const Sell = () => {
         </Select>
 
         {/* GENDER */}
-        <Select onValueChange={(v) => setForm({ ...form, gender: v })}>
+        <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
           <SelectTrigger>
             <SelectValue placeholder="Gender" />
           </SelectTrigger>
@@ -297,6 +274,7 @@ const Sell = () => {
         <Input
           type="number"
           placeholder="Price"
+          value={form.price}
           onChange={(e) =>
             setForm({ ...form, price: Number(e.target.value) })
           }
