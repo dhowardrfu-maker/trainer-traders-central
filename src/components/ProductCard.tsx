@@ -9,17 +9,22 @@ import { useFavourites } from "@/hooks/useFavourites";
 const isDbId = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
+// ✅ ONLY accept real usable URLs (Supabase included)
+const isValidImage = (url?: string) =>
+  typeof url === "string" &&
+  url.length > 10 &&
+  (url.startsWith("http") || url.startsWith("/"));
+
 export const ProductCard = ({ listing }: { listing: Listing }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { isFavourited, toggle } = useFavourites();
   const liked = isFavourited(listing.id);
 
-  // ✅ FIX: always derive safe image
+  // ✅ FIX: robust image selection (THIS IS THE REAL FIX)
   const image =
-    listing.images?.[0] ||
-    listing.image ||
-    "/placeholder.jpg";
+    listing.images?.find(isValidImage) ||
+    (isValidImage(listing.image) ? listing.image : null);
 
   const handleHeart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -46,21 +51,26 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
   return (
     <Link to={`/listing/${listing.id}`} className="block">
       <article className="product-card group cursor-pointer animate-fade-in">
-        
+
         <div className="relative aspect-square bg-muted overflow-hidden">
-          
-          <img
-            src={image}
-            alt={`${listing.brand} ${listing.title}`}
-            loading="lazy"
-            width={768}
-            height={768}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src =
-                "/placeholder.jpg";
-            }}
-          />
+
+          {image ? (
+            <img
+              src={image}
+              alt={`${listing.brand} ${listing.title}`}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={(e) => {
+                // if image fails, just hide it (NO GREY BOX MISLEADING YOU)
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : (
+            // clean fallback (no broken URL requests)
+            <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground">
+              No image
+            </div>
+          )}
 
           <button
             onClick={handleHeart}
