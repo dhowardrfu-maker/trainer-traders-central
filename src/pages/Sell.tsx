@@ -77,19 +77,29 @@ const Sell = () => {
     const urls: string[] = [];
 
     for (const file of photos) {
-      const ext = file.name.split(".").pop() || "jpg";
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
 
-      const { error } = await supabase.storage
-        .from("listing-photos")
-        .upload(path, file);
+      console.log("[Sell] uploading", path, file.type, file.size);
 
-      if (error) throw error;
+      const { error: upErr } = await supabase.storage
+        .from("listing-photos")
+        .upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type || "image/jpeg",
+        });
+
+      if (upErr) {
+        console.error("[Sell] upload error", upErr);
+        throw new Error(`Photo upload failed: ${upErr.message}`);
+      }
 
       const { data } = supabase.storage
         .from("listing-photos")
         .getPublicUrl(path);
 
+      if (!data?.publicUrl) throw new Error("Could not get photo URL");
       urls.push(data.publicUrl);
     }
 
@@ -294,7 +304,7 @@ const Sell = () => {
           }
         />
 
-        <Button disabled={submitting}>
+        <Button type="submit" disabled={submitting} className="w-full">
           {submitting ? <Loader2 className="animate-spin" /> : "Post listing"}
         </Button>
       </form>
