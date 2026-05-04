@@ -9,11 +9,10 @@ import { useFavourites } from "@/hooks/useFavourites";
 const isDbId = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-// ✅ ONLY accept real usable URLs (Supabase included)
+// only accept real http(s) images
 const isValidImage = (url?: string) =>
   typeof url === "string" &&
-  url.length > 10 &&
-  (url.startsWith("http") || url.startsWith("/"));
+  url.startsWith("http");
 
 export const ProductCard = ({ listing }: { listing: Listing }) => {
   const { user } = useAuth();
@@ -21,10 +20,10 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
   const { isFavourited, toggle } = useFavourites();
   const liked = isFavourited(listing.id);
 
-  // ✅ FIX: robust image selection (THIS IS THE REAL FIX)
+  // SAFE IMAGE RESOLUTION (NO FALLBACK FILES EVER)
   const image =
     listing.images?.find(isValidImage) ||
-    (isValidImage(listing.image) ? listing.image : null);
+    (isValidImage(listing.image ?? undefined) ? listing.image : null);
 
   const handleHeart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -52,6 +51,7 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
     <Link to={`/listing/${listing.id}`} className="block">
       <article className="product-card group cursor-pointer animate-fade-in">
 
+        {/* IMAGE WRAPPER ALWAYS SAME SIZE (prevents grey layout shift) */}
         <div className="relative aspect-square bg-muted overflow-hidden">
 
           {image ? (
@@ -60,13 +60,9 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
               alt={`${listing.brand} ${listing.title}`}
               loading="lazy"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              onError={(e) => {
-                // if image fails, just hide it (NO GREY BOX MISLEADING YOU)
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
             />
           ) : (
-            // clean fallback (no broken URL requests)
+            // TRUE EMPTY STATE (NO NETWORK REQUESTS, NO BROKEN IMAGE)
             <div className="h-full w-full flex items-center justify-center text-xs text-muted-foreground">
               No image
             </div>
