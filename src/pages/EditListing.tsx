@@ -24,7 +24,7 @@ const EditListing = () => {
     description: "",
     price: "" as number | "",
     color: "",
-    status: "active" as "active" | "draft" | "sold",
+    status: "active" as "active" | "draft" | "sold" | "removed",
   });
 
   useEffect(() => {
