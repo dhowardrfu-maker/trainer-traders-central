@@ -4,6 +4,7 @@ import { Hero } from "@/components/Hero";
 import { CategoryChips } from "@/components/CategoryChips";
 import { ProductCard } from "@/components/ProductCard";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import Footer from "@/components/Footer";
 import { FilterBar, DEFAULT_FILTERS, type Filters, type SortKey } from "@/components/FilterBar";
 import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
 import { supabase } from "@/integrations/supabase/client";
@@ -185,6 +186,7 @@ const Index = () => {
         </section>
       </main>
 
+      <Footer />
       <MobileTabBar />
     </div>
   );

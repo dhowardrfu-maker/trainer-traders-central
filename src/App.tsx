@@ -16,6 +16,11 @@ import Profile from "./pages/Profile.tsx";
 import Search from "./pages/Search.tsx";
 import Messages from "./pages/Messages.tsx";
 import MessageThread from "./pages/MessageThread.tsx";
+import EditListing from "./pages/EditListing.tsx";
+import About from "./pages/About.tsx";
+import HowItWorks from "./pages/HowItWorks.tsx";
+import Terms from "./pages/Terms.tsx";
+import Privacy from "./pages/Privacy.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -40,6 +45,11 @@ const App = () => (
                 <Route path="/search" element={<Search />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/messages/:id" element={<MessageThread />} />
+                <Route path="/listing/:id/edit" element={<EditListing />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

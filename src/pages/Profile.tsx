@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Heart, Loader2, Package, Plus, QrCode, ShoppingBag, Tag, Trash2, User as UserIcon } from "lucide-react";
+import { Heart, Loader2, Package, Pencil, Plus, QrCode, ShoppingBag, Tag, Trash2, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
@@ -452,6 +452,17 @@ const Profile = () => {
                         {l.brand} · {formatGbp(l.price_pence)}
                       </p>
                     </div>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-foreground shrink-0"
+                      aria-label="Edit listing"
+                    >
+                      <Link to={`/listing/${l.id}/edit`}>
+                        <Pencil className="h-4 w-4" />
+                      </Link>
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
