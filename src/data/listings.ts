@@ -39,21 +39,14 @@ export interface Listing {
 }
 
 export const SAMPLE_LISTINGS: Listing[] = [
-  {
-    id: "s1",
-    title: "Air Max 90 'Cloud Grey'",
-    brand: "Nike",
-    sizeUk: 9,
-    condition: "Very good",
-    gender: "mens",
-    color: "Grey",
-    price: 65,
-    image: trainer1,
-    images: [trainer1],
-    seller: { name: "alex_k", rating: 4.9 },
-    postedAgo: "2h",
-    isSample: true,
-  },
+  { id: "s1", title: "Air Max 90 'Cloud Grey'", brand: "Nike", sizeUk: 9, condition: "Very good", gender: "mens", color: "Grey", price: 65, image: trainer1, images: [trainer1], seller: { name: "alex_k", rating: 4.9 }, postedAgo: "2h", isSample: true },
+  { id: "s2", title: "Jordan 1 Retro High 'Chicago'", brand: "Jordan", sizeUk: 10, condition: "Like new", gender: "mens", color: "Red/White", price: 220, image: trainer2, images: [trainer2], seller: { name: "soleplug", rating: 4.8 }, postedAgo: "5h", isSample: true },
+  { id: "s3", title: "Samba OG 'White Black'", brand: "adidas", sizeUk: 7, condition: "Good", gender: "unisex", color: "White", price: 55, image: trainer3, images: [trainer3], seller: { name: "vintagesole", rating: 4.7 }, postedAgo: "1d", isSample: true },
+  { id: "s4", title: "New Balance 530 'Silver'", brand: "New Balance", sizeUk: 8, condition: "Very good", gender: "unisex", color: "Silver", price: 75, image: trainer4, images: [trainer4], seller: { name: "kicksldn", rating: 5.0 }, postedAgo: "2d", isSample: true },
+  { id: "s5", title: "Dunk Low 'Panda'", brand: "Nike", sizeUk: 6, condition: "New with tags", gender: "womens", color: "Black/White", price: 130, image: trainer5, images: [trainer5], seller: { name: "rarefinds", rating: 4.9 }, postedAgo: "3d", isSample: true },
+  { id: "s6", title: "Yeezy Boost 350 V2", brand: "adidas", sizeUk: 9, condition: "Worn", gender: "mens", color: "Cream", price: 140, image: trainer6, images: [trainer6], seller: { name: "boostking", rating: 4.6 }, postedAgo: "4d", isSample: true },
+  { id: "s7", title: "Jordan 4 'Bred'", brand: "Jordan", sizeUk: 11, condition: "Very good", gender: "mens", color: "Black/Red", price: 260, image: trainer7, images: [trainer7], seller: { name: "jumpman23", rating: 4.9 }, postedAgo: "5d", isSample: true },
+  { id: "s8", title: "New Balance 990v5", brand: "New Balance", sizeUk: 9, condition: "Like new", gender: "mens", color: "Grey", price: 165, image: trainer8, images: [trainer8], seller: { name: "dadshoes", rating: 5.0 }, postedAgo: "1w", isSample: true },
 ];
 
 export const CATEGORIES = [
