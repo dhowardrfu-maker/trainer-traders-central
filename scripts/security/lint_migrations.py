@@ -68,18 +68,19 @@ WAIVERS = _load_waivers()
 
 def check_file(path: Path) -> None:
     text = path.read_text(encoding="utf-8", errors="replace")
-    waivers = _waived_lines(text)
 
-    # Strip line and block comments to avoid false positives in commentary,
-    # but preserve newlines so line numbers stay accurate.
+    # Strip line and block comments to avoid false positives, but preserve
+    # newlines so reported line numbers stay accurate.
     no_line = re.sub(r"--[^\n]*", "", text)
     stripped = re.sub(r"/\*.*?\*/",
                       lambda m: "\n" * m.group(0).count("\n"),
                       no_line, flags=re.S)
 
+    fname = path.name
+
     def report(code: str, offset: int, message: str) -> None:
         line_no = stripped[:offset].count("\n") + 1
-        if code.upper() in waivers.get(line_no, set()):
+        if (fname, line_no, code.upper()) in WAIVERS:
             return
         VIOLATIONS.append((str(path), code, line_no, message))
 
