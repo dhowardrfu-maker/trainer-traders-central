@@ -1,4 +1,6 @@
 // Lovable AI image moderation. Returns { allowed: boolean, reason?: string }.
+import { createClient } from "npm:@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -7,6 +9,26 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Require an authenticated caller — prevents anonymous abuse of LOVABLE_API_KEY
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return json({ error: "Unauthorized" }, 401);
+  }
+  try {
+    const supa = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+    );
+    const { data, error: authErr } = await supa.auth.getClaims(
+      authHeader.replace("Bearer ", ""),
+    );
+    if (authErr || !data?.claims?.sub) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+  } catch {
+    return json({ error: "Unauthorized" }, 401);
+  }
 
   try {
     const { imageUrl } = await req.json();

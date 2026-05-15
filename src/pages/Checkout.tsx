@@ -152,28 +152,20 @@ const Checkout = () => {
       ts: Date.now(),
     });
 
-    const { data, error } = await supabase
-      .from("orders")
-      .insert({
-        listing_id: listing.id,
-        buyer_id: user.id,
-        seller_id: listing.seller.id!,
-        price_pence: Math.round(itemPrice * 100),
-        postage_pence: carrier.pricePence,
-        total_pence: Math.round(itemPrice * 100) + carrier.pricePence,
-        carrier: carrierId,
-        service_label: `${carrier.name} · ${carrier.service}`,
-        ship_to_name: parsed.data.ship_to_name,
-        ship_to_line1: parsed.data.ship_to_line1,
-        ship_to_line2: parsed.data.ship_to_line2 || null,
-        ship_to_city: parsed.data.ship_to_city,
-        ship_to_postcode: parsed.data.ship_to_postcode.toUpperCase(),
-        tracking_code: tracking,
-        qr_payload: qrPayload,
-        status: "label_created",
-      })
-      .select("id")
-      .single();
+    const { data, error } = await supabase.rpc("create_order", {
+      _listing_id: listing.id,
+      _carrier: carrierId,
+      _service_label: `${carrier.name} · ${carrier.service}`,
+      _postage_pence: carrier.pricePence,
+      _ship_to_name: parsed.data.ship_to_name,
+      _ship_to_line1: parsed.data.ship_to_line1,
+      _ship_to_line2: parsed.data.ship_to_line2 || null,
+      _ship_to_city: parsed.data.ship_to_city,
+      _ship_to_postcode: parsed.data.ship_to_postcode.toUpperCase(),
+      _tracking_code: tracking,
+      _qr_payload: qrPayload,
+      _offer_id: offerId ?? null,
+    });
 
     setBusy(false);
     if (error || !data) {
@@ -182,7 +174,7 @@ const Checkout = () => {
     }
 
     toast.success("Order placed — generating your label");
-    navigate(`/order/${data.id}`);
+    navigate(`/order/${data}`);
   };
 
   return (

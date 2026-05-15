@@ -459,6 +459,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_order: {
+        Args: {
+          _carrier: Database["public"]["Enums"]["carrier"]
+          _listing_id: string
+          _offer_id?: string
+          _postage_pence: number
+          _qr_payload: string
+          _service_label: string
+          _ship_to_city: string
+          _ship_to_line1: string
+          _ship_to_line2: string
+          _ship_to_name: string
+          _ship_to_postcode: string
+          _tracking_code: string
+        }
+        Returns: string
+      }
       get_my_sales: {
         Args: never
         Returns: {
