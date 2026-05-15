@@ -1,0 +1,10 @@
+# Migration security-lint waivers
+#
+# Format: <migration-filename>:<line>:<rule>   # rationale
+# One per line. Blank lines and # comments allowed.
+#
+# Each entry suppresses one rule hit at the exact (file, line, rule) coordinate.
+# Add a rationale comment so future reviewers understand why it's accepted.
+
+20260426175922_5f604302-a6d2-49a5-8eed-82021f4dfd01.sql:20:R2  # profiles publicly readable by design
+20260515065545_e4885bf2-ff7f-4b59-83e7-c14ba02eea0a.sql:48:R2  # realtime postgres_changes; row filtering enforced by source-table RLS
