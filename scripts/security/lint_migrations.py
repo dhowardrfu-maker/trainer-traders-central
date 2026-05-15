@@ -98,11 +98,8 @@ def check_file(path: Path) -> None:
             stripped,
             re.I,
         ):
-            line_no = stripped[: m.start()].count("\n") + 1
-            VIOLATIONS.append(
-                (str(path), "R4", line_no,
-                 f"Table public.{table} created without ENABLE ROW LEVEL SECURITY")
-            )
+            report("R4", m.start(),
+                   f"Table public.{table} created without ENABLE ROW LEVEL SECURITY")
 
     # R5: SECURITY DEFINER function bodies must SET search_path
     for m in re.finditer(
@@ -114,11 +111,8 @@ def check_file(path: Path) -> None:
         if re.search(r"SECURITY\s+DEFINER", decl, re.I) and not re.search(
             r"SET\s+search_path", decl, re.I
         ):
-            line_no = stripped[: m.start()].count("\n") + 1
-            VIOLATIONS.append(
-                (str(path), "R5", line_no,
-                 "SECURITY DEFINER function must SET search_path")
-            )
+            report("R5", m.start(),
+                   "SECURITY DEFINER function must SET search_path")
 
 
 def main(argv: list[str]) -> int:
