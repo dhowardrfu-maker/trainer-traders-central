@@ -512,6 +512,14 @@ export type Database = {
         Args: { _thread_id: string; _user_id: string }
         Returns: boolean
       }
+      update_order_status: {
+        Args: {
+          _order_id: string
+          _status: Database["public"]["Enums"]["order_status"]
+          _tracking_code?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
