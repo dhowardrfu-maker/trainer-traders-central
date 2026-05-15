@@ -459,6 +459,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_my_sales: {
+        Args: never
+        Returns: {
+          buyer_id: string
+          carrier: Database["public"]["Enums"]["carrier"]
+          created_at: string
+          id: string
+          listing_id: string
+          postage_pence: number
+          price_pence: number
+          seller_id: string
+          service_label: string
+          ship_to_city: string
+          ship_to_name: string
+          ship_to_postcode: string
+          status: Database["public"]["Enums"]["order_status"]
+          total_pence: number
+          tracking_code: string
+          updated_at: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
