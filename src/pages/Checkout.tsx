@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Img } from "@/components/Img";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { z } from "zod";
 import { ArrowLeft, Loader2, Check, ShieldCheck } from "lucide-react";

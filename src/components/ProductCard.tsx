@@ -1,4 +1,5 @@
 import { Heart, Star } from "lucide-react";
+import { Img } from "@/components/Img";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import type { Listing } from "@/data/listings";

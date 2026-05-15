@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Img } from "@/components/Img";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";

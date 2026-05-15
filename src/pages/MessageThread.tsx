@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Img } from "@/components/Img";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, Send } from "lucide-react";
 import { Header } from "@/components/Header";
