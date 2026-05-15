@@ -302,7 +302,7 @@ const Checkout = () => {
             <aside className="lg:sticky lg:top-20 self-start">
               <div className="rounded-2xl border border-border p-5 space-y-4">
                 <div className="flex gap-3">
-                  <img src={listing.image} alt="" className="h-16 w-16 rounded-lg object-cover bg-muted" />
+                  <Img src={listing.image} alt="" className="h-16 w-16 rounded-lg object-cover bg-muted" />
                   <div className="min-w-0">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">{listing.brand}</p>
                     <p className="font-semibold text-sm truncate">{listing.title}</p>
