@@ -136,7 +136,7 @@ const Messages = () => {
                     </p>
                   </div>
                   {t.listing_photo && (
-                    <img src={t.listing_photo} alt="" className="h-12 w-12 rounded-lg object-cover bg-muted shrink-0" />
+                    <Img src={t.listing_photo} alt="" className="h-12 w-12 rounded-lg object-cover bg-muted shrink-0" />
                   )}
                 </Card>
               </Link>
