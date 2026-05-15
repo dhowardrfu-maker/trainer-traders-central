@@ -43,26 +43,27 @@ RULES = [
 ]
 
 
-WAIVER_RE = re.compile(r"--\s*security-lint:\s*allow\s+([A-Za-z0-9, ]+)", re.I)
+WAIVERS_FILE = Path(__file__).with_name("migration_waivers.txt")
 
 
-def _waived_lines(raw: str) -> dict[int, set[str]]:
-    """Map of {line_number: {rule_codes}} the file explicitly waives.
-    A waiver applies to the same line and the next non-blank line."""
-    waivers: dict[int, set[str]] = {}
-    lines = raw.splitlines()
-    for idx, line in enumerate(lines, start=1):
-        m = WAIVER_RE.search(line)
-        if not m:
+def _load_waivers() -> set[tuple[str, int, str]]:
+    """Load (filename, line, rule) tuples from the external waivers file."""
+    out: set[tuple[str, int, str]] = set()
+    if not WAIVERS_FILE.exists():
+        return out
+    for raw in WAIVERS_FILE.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
             continue
-        codes = {c.strip().upper() for c in m.group(1).split(",") if c.strip()}
-        waivers.setdefault(idx, set()).update(codes)
-        # also apply to the next non-blank line
-        for j in range(idx + 1, len(lines) + 1):
-            if lines[j - 1].strip():
-                waivers.setdefault(j, set()).update(codes)
-                break
-    return waivers
+        try:
+            fname, line_no, rule = line.split(":")
+            out.add((fname.strip(), int(line_no), rule.strip().upper()))
+        except ValueError:
+            print(f"warning: bad waiver line: {raw!r}", file=sys.stderr)
+    return out
+
+
+WAIVERS = _load_waivers()
 
 
 def check_file(path: Path) -> None:
