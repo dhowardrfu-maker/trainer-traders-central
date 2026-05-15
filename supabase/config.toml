@@ -1,4 +1,4 @@
 project_id = "jumfmslotazujothxxgw"
 
 [functions.moderate-image]
-verify_jwt = false
+verify_jwt = true
