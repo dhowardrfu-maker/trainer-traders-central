@@ -36,6 +36,12 @@ Deno.serve(async (req) => {
       return json({ error: "imageUrl required" }, 400);
     }
 
+    // Allowlist: only signed URLs from this project's Supabase Storage may be moderated.
+    const ALLOWED_ORIGIN = Deno.env.get("SUPABASE_URL");
+    if (!ALLOWED_ORIGIN || !imageUrl.startsWith(`${ALLOWED_ORIGIN}/storage/v1/`)) {
+      return json({ error: "URL not permitted" }, 400);
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) return json({ error: "AI not configured" }, 500);
 

@@ -504,6 +504,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_listing_view: {
+        Args: { _listing_id: string }
+        Returns: undefined
+      }
       is_thread_participant: {
         Args: { _thread_id: string; _user_id: string }
         Returns: boolean
