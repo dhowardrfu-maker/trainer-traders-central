@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
-import { CARRIERS, generateTrackingCode, type CarrierId } from "@/data/carriers";
+import { CARRIERS, type CarrierId } from "@/data/carriers";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -138,20 +138,9 @@ const Checkout = () => {
     }
 
     setBusy(true);
-    const tracking = generateTrackingCode(carrierId);
-    const qrPayload = JSON.stringify({
-      v: 1,
-      brand: "PrelovedKicks",
-      carrier: carrierId,
-      service: carrier.service,
-      tracking,
-      ship_to: {
-        name: parsed.data.ship_to_name,
-        postcode: parsed.data.ship_to_postcode.toUpperCase(),
-      },
-      ts: Date.now(),
-    });
 
+    // Tracking code and QR payload are generated server-side inside create_order
+    // from the validated shipping fields — clients cannot tamper with them.
     const { data, error } = await supabase.rpc("create_order", {
       _listing_id: listing.id,
       _carrier: carrierId,
@@ -162,8 +151,6 @@ const Checkout = () => {
       _ship_to_line2: parsed.data.ship_to_line2 || null,
       _ship_to_city: parsed.data.ship_to_city,
       _ship_to_postcode: parsed.data.ship_to_postcode.toUpperCase(),
-      _tracking_code: tracking,
-      _qr_payload: qrPayload,
       _offer_id: offerId ?? null,
     });
 

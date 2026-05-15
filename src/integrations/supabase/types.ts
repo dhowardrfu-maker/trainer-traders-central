@@ -465,14 +465,12 @@ export type Database = {
           _listing_id: string
           _offer_id?: string
           _postage_pence: number
-          _qr_payload: string
           _service_label: string
           _ship_to_city: string
           _ship_to_line1: string
           _ship_to_line2: string
           _ship_to_name: string
           _ship_to_postcode: string
-          _tracking_code: string
         }
         Returns: string
       }
