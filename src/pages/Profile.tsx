@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Img } from "@/components/Img";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
@@ -158,13 +159,19 @@ const Profile = () => {
     if (!user) return;
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_city, ship_to_postcode")
-        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-        .order("created_at", { ascending: false });
+      const [buyRes, sellRes] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_city, ship_to_postcode")
+          .eq("buyer_id", user.id),
+        supabase.rpc("get_my_sales"),
+      ]);
       if (cancelled) return;
-      if (!error && data) setOrders(data as OrderRow[]);
+      const merged = [
+        ...(buyRes.data ?? []),
+        ...((sellRes.data ?? []) as unknown as OrderRow[]),
+      ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+      setOrders(merged as OrderRow[]);
       setOrdersLoading(false);
     })();
     return () => { cancelled = true; };
@@ -432,7 +439,7 @@ const Profile = () => {
                     <Link to={`/listing/${l.id}`} className="shrink-0">
                       <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
                         {l.photos?.[0] ? (
-                          <img src={l.photos[0]} alt={l.title} className="h-full w-full object-cover" />
+                          <Img src={l.photos[0]} alt={l.title} className="h-full w-full object-cover" />
                         ) : null}
                       </div>
                     </Link>
@@ -519,7 +526,7 @@ const Profile = () => {
                       <Link to={`/listing/${o.listing_id}`} className="shrink-0">
                         <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
                           {o.listing_photo ? (
-                            <img src={o.listing_photo} alt="" className="h-full w-full object-cover" />
+                            <Img src={o.listing_photo} alt="" className="h-full w-full object-cover" />
                           ) : null}
                         </div>
                       </Link>

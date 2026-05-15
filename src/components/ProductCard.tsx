@@ -1,4 +1,5 @@
 import { Heart, Star } from "lucide-react";
+import { Img } from "@/components/Img";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import type { Listing } from "@/data/listings";
@@ -73,13 +74,12 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
         <div className="relative aspect-square bg-muted overflow-hidden">
 
           {image ? (
-            <img
+            <Img
               src={image}
               alt={`${listing.brand} ${listing.title}`}
               loading="lazy"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => {
-                // fallback WITHOUT network request
                 (e.currentTarget as HTMLImageElement).style.display = "none";
               }}
             />

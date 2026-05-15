@@ -103,8 +103,7 @@ const normalisePhotos = (photos: any): string[] => {
 
   return arr
     .filter(Boolean)
-    .map(String)
-    .filter((url) => url.startsWith("http")); // only real images
+    .map(String);
 };
 
 export const mapDbListing = (row: DbListingRow): Listing => {

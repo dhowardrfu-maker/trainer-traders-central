@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Img } from "@/components/Img";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2, MessageCircle } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -135,7 +136,7 @@ const Messages = () => {
                     </p>
                   </div>
                   {t.listing_photo && (
-                    <img src={t.listing_photo} alt="" className="h-12 w-12 rounded-lg object-cover bg-muted shrink-0" />
+                    <Img src={t.listing_photo} alt="" className="h-12 w-12 rounded-lg object-cover bg-muted shrink-0" />
                   )}
                 </Card>
               </Link>
