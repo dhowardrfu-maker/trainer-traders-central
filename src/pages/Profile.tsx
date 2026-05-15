@@ -158,13 +158,19 @@ const Profile = () => {
     if (!user) return;
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_city, ship_to_postcode")
-        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
-        .order("created_at", { ascending: false });
+      const [buyRes, sellRes] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_city, ship_to_postcode")
+          .eq("buyer_id", user.id),
+        supabase.rpc("get_my_sales"),
+      ]);
       if (cancelled) return;
-      if (!error && data) setOrders(data as OrderRow[]);
+      const merged = [
+        ...(buyRes.data ?? []),
+        ...((sellRes.data ?? []) as unknown as OrderRow[]),
+      ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+      setOrders(merged as OrderRow[]);
       setOrdersLoading(false);
     })();
     return () => { cancelled = true; };
