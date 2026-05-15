@@ -43,17 +43,48 @@ RULES = [
 ]
 
 
+WAIVER_RE = re.compile(r"--\s*security-lint:\s*allow\s+([A-Za-z0-9, ]+)", re.I)
+
+
+def _waived_lines(raw: str) -> dict[int, set[str]]:
+    """Map of {line_number: {rule_codes}} the file explicitly waives.
+    A waiver applies to the same line and the next non-blank line."""
+    waivers: dict[int, set[str]] = {}
+    lines = raw.splitlines()
+    for idx, line in enumerate(lines, start=1):
+        m = WAIVER_RE.search(line)
+        if not m:
+            continue
+        codes = {c.strip().upper() for c in m.group(1).split(",") if c.strip()}
+        waivers.setdefault(idx, set()).update(codes)
+        # also apply to the next non-blank line
+        for j in range(idx + 1, len(lines) + 1):
+            if lines[j - 1].strip():
+                waivers.setdefault(j, set()).update(codes)
+                break
+    return waivers
+
+
 def check_file(path: Path) -> None:
     text = path.read_text(encoding="utf-8", errors="replace")
+    waivers = _waived_lines(text)
 
-    # Strip line and block comments to avoid false positives in commentary.
+    # Strip line and block comments to avoid false positives in commentary,
+    # but preserve newlines so line numbers stay accurate.
     no_line = re.sub(r"--[^\n]*", "", text)
-    stripped = re.sub(r"/\*.*?\*/", "", no_line, flags=re.S)
+    stripped = re.sub(r"/\*.*?\*/",
+                      lambda m: "\n" * m.group(0).count("\n"),
+                      no_line, flags=re.S)
+
+    def report(code: str, offset: int, message: str) -> None:
+        line_no = stripped[:offset].count("\n") + 1
+        if code.upper() in waivers.get(line_no, set()):
+            return
+        VIOLATIONS.append((str(path), code, line_no, message))
 
     for code, pattern, message in RULES:
         for m in pattern.finditer(stripped):
-            line_no = stripped[: m.start()].count("\n") + 1
-            VIOLATIONS.append((str(path), code, line_no, message))
+            report(code, m.start(), message)
 
     # R4: every CREATE TABLE public.<name> must have ENABLE RLS on that table
     # somewhere in this same migration (or already-existing migrations — but
