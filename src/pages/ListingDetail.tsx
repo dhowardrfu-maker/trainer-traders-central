@@ -173,7 +173,7 @@ const ListingDetail = () => {
             <div>
               <div className="aspect-square bg-muted rounded-xl overflow-hidden">
                 {mainImage && (
-                  <img src={mainImage} className="w-full h-full object-cover" />
+                  <Img src={mainImage} className="w-full h-full object-cover" />
                 )}
               </div>
 
