@@ -139,7 +139,7 @@ const MessageThread = () => {
           </div>
           {info.listing_photo && (
             <Link to={`/listing/${info.listing_id}`}>
-              <img src={info.listing_photo} alt="" className="h-10 w-10 rounded-lg object-cover bg-muted" />
+              <Img src={info.listing_photo} alt="" className="h-10 w-10 rounded-lg object-cover bg-muted" />
             </Link>
           )}
           <ReportDialog targetType="thread" targetId={info.id} />
