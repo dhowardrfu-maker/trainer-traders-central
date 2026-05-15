@@ -526,7 +526,7 @@ const Profile = () => {
                       <Link to={`/listing/${o.listing_id}`} className="shrink-0">
                         <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
                           {o.listing_photo ? (
-                            <img src={o.listing_photo} alt="" className="h-full w-full object-cover" />
+                            <Img src={o.listing_photo} alt="" className="h-full w-full object-cover" />
                           ) : null}
                         </div>
                       </Link>
