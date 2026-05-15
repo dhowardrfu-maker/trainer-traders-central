@@ -74,7 +74,7 @@ const Sell = () => {
   const uploadPhotos = async (): Promise<string[]> => {
     if (!user) throw new Error("Not signed in");
 
-    const urls: string[] = [];
+    const paths: string[] = [];
 
     for (const file of photos) {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -93,34 +93,34 @@ const Sell = () => {
         throw new Error(`Photo upload failed: ${upErr.message}`);
       }
 
-      const { data } = supabase.storage
+      // Short-lived signed URL just for the moderation edge function
+      const { data: signed } = await supabase.storage
         .from("listing-photos")
-        .getPublicUrl(path);
+        .createSignedUrl(path, 300);
 
-      if (!data?.publicUrl) throw new Error("Could not get photo URL");
-
-      // AI moderation (fail-open on errors)
-      try {
-        const { data: mod } = await supabase.functions.invoke("moderate-image", {
-          body: { imageUrl: data.publicUrl },
-        });
-        if (mod && mod.allowed === false) {
-          await supabase.storage.from("listing-photos").remove([path]);
-          throw new Error(
-            `Photo rejected by moderation${mod.reason ? `: ${mod.reason}` : ""}`
-          );
+      if (signed?.signedUrl) {
+        try {
+          const { data: mod } = await supabase.functions.invoke("moderate-image", {
+            body: { imageUrl: signed.signedUrl },
+          });
+          if (mod && mod.allowed === false) {
+            await supabase.storage.from("listing-photos").remove([path]);
+            throw new Error(
+              `Photo rejected by moderation${mod.reason ? `: ${mod.reason}` : ""}`
+            );
+          }
+        } catch (modErr) {
+          if (modErr instanceof Error && modErr.message.startsWith("Photo rejected")) {
+            throw modErr;
+          }
+          console.warn("[Sell] moderation skipped", modErr);
         }
-      } catch (modErr) {
-        if (modErr instanceof Error && modErr.message.startsWith("Photo rejected")) {
-          throw modErr;
-        }
-        console.warn("[Sell] moderation skipped", modErr);
       }
 
-      urls.push(data.publicUrl);
+      paths.push(path);
     }
 
-    return urls;
+    return paths;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
