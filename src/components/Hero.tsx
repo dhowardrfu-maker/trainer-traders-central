@@ -15,7 +15,7 @@ export const Hero = () => {
             <span className="text-primary">already broken in.</span>
           </h1>
           <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-lg">
-            Thousands of second-hand trainers from real people. List in 60 seconds, ship with Royal Mail, InPost or Evri — all from one QR code.
+            Thousands of second-hand trainers from real people. List in 60 seconds, ship with Royal Mail Tracked 48 — all from one QR code.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button size="lg" className="rounded-full font-semibold gap-2 h-12 px-6">
