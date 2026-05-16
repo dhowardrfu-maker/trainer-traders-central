@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
-import { ArrowLeft, Check, Download, Printer, Truck, Box, Package } from "lucide-react";
+import { ArrowLeft, Check, Download, Printer, Truck } from "lucide-react";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { Button } from "@/components/ui/button";
@@ -35,8 +35,6 @@ interface OrderRow {
 
 const CARRIER_ICONS = {
   royal_mail: Truck,
-  inpost: Box,
-  evri: Package,
 } as const;
 
 const OrderConfirmation = () => {

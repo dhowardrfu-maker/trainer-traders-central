@@ -1,6 +1,6 @@
-import { Truck, Package, Box } from "lucide-react";
+import { Truck } from "lucide-react";
 
-export type CarrierId = "royal_mail" | "inpost" | "evri";
+export type CarrierId = "royal_mail";
 
 export interface CarrierOption {
   id: CarrierId;
@@ -22,34 +22,8 @@ export const CARRIERS: CarrierOption[] = [
     eta: "2–3 working days",
     description: "Drop at any Post Office or postbox using your QR code.",
     icon: Truck,
-    badge: "Most popular",
-  },
-  {
-    id: "inpost",
-    name: "InPost",
-    service: "Locker to Locker",
-    pricePence: 299,
-    eta: "1–2 working days",
-    description: "Scan the QR at any InPost locker — open 24/7.",
-    icon: Box,
-  },
-  {
-    id: "evri",
-    name: "Evri",
-    service: "Standard Drop Off",
-    pricePence: 279,
-    eta: "3–5 working days",
-    description: "Drop at 7,000+ ParcelShops. Cheapest option.",
-    icon: Package,
-    badge: "Cheapest",
   },
 ];
-
-const PREFIXES: Record<CarrierId, string> = {
-  royal_mail: "RM",
-  inpost: "IN",
-  evri: "EV",
-};
 
 const randomBlock = (len: number) => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -58,18 +32,9 @@ const randomBlock = (len: number) => {
   return out;
 };
 
-export const generateTrackingCode = (carrier: CarrierId): string => {
-  const prefix = PREFIXES[carrier];
-  if (carrier === "royal_mail") {
-    // Royal Mail tracked-style: AA123456789GB
-    return `${prefix}${randomBlock(2)}${Math.floor(Math.random() * 9e8 + 1e8)}GB`;
-  }
-  if (carrier === "inpost") {
-    // InPost-style 24-char alphanum
-    return `${prefix}${randomBlock(22)}`;
-  }
-  // Evri-style: H + 16 digits
-  return `H${Math.floor(Math.random() * 9e15 + 1e15)}`;
+export const generateTrackingCode = (_carrier: CarrierId = "royal_mail"): string => {
+  // Royal Mail tracked-style: AA123456789GB
+  return `RM${randomBlock(2)}${Math.floor(Math.random() * 9e8 + 1e8)}GB`;
 };
 
 export const carrierLabel = (id: CarrierId): string =>

@@ -55,7 +55,7 @@ interface OrderRow {
   listing_id: string;
   buyer_id: string;
   seller_id: string;
-  carrier: "royal_mail" | "inpost" | "evri";
+  carrier: "royal_mail";
   service_label: string;
   status: string;
   total_pence: number;

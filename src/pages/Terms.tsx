@@ -26,7 +26,7 @@ const Terms = () => {
         <h2 className="text-lg font-bold mt-6">4. Buyer & seller conduct</h2>
         <p>Be respectful in messages and negotiations. Harassment, spam and off-platform payments are not allowed and may result in account suspension.</p>
         <h2 className="text-lg font-bold mt-6">5. Shipping</h2>
-        <p>Sellers ship via the carrier selected at checkout (Royal Mail, InPost, or Evri) within 3 working days of order confirmation, unless otherwise agreed.</p>
+        <p>Sellers ship via Royal Mail Tracked 48 within 3 working days of order confirmation, unless otherwise agreed.</p>
         <h2 className="text-lg font-bold mt-6">6. Limitation of liability</h2>
         <p>PrelovedKicks is provided "as is". To the fullest extent permitted by law, we exclude all warranties and are not liable for transactions between users.</p>
         <h2 className="text-lg font-bold mt-6">7. Contact</h2>
