@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 const SIGN_TTL_SECONDS = 60 * 60; // 1 hour
 const cache = new Map<string, { url: string; exp: number }>();
 
-const isFullUrl = (s: string) => /^(https?:|data:|blob:)/.test(s);
+const isFullUrl = (s: string) => /^(https?:|data:|blob:|\/)/.test(s);
 
 /**
  * Resolve a stored value (storage path or full URL) to a displayable URL.
