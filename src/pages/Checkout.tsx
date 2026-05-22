@@ -15,9 +15,7 @@ import { CARRIERS, type CarrierId } from "@/data/carriers";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import {
-  loadStripe,
-} from "@stripe/stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 import { PaymentElement } from "@stripe/react-stripe-js";
 import { Elements, useStripe, useElements } from "@stripe/react-stripe-js";
 
@@ -36,6 +34,33 @@ const addressSchema = z.object({
     .max(8)
     .regex(/^[A-Z0-9 ]+$/i, "Letters, numbers and spaces only"),
 });
+
+// ── Address state type ────────────────────────────────────────────────────────
+interface AddressState {
+  ship_to_name: string;
+  ship_to_line1: string;
+  ship_to_line2: string;
+  ship_to_city: string;
+  ship_to_postcode: string;
+}
+
+const ADDRESS_KEY = "plk_checkout_address";
+
+const defaultAddress: AddressState = {
+  ship_to_name: "",
+  ship_to_line1: "",
+  ship_to_line2: "",
+  ship_to_city: "",
+  ship_to_postcode: "",
+};
+
+const loadSavedAddress = (): AddressState => {
+  try {
+    const saved = sessionStorage.getItem(ADDRESS_KEY);
+    if (saved) return { ...defaultAddress, ...JSON.parse(saved) };
+  } catch {}
+  return defaultAddress;
+};
 
 // ── Inner payment form (needs Stripe context) ─────────────────────────────────
 interface PayFormProps {
@@ -134,6 +159,9 @@ function StripePayForm({
       return;
     }
 
+    // Clear saved address on successful order
+    sessionStorage.removeItem(ADDRESS_KEY);
+
     toast.success("Payment successful — generating your label!");
     onSuccess(data);
   };
@@ -161,15 +189,6 @@ function StripePayForm({
   );
 }
 
-// ── Address state type ────────────────────────────────────────────────────────
-interface AddressState {
-  ship_to_name: string;
-  ship_to_line1: string;
-  ship_to_line2: string;
-  ship_to_city: string;
-  ship_to_postcode: string;
-}
-
 // ── Main Checkout page ────────────────────────────────────────────────────────
 const Checkout = () => {
   const { id } = useParams<{ id: string }>();
@@ -192,13 +211,15 @@ const Checkout = () => {
   const [totalPence, setTotalPence] = useState(0);
   const [fetchingIntent, setFetchingIntent] = useState(false);
 
-  const [address, setAddress] = useState<AddressState>({
-    ship_to_name: "",
-    ship_to_line1: "",
-    ship_to_line2: "",
-    ship_to_city: "",
-    ship_to_postcode: "",
-  });
+  // Load address from sessionStorage on mount
+  const [address, setAddress] = useState<AddressState>(loadSavedAddress);
+
+  // Save address to sessionStorage whenever it changes
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(ADDRESS_KEY, JSON.stringify(address));
+    } catch {}
+  }, [address]);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");

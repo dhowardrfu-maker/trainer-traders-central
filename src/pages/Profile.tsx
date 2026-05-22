@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Heart, Loader2, Package, Pencil, Plus, QrCode, ShoppingBag, Tag, Trash2, User as UserIcon } from "lucide-react";
+import { Heart, Loader2, Package, Pencil, Plus, QrCode, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
@@ -62,6 +62,8 @@ interface OrderRow {
   tracking_code: string;
   created_at: string;
   ship_to_name: string;
+  ship_to_line1?: string;
+  ship_to_line2?: string | null;
   ship_to_city: string;
   ship_to_postcode: string;
 }
@@ -103,17 +105,14 @@ const Profile = () => {
   }>>([]);
   const [offersLoading, setOffersLoading] = useState(true);
 
-  // Redirect unauthenticated users
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
   }, [authLoading, user, navigate]);
 
-  // Sync tab back to URL
   useEffect(() => {
     if (tab !== initialTab) setSearchParams({ tab }, { replace: true });
   }, [tab, initialTab, setSearchParams]);
 
-  // Load profile
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -137,7 +136,6 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // Load my listings
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -154,7 +152,6 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // Load orders (buyer + seller)
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -162,7 +159,7 @@ const Profile = () => {
       const [buyRes, sellRes] = await Promise.all([
         supabase
           .from("orders")
-          .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_city, ship_to_postcode")
+          .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_line1, ship_to_line2, ship_to_city, ship_to_postcode")
           .eq("buyer_id", user.id),
         supabase.rpc("get_my_sales"),
       ]);
@@ -177,7 +174,6 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // Load offers (buyer + seller)
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -203,6 +199,7 @@ const Profile = () => {
     })();
     return () => { cancelled = true; };
   }, [user]);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -210,10 +207,7 @@ const Profile = () => {
     (async () => {
       const idArr = Array.from(favIds);
       if (idArr.length === 0) {
-        if (!cancelled) {
-          setSavedListings([]);
-          setSavedLoading(false);
-        }
+        if (!cancelled) { setSavedListings([]); setSavedLoading(false); }
         return;
       }
       const { data: rows } = await supabase
@@ -221,11 +215,7 @@ const Profile = () => {
         .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, photos, created_at, seller_id")
         .in("id", idArr);
       if (cancelled) return;
-      if (!rows) {
-        setSavedListings([]);
-        setSavedLoading(false);
-        return;
-      }
+      if (!rows) { setSavedListings([]); setSavedLoading(false); return; }
       const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id)));
       let profiles: Record<string, { username: string | null; display_name: string | null }> = {};
       if (sellerIds.length > 0) {
@@ -239,9 +229,7 @@ const Profile = () => {
           );
         }
       }
-      setSavedListings(
-        rows.map((r) => mapDbListing({ ...r, profile: profiles[r.seller_id] ?? null }))
-      );
+      setSavedListings(rows.map((r) => mapDbListing({ ...r, profile: profiles[r.seller_id] ?? null })));
       setSavedLoading(false);
     })();
     return () => { cancelled = true; };
@@ -275,10 +263,7 @@ const Profile = () => {
 
   const handleDeleteListing = async (id: string) => {
     const { error } = await supabase.from("listings").delete().eq("id", id);
-    if (error) {
-      toast.error("Couldn't delete listing");
-      return;
-    }
+    if (error) { toast.error("Couldn't delete listing"); return; }
     setListings((prev) => prev.filter((l) => l.id !== id));
     toast.success("Listing deleted");
   };
@@ -343,56 +328,24 @@ const Profile = () => {
               <Card className="p-6 space-y-5 rounded-2xl">
                 <div className="grid gap-2">
                   <Label htmlFor="display_name">Display name</Label>
-                  <Input
-                    id="display_name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="How should buyers see you?"
-                    maxLength={60}
-                  />
+                  <Input id="display_name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="How should buyers see you?" maxLength={60} />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="lowercase, letters/numbers"
-                    maxLength={30}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Lowercase letters, numbers and underscores only.
-                  </p>
+                  <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="lowercase, letters/numbers" maxLength={30} />
+                  <p className="text-xs text-muted-foreground">Lowercase letters, numbers and underscores only.</p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="London, UK"
-                    maxLength={80}
-                  />
+                  <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="London, UK" maxLength={80} />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="avatar">Avatar URL</Label>
-                  <Input
-                    id="avatar"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder="https://…"
-                  />
+                  <Input id="avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="Tell buyers about your collection…"
-                    rows={4}
-                    maxLength={300}
-                  />
+                  <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell buyers about your collection…" rows={4} maxLength={300} />
                 </div>
                 <div className="flex justify-end">
                   <Button onClick={handleSaveProfile} disabled={saving} className="rounded-full font-semibold">
@@ -410,15 +363,10 @@ const Profile = () => {
               <p className="text-sm text-muted-foreground">
                 {listingsLoading ? "Loading…" : `${listings.length} listing${listings.length === 1 ? "" : "s"}`}
               </p>
-              <Button
-                size="sm"
-                className="rounded-full gap-1.5 font-semibold"
-                onClick={() => navigate("/sell")}
-              >
+              <Button size="sm" className="rounded-full gap-1.5 font-semibold" onClick={() => navigate("/sell")}>
                 <Plus className="h-4 w-4" /> New listing
               </Button>
             </div>
-
             {listingsLoading ? (
               <div className="py-10 flex justify-center">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -438,64 +386,33 @@ const Profile = () => {
                   <Card key={l.id} className="p-3 rounded-2xl flex items-center gap-3">
                     <Link to={`/listing/${l.id}`} className="shrink-0">
                       <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
-                        {l.photos?.[0] ? (
-                          <Img src={l.photos[0]} alt={l.title} className="h-full w-full object-cover" />
-                        ) : null}
+                        {l.photos?.[0] ? <Img src={l.photos[0]} alt={l.title} className="h-full w-full object-cover" /> : null}
                       </div>
                     </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Link to={`/listing/${l.id}`} className="font-semibold truncate hover:underline">
-                          {l.title}
-                        </Link>
-                        <Badge
-                          variant={l.status === "active" ? "default" : "secondary"}
-                          className="rounded-full text-[10px] uppercase tracking-wide"
-                        >
-                          {l.status}
-                        </Badge>
+                        <Link to={`/listing/${l.id}`} className="font-semibold truncate hover:underline">{l.title}</Link>
+                        <Badge variant={l.status === "active" ? "default" : "secondary"} className="rounded-full text-[10px] uppercase tracking-wide">{l.status}</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {l.brand} · {formatGbp(l.price_pence)}
-                      </p>
+                      <p className="text-sm text-muted-foreground truncate">{l.brand} · {formatGbp(l.price_pence)}</p>
                     </div>
-                    <Button
-                      asChild
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-foreground shrink-0"
-                      aria-label="Edit listing"
-                    >
-                      <Link to={`/listing/${l.id}/edit`}>
-                        <Pencil className="h-4 w-4" />
-                      </Link>
+                    <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Edit listing">
+                      <Link to={`/listing/${l.id}/edit`}><Pencil className="h-4 w-4" /></Link>
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-destructive shrink-0"
-                          aria-label="Delete listing"
-                        >
+                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive shrink-0" aria-label="Delete listing">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent className="rounded-2xl">
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete this listing?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            "{l.title}" will be removed permanently. This can't be undone.
-                          </AlertDialogDescription>
+                          <AlertDialogDescription>"{l.title}" will be removed permanently. This can't be undone.</AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteListing(l.id)}
-                            className="rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
+                          <AlertDialogAction onClick={() => handleDeleteListing(l.id)} className="rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -525,16 +442,12 @@ const Profile = () => {
                     <Card key={o.id} className="p-3 rounded-2xl flex items-center gap-3">
                       <Link to={`/listing/${o.listing_id}`} className="shrink-0">
                         <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
-                          {o.listing_photo ? (
-                            <Img src={o.listing_photo} alt="" className="h-full w-full object-cover" />
-                          ) : null}
+                          {o.listing_photo ? <Img src={o.listing_photo} alt="" className="h-full w-full object-cover" /> : null}
                         </div>
                       </Link>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Link to={`/listing/${o.listing_id}`} className="font-semibold truncate hover:underline">
-                            {o.listing_title ?? "Listing"}
-                          </Link>
+                          <Link to={`/listing/${o.listing_id}`} className="font-semibold truncate hover:underline">{o.listing_title ?? "Listing"}</Link>
                           <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wide">{role}</Badge>
                           <Badge variant={o.status === "accepted" ? "default" : "outline"} className="rounded-full text-[10px] uppercase tracking-wide">{o.status}</Badge>
                         </div>
@@ -543,9 +456,7 @@ const Profile = () => {
                         </p>
                       </div>
                       {o.status === "accepted" && o.buyer_id === user.id && (
-                        <Button size="sm" className="rounded-full" onClick={() => navigate(`/checkout/${o.listing_id}?offer=${o.id}`)}>
-                          Buy
-                        </Button>
+                        <Button size="sm" className="rounded-full" onClick={() => navigate(`/checkout/${o.listing_id}?offer=${o.id}`)}>Buy</Button>
                       )}
                     </Card>
                   );
@@ -564,18 +475,12 @@ const Profile = () => {
               <Card className="p-10 text-center rounded-2xl">
                 <Heart className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                 <p className="font-semibold">No saved listings yet</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Tap the heart on any pair to save them for later.
-                </p>
-                <Button className="mt-4 rounded-full font-semibold" onClick={() => navigate("/")}>
-                  Browse kicks
-                </Button>
+                <p className="text-sm text-muted-foreground mt-1">Tap the heart on any pair to save them for later.</p>
+                <Button className="mt-4 rounded-full font-semibold" onClick={() => navigate("/")}>Browse kicks</Button>
               </Card>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-5">
-                {savedListings.map((l) => (
-                  <ProductCard key={l.id} listing={l} />
-                ))}
+                {savedListings.map((l) => <ProductCard key={l.id} listing={l} />)}
               </div>
             )}
           </TabsContent>
@@ -588,16 +493,8 @@ const Profile = () => {
               </div>
             ) : (
               <div className="space-y-8">
-                <OrderSection
-                  title="Purchases"
-                  empty="You haven't bought anything yet."
-                  rows={purchases}
-                />
-                <OrderSection
-                  title="Sales"
-                  empty="No sales yet — keep listing!"
-                  rows={sales}
-                />
+                <OrderSection title="Purchases" empty="You haven't bought anything yet." rows={purchases} isSales={false} />
+                <OrderSection title="Sales" empty="No sales yet — keep listing!" rows={sales} isSales={true} />
               </div>
             )}
           </TabsContent>
@@ -612,10 +509,12 @@ const OrderSection = ({
   title,
   empty,
   rows,
+  isSales = false,
 }: {
   title: string;
   empty: string;
   rows: OrderRow[];
+  isSales?: boolean;
 }) => (
   <section>
     <h2 className="font-display font-bold text-lg mb-3">{title}</h2>
@@ -646,6 +545,16 @@ const OrderSection = ({
                 <p className="text-xs text-muted-foreground mt-1">
                   {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                 </p>
+                {isSales && (
+                  
+                    href="https://account.royalmail.com/sending/click-drop"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    <Truck className="h-3 w-3" /> Ship this order
+                  </a>
+                )}
               </div>
               <div className="text-right shrink-0">
                 <p className="font-display font-bold">{formatGbp(o.total_pence)}</p>
