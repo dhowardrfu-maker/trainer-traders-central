@@ -439,7 +439,7 @@ const Profile = () => {
                 {offerRows.map((o) => {
                   const role = o.buyer_id === user.id ? "Sent" : "Received";
                   return (
-                    <Card key={o.id} className="p-3 rounded-2xl flex items-center gap-3">
+                    <Card key={o.id} className="p3 rounded-2xl flex items-center gap-3">
                       <Link to={`/listing/${o.listing_id}`} className="shrink-0">
                         <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
                           {o.listing_photo ? <Img src={o.listing_photo} alt="" className="h-full w-full object-cover" /> : null}
