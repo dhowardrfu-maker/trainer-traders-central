@@ -136,6 +136,7 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
+  // FIX 1 (Ln 149): cast id to string so MyListing.id (string) matches Supabase number
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -146,12 +147,13 @@ const Profile = () => {
         .eq("seller_id", user.id)
         .order("created_at", { ascending: false });
       if (cancelled) return;
-      if (!error && data) setListings(data.map((row) => ({ ...row, id: String(row.id) })) as MyListing[]);
+      if (!error && data) setListings(data.map((row) => ({ ...row, id: String(row.id), photos: (row.photos as unknown) as string[] })) as MyListing[]);
       setListingsLoading(false);
     })();
     return () => { cancelled = true; };
   }, [user]);
 
+  // FIX 2 (Ln 193): cast order ids to string via toOrderRow helper
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -164,15 +166,19 @@ const Profile = () => {
         supabase.rpc("get_my_sales"),
       ]);
       if (cancelled) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const toOrderRow = (row: any): OrderRow => ({ ...row, id: String(row.id), listing_id: String(row.listing_id) });
       const merged = [
-        ...(buyRes.data ?? []).map((row: any) => ({ ...row, id: String(row.id), listing_id: String(row.listing_id) })),\n        ...((sellRes.data ?? []) as any[]).map((row) => ({ ...row, id: String(row.id), listing_id: String(row.listing_id) })),
+        ...(buyRes.data ?? []).map(toOrderRow),
+        ...((sellRes.data ?? []) as unknown[]).map(toOrderRow),
       ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-      setOrders(merged as OrderRow[]);
+      setOrders(merged);
       setOrdersLoading(false);
     })();
     return () => { cancelled = true; };
   }, [user]);
 
+  // FIX 3 (Ln 193 listing_id) & FIX 4 (Ln 265): cast offer ids to string, pass number[] to .in()
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -186,19 +192,23 @@ const Profile = () => {
       const listingIds = Array.from(new Set(rows.map((r) => r.listing_id)));
       let listingMap: Record<string, { title: string; photos: string[] }> = {};
       if (listingIds.length) {
+        // listing_id from offers is already the correct type for .in()
         const { data: ls } = await supabase.from("listings").select("id, title, photos").in("id", listingIds);
-        listingMap = Object.fromEntries((ls ?? []).map((l: any) => [l.id, l]));
+        listingMap = Object.fromEntries((ls ?? []).map((l) => [String(l.id), { title: l.title as string, photos: (l.photos as unknown) as string[] }]));
       }
       setOfferRows(rows.map((r) => ({
         ...r,
-        listing_title: listingMap[r.listing_id]?.title,
-        listing_photo: listingMap[r.listing_id]?.photos?.[0] ?? null,
+        id: String(r.id),
+        listing_id: String(r.listing_id),
+        listing_title: listingMap[String(r.listing_id)]?.title,
+        listing_photo: listingMap[String(r.listing_id)]?.photos?.[0] ?? null,
       })));
       setOffersLoading(false);
     })();
     return () => { cancelled = true; };
   }, [user]);
 
+  // FIX 5 (Ln 216): favIds are strings, Supabase .in() on numeric id needs number[]
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -212,7 +222,7 @@ const Profile = () => {
       const { data: rows } = await supabase
         .from("listings")
         .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, photos, created_at, seller_id")
-        .in("id", idArr);
+        .in("id", idArr.map(Number));
       if (cancelled) return;
       if (!rows) { setSavedListings([]); setSavedLoading(false); return; }
       const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id)));
@@ -228,7 +238,7 @@ const Profile = () => {
           );
         }
       }
-      setSavedListings(rows.map((r) => mapDbListing({ ...r, profile: profiles[r.seller_id] ?? null })));
+      setSavedListings(rows.map((r) => mapDbListing({ ...r, id: String(r.id), profile: profiles[r.seller_id] ?? null })));
       setSavedLoading(false);
     })();
     return () => { cancelled = true; };
@@ -261,7 +271,7 @@ const Profile = () => {
   };
 
   const handleDeleteListing = async (id: string) => {
-    const { error } = await supabase.from("listings").delete().eq("id", id);
+    const { error } = await supabase.from("listings").delete().eq("id", Number(id));
     if (error) { toast.error("Couldn't delete listing"); return; }
     setListings((prev) => prev.filter((l) => l.id !== id));
     toast.success("Listing deleted");
@@ -438,7 +448,7 @@ const Profile = () => {
                 {offerRows.map((o) => {
                   const role = o.buyer_id === user.id ? "Sent" : "Received";
                   return (
-                    <Card key={o.id} className="p3 rounded-2xl flex items-center gap-3">
+                    <Card key={o.id} className="p-3 rounded-2xl flex items-center gap-3">
                       <Link to={`/listing/${o.listing_id}`} className="shrink-0">
                         <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
                           {o.listing_photo ? <Img src={o.listing_photo} alt="" className="h-full w-full object-cover" /> : null}
@@ -544,16 +554,14 @@ const OrderSection = ({
                 <p className="text-xs text-muted-foreground mt-1">
                   {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                 </p>
-{isSales && (
-  
-<a  href="https://auth.parcel.royalmail.com/account/login"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
-  >
-    <Truck className="h-3 w-3" /> Ship this order
-  </a>
-)}
+                {isSales && (
+                  <Link
+                    to={`/shipping/${o.id}`}
+                    className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    <Truck className="h-3 w-3" /> Ship this order
+                  </Link>
+                )}
               </div>
               <div className="text-right shrink-0">
                 <p className="font-display font-bold">{formatGbp(o.total_pence)}</p>
@@ -573,4 +581,3 @@ const OrderSection = ({
 );
 
 export default Profile;
-
