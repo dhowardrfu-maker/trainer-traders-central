@@ -23,6 +23,7 @@ const EditListing = () => {
     title: "",
     description: "",
     price: "" as number | "",
+    postage: "" as number | "",
     color: "",
     status: "active" as "active" | "draft" | "sold" | "removed",
   });
@@ -53,6 +54,7 @@ const EditListing = () => {
         title: data.title,
         description: data.description ?? "",
         price: data.price_pence / 100,
+        postage: data.postage_pence / 100,
         color: data.color ?? "",
         status: data.status,
       });
@@ -73,6 +75,7 @@ const EditListing = () => {
         title: form.title.trim(),
         description: form.description.trim() || null,
         price_pence: Math.round(Number(form.price) * 100),
+        postage_pence: Math.round(Number(form.postage) * 100),
         color: form.color.trim() || null,
         status: form.status,
       })
@@ -119,6 +122,17 @@ const EditListing = () => {
             step="0.01"
             value={form.price}
             onChange={(e) => setForm({ ...form, price: e.target.value === "" ? "" : Number(e.target.value) })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="postage">Postage cost (£)</Label>
+          <Input
+            id="postage"
+            type="number"
+            min={0}
+            step="0.01"
+            value={form.postage}
+            onChange={(e) => setForm({ ...form, postage: e.target.value === "" ? "" : Number(e.target.value) })}
           />
         </div>
         <div className="space-y-2">
