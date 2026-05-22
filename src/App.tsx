@@ -22,6 +22,7 @@ import HowItWorks from "./pages/HowItWorks.tsx";
 import Terms from "./pages/Terms.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import ShippingLabel from "./pages/ShippingLabel.tsx";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
                 <Route path="/listing/:id" element={<ListingDetail />} />
                 <Route path="/checkout/:id" element={<Checkout />} />
                 <Route path="/order/:id" element={<OrderConfirmation />} />
+                <Route path="/shipping/:id" element={<ShippingLabel />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/messages" element={<Messages />} />
