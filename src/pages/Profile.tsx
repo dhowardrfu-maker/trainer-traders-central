@@ -547,7 +547,7 @@ const OrderSection = ({
                 </p>
 {isSales && (
   
-<a  href="https://account.royalmail.com/sending/click-drop"
+<a  href="https://click-and-drop.royalmail.com"
     target="_blank"
     rel="noopener noreferrer"
     className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
