@@ -29,6 +29,7 @@ const ListingDetail = () => {
   const { isFavourited, toggle: toggleFav } = useFavourites();
 
   const [listing, setListing] = useState<Listing | null>(null);
+  const [postagePence, setPostagePence] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
 
@@ -83,6 +84,7 @@ const ListingDetail = () => {
         .eq("user_id", row.seller_id)
         .maybeSingle();
 
+      setPostagePence(row.postage_pence ?? 0);
       setListing(mapDbListing({ ...row, profile: p ?? null }));
       setLoading(false);
     };
@@ -91,7 +93,6 @@ const ListingDetail = () => {
     return () => { cancelled = true; };
   }, [id]);
 
-  // ✅ FULL SAFE IMAGE HANDLING (NO CRASH POSSIBLE)
   const images = useMemo(() => {
     if (!listing) return [];
 
@@ -196,6 +197,15 @@ const ListingDetail = () => {
             <div>
               <h1 className="text-2xl font-bold">{listing.title}</h1>
               <p className="text-3xl mt-2">£{listing.price}</p>
+
+              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                <Truck className="h-4 w-4" />
+                <span>
+                  {postagePence > 0
+                    ? `+ £${(postagePence / 100).toFixed(2)} postage`
+                    : "Free postage"}
+                </span>
+              </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                 <Spec label="Size" value={`UK ${listing.sizeUk} · EU ${sizeEu}`} />
