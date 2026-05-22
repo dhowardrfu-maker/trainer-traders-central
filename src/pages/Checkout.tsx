@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Img } from "@/components/Img";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { z } from "zod";
@@ -17,8 +17,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   loadStripe,
-  type Stripe,
-  type StripeElements,
 } from "@stripe/stripe-js";
 import { PaymentElement } from "@stripe/react-stripe-js";
 import { Elements, useStripe, useElements } from "@stripe/react-stripe-js";
@@ -84,7 +82,6 @@ function StripePayForm({
 
     setBusy(true);
 
-    // Confirm payment with Stripe
     const { error: stripeErr, paymentIntent } = await stripe.confirmPayment({
       elements,
       redirect: "if_required",
@@ -116,13 +113,12 @@ function StripePayForm({
       return;
     }
 
-    // Create order in Supabase after successful payment
     const carrier = CARRIERS.find((c) => c.id === carrierId)!;
     const { data, error } = await supabase.rpc("create_order", {
       _listing_id: listing.id,
       _carrier: carrierId,
       _service_label: `${carrier.name} · ${carrier.service}`,
-      _postage_pence: carrier.pricePence,
+      _postage_pence: postagePence,
       _ship_to_name: parsed.data.ship_to_name,
       _ship_to_line1: parsed.data.ship_to_line1,
       _ship_to_line2: parsed.data.ship_to_line2 || null,
@@ -183,6 +179,7 @@ const Checkout = () => {
   const { user, loading: authLoading } = useAuth();
 
   const [listing, setListing] = useState<Listing | null>(null);
+  const [listingPostagePence, setListingPostagePence] = useState(0);
   const [loading, setLoading] = useState(true);
   const [carrierId, setCarrierId] = useState<CarrierId>("royal_mail");
   const [acceptedOfferPence, setAcceptedOfferPence] = useState<number | null>(null);
@@ -222,12 +219,13 @@ const Checkout = () => {
 
       const { data: row, error } = await supabase
         .from("listings")
-        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, photos, created_at, seller_id")
+        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, postage_pence, photos, created_at, seller_id")
         .eq("id", id)
         .maybeSingle();
 
       if (cancelled) return;
       if (error || !row) { setLoading(false); return; }
+      setListingPostagePence(row.postage_pence ?? 0);
       setListing(mapDbListing({ ...row }));
       setLoading(false);
     };
@@ -258,7 +256,7 @@ const Checkout = () => {
   const isSample = listing?.isSample === true;
   const isOwn = !!(user && listing?.seller.id && user.id === listing.seller.id);
 
-  // Create Stripe PaymentIntent when listing + carrier are ready
+  // Create Stripe PaymentIntent when listing is ready
   useEffect(() => {
     if (!listing || isSample || isOwn || !user) return;
 
@@ -271,7 +269,7 @@ const Checkout = () => {
         body: {
           listing_id: listing.id,
           carrier_id: carrierId,
-          postage_pence: carrier.pricePence,
+          postage_pence: listingPostagePence,
           offer_id: offerId ?? null,
         },
       });
@@ -293,7 +291,7 @@ const Checkout = () => {
     })();
 
     return () => { cancelled = true; };
-  }, [listing, carrierId, carrier.pricePence, offerId, isSample, isOwn, user]);
+  }, [listing, carrierId, listingPostagePence, offerId, isSample, isOwn, user]);
 
   const handleSuccess = (orderId: string) => {
     navigate(`/order/${orderId}`);
@@ -314,7 +312,7 @@ const Checkout = () => {
           Checkout
         </h1>
         <p className="text-sm text-muted-foreground mb-6">
-          Pick how it ships — pay securely with Stripe.
+          Pay securely with Stripe.
         </p>
 
         {loading ? (
@@ -325,53 +323,6 @@ const Checkout = () => {
           <div className="grid lg:grid-cols-[1fr_380px] gap-6">
             {/* Left column */}
             <div className="space-y-6">
-              {/* Carrier selection */}
-              <section className="rounded-2xl border border-border p-5">
-                <h2 className="font-display font-bold text-lg mb-1">Postage</h2>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Choose your carrier — same QR works at the drop-off point.
-                </p>
-                <div className="space-y-2.5">
-                  {CARRIERS.map((c) => {
-                    const Icon = c.icon;
-                    const active = c.id === carrierId;
-                    return (
-                      <button
-                        type="button"
-                        key={c.id}
-                        onClick={() => setCarrierId(c.id)}
-                        className={cn(
-                          "w-full flex items-start gap-3 rounded-xl border-2 p-4 text-left transition-all",
-                          active ? "border-primary bg-primary-soft/40" : "border-border hover:border-foreground/30"
-                        )}
-                      >
-                        <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center shrink-0", active ? "bg-primary text-primary-foreground" : "bg-muted")}>
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold">{c.name}</span>
-                            <span className="text-sm text-muted-foreground">· {c.service}</span>
-                            {c.badge && (
-                              <span className="text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-accent/15 text-accent">{c.badge}</span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>
-                          <p className="text-xs font-medium mt-1">{c.eta}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="font-display font-bold">£{(c.pricePence / 100).toFixed(2)}</p>
-                          {active && (
-                            <span className="inline-flex items-center gap-1 text-xs text-primary font-semibold mt-1">
-                              <Check className="h-3 w-3" /> Selected
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
 
               {/* Address */}
               <section className="rounded-2xl border border-border p-5">
@@ -452,14 +403,14 @@ const Checkout = () => {
 
                 <div className="border-t border-border pt-4 space-y-2 text-sm">
                   <Row label={acceptedOfferPence != null ? "Item (offer price)" : "Item"} value={`£${(itemPence / 100).toFixed(2)}`} />
-                  <Row label={`Postage (${carrier.name})`} value={`£${(postagePence / 100).toFixed(2)}`} />
+                  <Row label="Postage" value={`£${(postagePence / 100).toFixed(2)}`} />
                   <Row label="Buyer protection (4%)" value={protectionPence ? `£${(protectionPence / 100).toFixed(2)}` : "—"} />
                 </div>
 
                 <div className="border-t border-border pt-4 flex justify-between items-baseline">
                   <span className="font-semibold">Total</span>
                   <span className="font-display font-bold text-2xl">
-                    £{totalPence ? (totalPence / 100).toFixed(2) : ((listing.price) + carrier.pricePence / 100).toFixed(2)}
+                    £{totalPence ? (totalPence / 100).toFixed(2) : (listing.price + listingPostagePence / 100).toFixed(2)}
                   </span>
                 </div>
               </div>

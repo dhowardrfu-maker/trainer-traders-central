@@ -23,6 +23,7 @@ const schema = z.object({
   gender: z.enum(["mens", "womens", "unisex", "kids"]),
   color: z.string().optional(),
   price: z.number().min(1, "Price required"),
+  postage: z.number().min(0, "Postage required"),
   description: z.string().optional(),
 });
 
@@ -43,6 +44,7 @@ const Sell = () => {
     gender: "unisex",
     color: "",
     price: "" as number | "",
+    postage: "" as number | "",
     description: "",
   });
 
@@ -93,7 +95,6 @@ const Sell = () => {
         throw new Error(`Photo upload failed: ${upErr.message}`);
       }
 
-      // Short-lived signed URL just for the moderation edge function
       const { data: signed } = await supabase.storage
         .from("listing-photos")
         .createSignedUrl(path, 300);
@@ -141,6 +142,7 @@ const Sell = () => {
       gender: form.gender,
       color: form.color.trim() || undefined,
       price: typeof form.price === "number" ? Number(form.price) : undefined,
+      postage: typeof form.postage === "number" ? Number(form.postage) : undefined,
       description: form.description.trim() || undefined,
     };
 
@@ -158,10 +160,10 @@ const Sell = () => {
       const photoUrls = await uploadPhotos();
       const d = parsed.data;
 
-      // 🔥 FINAL TYPE-SAFE FIX
       const sizeUk = Number(d.size_uk);
       const sizeEu = Number(ukToEu(sizeUk));
       const pricePence = Math.round(Number(d.price) * 100);
+      const postagePence = Math.round(Number(d.postage) * 100);
 
       const { error } = await supabase.from("listings").insert({
         seller_id: user.id,
@@ -174,6 +176,7 @@ const Sell = () => {
         gender: d.gender,
         color: d.color || null,
         price_pence: pricePence,
+        postage_pence: postagePence,
         description: d.description || null,
         photos: photoUrls,
         status: "active",
@@ -305,10 +308,20 @@ const Sell = () => {
         {/* PRICE */}
         <Input
           type="number"
-          placeholder="Price"
+          placeholder="Price (£)"
           value={form.price}
           onChange={(e) =>
             setForm({ ...form, price: Number(e.target.value) })
+          }
+        />
+
+        {/* POSTAGE */}
+        <Input
+          type="number"
+          placeholder="Postage cost (£)"
+          value={form.postage}
+          onChange={(e) =>
+            setForm({ ...form, postage: Number(e.target.value) })
           }
         />
 
