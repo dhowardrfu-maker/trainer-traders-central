@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,7 +85,7 @@ const AuthPage = () => {
   };
 
   // ======================
-  // SIGN UP (FINAL FIX)
+  // SIGN UP
   // ======================
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +117,6 @@ const AuthPage = () => {
       return;
     }
 
-    // 🔥 FINAL FIX: DO NOT force login
     if (data.session) {
       toast.success("Account created 🎉");
       navigate("/");
@@ -134,20 +132,17 @@ const AuthPage = () => {
   const handleGoogle = async () => {
     setBusy(true);
 
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: "https://www.prelovedkicks.co.uk",
+      },
     });
 
-    if (result.error) {
+    if (error) {
       setBusy(false);
       toast.error("Couldn't start Google sign-in");
-      return;
     }
-
-    if (result.redirected) return;
-
-    setBusy(false);
-    navigate("/");
   };
 
   return (
