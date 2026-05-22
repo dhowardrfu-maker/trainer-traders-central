@@ -146,7 +146,7 @@ const Profile = () => {
         .eq("seller_id", user.id)
         .order("created_at", { ascending: false });
       if (cancelled) return;
-      if (!error && data) setListings(data as MyListing[]);
+      if (!error && data) setListings(data.map((row) => ({ ...row, id: String(row.id) })) as MyListing[]);
       setListingsLoading(false);
     })();
     return () => { cancelled = true; };
@@ -165,8 +165,7 @@ const Profile = () => {
       ]);
       if (cancelled) return;
       const merged = [
-        ...(buyRes.data ?? []),
-        ...((sellRes.data ?? []) as unknown as OrderRow[]),
+        ...(buyRes.data ?? []).map((row: any) => ({ ...row, id: String(row.id), listing_id: String(row.listing_id) })),\n        ...((sellRes.data ?? []) as any[]).map((row) => ({ ...row, id: String(row.id), listing_id: String(row.listing_id) })),
       ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
       setOrders(merged as OrderRow[]);
       setOrdersLoading(false);
@@ -574,3 +573,4 @@ const OrderSection = ({
 );
 
 export default Profile;
+
