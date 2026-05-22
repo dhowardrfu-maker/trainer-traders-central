@@ -545,16 +545,16 @@ const OrderSection = ({
                 <p className="text-xs text-muted-foreground mt-1">
                   {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                 </p>
-                {isSales && (
-                  
-                    href="https://account.royalmail.com/sending/click-drop"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
-                  >
-                    <Truck className="h-3 w-3" /> Ship this order
-                  </a>
-                )}
+{isSales && (
+  
+<a  href="https://account.royalmail.com/sending/click-drop"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+  >
+    <Truck className="h-3 w-3" /> Ship this order
+  </a>
+)}
               </div>
               <div className="text-right shrink-0">
                 <p className="font-display font-bold">{formatGbp(o.total_pence)}</p>
