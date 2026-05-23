@@ -111,7 +111,7 @@ const EditListing = () => {
         postage_pence: Math.round(Number(form.postage) * 100),
         color: form.color.trim() || null,
         status: form.status,
-        photos,
+        photos: photos as unknown as string,
       })
       .eq("id", Number(id));
     setSaving(false);
