@@ -6,7 +6,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import Footer from "@/components/Footer";
 import { FilterBar, DEFAULT_FILTERS, type Filters, type SortKey } from "@/components/FilterBar";
-import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
+import { mapDbListing, type Listing } from "@/data/listings";
 import { supabase } from "@/integrations/supabase/client";
 import { useSEO } from "@/hooks/useSEO";
 
@@ -57,7 +57,6 @@ const Index = () => {
       }
 
       const mapped = rows.map((r) => {
-        // 🧠 SAFE PHOTO NORMALISATION (THIS FIXES YOUR BROKEN IMAGES)
         const photos =
           Array.isArray(r.photos)
             ? r.photos
@@ -69,11 +68,11 @@ const Index = () => {
 
         const listing = mapDbListing({
           ...r,
+          id: String(r.id),
           photos: cleanPhotos.length ? cleanPhotos : ["/placeholder.svg"],
           profile: profiles[r.seller_id] ?? null,
         });
 
-        // 🔒 extra safety fallback
         return {
           ...listing,
           image: listing.image || "/placeholder.svg",
@@ -92,7 +91,7 @@ const Index = () => {
   }, []);
 
   const all = useMemo<Listing[]>(
-    () => [...dbListings, ...SAMPLE_LISTINGS],
+    () => [...dbListings],
     [dbListings]
   );
 
