@@ -41,7 +41,7 @@ const EditListing = () => {
       const { data, error } = await supabase
         .from("listings")
         .select("*")
-        .eq("id", id)
+        .eq("id", Number(id))
         .maybeSingle();
       if (error || !data) {
         toast.error("Listing not found");
@@ -59,9 +59,9 @@ const EditListing = () => {
         price: data.price_pence / 100,
         postage: data.postage_pence / 100,
         color: data.color ?? "",
-        status: data.status,
+        status: (data.status ?? "active") as "active" | "draft" | "sold" | "removed",
       });
-      setPhotos(Array.isArray(data.photos) ? data.photos : []);
+      setPhotos(Array.isArray(data.photos) ? (data.photos as string[]) : []);
       setLoading(false);
     })();
   }, [id, user, navigate]);
@@ -113,7 +113,7 @@ const EditListing = () => {
         status: form.status,
         photos,
       })
-      .eq("id", id);
+      .eq("id", Number(id));
     setSaving(false);
     if (error) {
       toast.error("Couldn't save changes");
