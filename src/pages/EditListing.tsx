@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, ImagePlus, Loader2, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,9 @@ const EditListing = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -58,9 +61,39 @@ const EditListing = () => {
         color: data.color ?? "",
         status: data.status,
       });
+      setPhotos(Array.isArray(data.photos) ? data.photos : []);
       setLoading(false);
     })();
   }, [id, user, navigate]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length || !user) return;
+    if (photos.length + files.length > 8) {
+      toast.error("Maximum 8 photos allowed");
+      return;
+    }
+    setUploading(true);
+    const uploaded: string[] = [];
+    for (const file of files) {
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from("listing-photos").upload(path, file);
+      if (error) {
+        toast.error(`Failed to upload ${file.name}`);
+        continue;
+      }
+      const { data: urlData } = supabase.storage.from("listing-photos").getPublicUrl(path);
+      uploaded.push(urlData.publicUrl);
+    }
+    setPhotos((prev) => [...prev, ...uploaded]);
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const onSave = async () => {
     if (!id) return;
@@ -78,6 +111,7 @@ const EditListing = () => {
         postage_pence: Math.round(Number(form.postage) * 100),
         color: form.color.trim() || null,
         status: form.status,
+        photos,
       })
       .eq("id", id);
     setSaving(false);
@@ -109,6 +143,51 @@ const EditListing = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-xl space-y-5">
+
+        {/* Photos */}
+        <div className="space-y-2">
+          <Label>Photos</Label>
+          <div className="grid grid-cols-4 gap-2">
+            {photos.map((url, i) => (
+              <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border bg-muted">
+                <img src={url} alt="" className="w-full h-full object-cover" />
+                <button
+                  onClick={() => removePhoto(i)}
+                  className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5 text-white hover:bg-black/80"
+                  aria-label="Remove photo"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+            {photos.length < 8 && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="aspect-square rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+              >
+                {uploading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <ImagePlus className="h-5 w-5" />
+                    <span className="text-[10px]">Add photo</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handlePhotoUpload}
+          />
+          <p className="text-xs text-muted-foreground">{photos.length}/8 photos</p>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="title">Title</Label>
           <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
