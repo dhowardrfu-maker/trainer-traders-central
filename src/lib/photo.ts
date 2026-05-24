@@ -8,9 +8,25 @@ const isFullUrl = (s: string) => /^(https?:|data:|blob:|\/)/.test(s);
 /**
  * Resolve a stored value (storage path or full URL) to a displayable URL.
  * Static/sample images and legacy public URLs pass through unchanged.
+ * JSON arrays are parsed and the first URL is returned.
  */
 export async function resolvePhotoUrl(pathOrUrl: string | undefined | null): Promise<string> {
   if (!pathOrUrl) return "";
+
+  // If it's a JSON array string, parse it and use the first URL
+  const trimmed = pathOrUrl.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const arr = JSON.parse(trimmed);
+      if (Array.isArray(arr) && arr.length > 0) {
+        return resolvePhotoUrl(arr[0]);
+      }
+    } catch {
+      // fall through
+    }
+    return "";
+  }
+
   if (isFullUrl(pathOrUrl)) return pathOrUrl;
 
   const now = Date.now();
