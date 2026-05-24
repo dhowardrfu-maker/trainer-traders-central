@@ -147,7 +147,15 @@ const Profile = () => {
         .eq("seller_id", user.id)
         .order("created_at", { ascending: false });
       if (cancelled) return;
-      if (!error && data) setListings(data.map((row) => ({ ...row, id: String(row.id), photos: (row.photos as unknown) as string[] })) as MyListing[]);
+      if (!error && data) setListings(data.map((row) => {
+        const raw = row.photos;
+        let photos: string[] = [];
+        if (Array.isArray(raw)) photos = raw as string[];
+        else if (typeof raw === "string") {
+          try { photos = JSON.parse(raw); } catch { photos = []; }
+        }
+        return { ...row, id: String(row.id), photos };
+      }) as MyListing[]);
       setListingsLoading(false);
     })();
     return () => { cancelled = true; };
