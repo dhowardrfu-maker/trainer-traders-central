@@ -29,7 +29,7 @@ export interface Listing {
   description?: string | null;
   price: number;
 
-  image: string;        // NEVER NULL ANYMORE
+  image: string;
   images?: string[];
 
   seller: { name: string; rating: number; id?: string };
@@ -95,21 +95,30 @@ interface DbListingRow {
   } | null;
 }
 
-// CLEAN NORMALISATION
-const normalisePhotos = (photos: any): string[] => {
+// Handles: array, JSON string array, plain string, null
+const normalisePhotos = (photos: unknown): string[] => {
   if (!photos) return [];
-
-  const arr = Array.isArray(photos) ? photos : [photos];
-
-  return arr
-    .filter(Boolean)
-    .map(String);
+  // Already an array
+  if (Array.isArray(photos)) return photos.filter(Boolean).map(String);
+  // String — try to JSON parse first
+  if (typeof photos === "string") {
+    const trimmed = photos.trim();
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean).map(String);
+      } catch {
+        // fall through to treat as single URL
+      }
+    }
+    // Plain URL string
+    return trimmed ? [trimmed] : [];
+  }
+  return [];
 };
 
 export const mapDbListing = (row: DbListingRow): Listing => {
   const photos = normalisePhotos(row.photos);
-
-  // fallback image (safe, never empty string)
   const fallback = "/placeholder.svg";
 
   return {
@@ -125,7 +134,6 @@ export const mapDbListing = (row: DbListingRow): Listing => {
     description: row.description ?? null,
     price: Math.round(row.price_pence / 100),
 
-    // 🔥 GUARANTEED SAFE
     image: photos[0] || fallback,
     images: photos.length ? photos : [fallback],
 
