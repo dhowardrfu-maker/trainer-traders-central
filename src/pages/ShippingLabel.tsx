@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Package, Truck } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Package, Printer, Truck } from "lucide-react";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ const ShippingLabel = () => {
   const [order, setOrder] = useState<OrderRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [labelUrl, setLabelUrl] = useState<string | null>(null);
   const [trackingNumber, setTrackingNumber] = useState<string | null>(null);
 
   useEffect(() => {
@@ -60,7 +60,7 @@ const ShippingLabel = () => {
       }
 
       setOrder(data as OrderRow);
-      if (data.sendcloud_qr_url) setQrUrl(data.sendcloud_qr_url);
+      if (data.sendcloud_label_url) setLabelUrl(data.sendcloud_label_url);
       if (data.sendcloud_tracking_number) setTrackingNumber(data.sendcloud_tracking_number);
       setLoading(false);
     };
@@ -68,7 +68,7 @@ const ShippingLabel = () => {
     return () => { cancelled = true; };
   }, [id, user]);
 
-  const handleGenerateQR = async () => {
+  const handleGenerateLabel = async () => {
     if (!order) return;
     setGenerating(true);
 
@@ -78,14 +78,14 @@ const ShippingLabel = () => {
 
     setGenerating(false);
 
-    if (error || !data?.qr_url) {
+    if (error || !data?.label_url) {
       toast.error(error?.message ?? "Could not generate label — please try again");
       return;
     }
 
-    setQrUrl(data.qr_url);
+    setLabelUrl(data.label_url);
     setTrackingNumber(data.tracking_number);
-    toast.success("QR code generated — take it to the Post Office!");
+    toast.success("Label generated — print it and drop off at any Evri ParcelShop!");
   };
 
   return (
@@ -103,7 +103,7 @@ const ShippingLabel = () => {
           Ship this order
         </h1>
         <p className="text-sm text-muted-foreground mb-6">
-          Generate a QR code and take it to any Royal Mail Post Office.
+          Generate your shipping label and drop off at any Evri ParcelShop.
         </p>
 
         {loading ? (
@@ -113,7 +113,7 @@ const ShippingLabel = () => {
         ) : (
           <div className="space-y-4">
 
-            {/* Order details */}
+            {/* Delivery address */}
             <div className="rounded-2xl border border-border p-5 space-y-3">
               <h2 className="font-display font-bold text-lg">Delivery address</h2>
               <div className="text-sm text-muted-foreground leading-relaxed">
@@ -131,57 +131,60 @@ const ShippingLabel = () => {
                 <Truck className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <p className="font-semibold">Royal Mail Tracked 48</p>
-                <p className="text-sm text-muted-foreground">Drop off at any Post Office · QR code — no printing needed</p>
+                <p className="font-semibold">Evri Standard Delivery</p>
+                <p className="text-sm text-muted-foreground">Print label · Drop off at any Evri ParcelShop</p>
               </div>
             </div>
 
-            {/* QR code or generate button */}
+            {/* Label or generate button */}
             <div className="rounded-2xl border border-border p-5 space-y-4">
-              {qrUrl ? (
+              {labelUrl ? (
                 <>
-                  <h2 className="font-display font-bold text-lg">Your QR code</h2>
-                  <p className="text-sm text-muted-foreground">Show this at the Post Office. Staff will scan it and print the label.</p>
-                  <div className="flex justify-center">
-                    <img
-                      src={qrUrl}
-                      alt="Shipping QR code"
-                      className="w-64 h-64 rounded-xl border border-border"
-                    />
-                  </div>
+                  <h2 className="font-display font-bold text-lg">Your shipping label is ready</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Print the label, attach it to your parcel, and drop it off at any Evri ParcelShop.
+                  </p>
                   {trackingNumber && (
-                    <p className="text-xs text-muted-foreground text-center font-mono">
+                    <p className="text-xs text-muted-foreground font-mono bg-muted px-3 py-2 rounded-lg">
                       Tracking: {trackingNumber}
                     </p>
                   )}
                   <Button
+                    className="w-full rounded-full font-semibold"
+                    onClick={() => window.open(labelUrl, "_blank")}
+                  >
+                    <Printer className="h-4 w-4 mr-2" />
+                    Open &amp; print label
+                  </Button>
+                  <Button
                     variant="outline"
                     className="w-full rounded-full"
-                    onClick={() => window.open(qrUrl, "_blank")}
+                    onClick={() => window.open(labelUrl, "_blank")}
                   >
-                    Open full size
+                    <Download className="h-4 w-4 mr-2" />
+                    Download label (PDF)
                   </Button>
                 </>
               ) : (
                 <>
                   <h2 className="font-display font-bold text-lg">Ready to ship?</h2>
                   <p className="text-sm text-muted-foreground">
-                    Click the button below to generate your Royal Mail QR code. You'll need to take it to a Post Office within 28 days.
+                    Click below to generate your Evri shipping label. Print it, attach to your parcel and drop off at any Evri ParcelShop.
                   </p>
                   <Button
                     className="w-full rounded-full font-semibold"
-                    onClick={handleGenerateQR}
+                    onClick={handleGenerateLabel}
                     disabled={generating}
                   >
                     {generating ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Generating QR code…
+                        Generating label…
                       </>
                     ) : (
                       <>
                         <Package className="h-4 w-4 mr-2" />
-                        Generate QR code
+                        Generate shipping label
                       </>
                     )}
                   </Button>
