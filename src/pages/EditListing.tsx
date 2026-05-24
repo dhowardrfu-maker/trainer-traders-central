@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ImagePlus, Loader2, Trash2, X } from "lucide-react";
+import { ArrowLeft, GripVertical, ImagePlus, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ const EditListing = () => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragIndex = useRef<number | null>(null);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -85,10 +86,7 @@ const EditListing = () => {
       const ext = file.name.split(".").pop();
       const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from("listing-photos").upload(path, file);
-      if (error) {
-        toast.error(`Failed to upload ${file.name}`);
-        continue;
-      }
+      if (error) { toast.error(`Failed to upload ${file.name}`); continue; }
       const { data: urlData } = supabase.storage.from("listing-photos").getPublicUrl(path);
       uploaded.push(urlData.publicUrl);
     }
@@ -100,6 +98,21 @@ const EditListing = () => {
   const removePhoto = (index: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
+
+  const onDragStart = (i: number) => { dragIndex.current = i; };
+  const onDragOver = (e: React.DragEvent, i: number) => {
+    e.preventDefault();
+    const from = dragIndex.current;
+    if (from === null || from === i) return;
+    setPhotos((prev) => {
+      const arr = [...prev];
+      const [item] = arr.splice(from, 1);
+      arr.splice(i, 0, item);
+      return arr;
+    });
+    dragIndex.current = i;
+  };
+  const onDragEnd = () => { dragIndex.current = null; };
 
   const onSave = async () => {
     if (!id) return;
@@ -121,10 +134,7 @@ const EditListing = () => {
       })
       .eq("id", Number(id));
     setSaving(false);
-    if (error) {
-      toast.error("Couldn't save changes");
-      return;
-    }
+    if (error) { toast.error("Couldn't save changes"); return; }
     toast.success("Listing updated");
     navigate(`/listing/${id}`);
   };
@@ -153,10 +163,23 @@ const EditListing = () => {
         {/* Photos */}
         <div className="space-y-2">
           <Label>Photos</Label>
+          <p className="text-xs text-muted-foreground">Drag to reorder · First photo is the cover</p>
           <div className="grid grid-cols-4 gap-2">
             {photos.map((url, i) => (
-              <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border bg-muted">
-                <img src={url} alt="" className="w-full h-full object-cover" />
+              <div
+                key={url}
+                draggable
+                onDragStart={() => onDragStart(i)}
+                onDragOver={(e) => onDragOver(e, i)}
+                onDragEnd={onDragEnd}
+                className="relative aspect-square rounded-xl overflow-hidden border border-border bg-muted cursor-grab active:cursor-grabbing select-none"
+              >
+                <img src={url} alt="" className="w-full h-full object-cover pointer-events-none" />
+                {i === 0 && (
+                  <span className="absolute bottom-1 left-1 text-[9px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-semibold">
+                    Cover
+                  </span>
+                )}
                 <button
                   onClick={() => removePhoto(i)}
                   className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5 text-white hover:bg-black/80"
@@ -200,25 +223,13 @@ const EditListing = () => {
         </div>
         <div className="space-y-2">
           <Label htmlFor="price">Price (£)</Label>
-          <Input
-            id="price"
-            type="number"
-            min={1}
-            step="0.01"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value === "" ? "" : Number(e.target.value) })}
-          />
+          <Input id="price" type="number" min={1} step="0.01" value={form.price}
+            onChange={(e) => setForm({ ...form, price: e.target.value === "" ? "" : Number(e.target.value) })} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="postage">Postage cost (£)</Label>
-          <Input
-            id="postage"
-            type="number"
-            min={0}
-            step="0.01"
-            value={form.postage}
-            onChange={(e) => setForm({ ...form, postage: e.target.value === "" ? "" : Number(e.target.value) })}
-          />
+          <Input id="postage" type="number" min={0} step="0.01" value={form.postage}
+            onChange={(e) => setForm({ ...form, postage: e.target.value === "" ? "" : Number(e.target.value) })} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="color">Colour</Label>
@@ -226,12 +237,8 @@ const EditListing = () => {
         </div>
         <div className="space-y-2">
           <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            rows={5}
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <Textarea id="description" rows={5} value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })} />
         </div>
         <div className="space-y-2">
           <Label>Status</Label>
