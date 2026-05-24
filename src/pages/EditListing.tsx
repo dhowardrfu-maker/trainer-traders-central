@@ -61,7 +61,13 @@ const EditListing = () => {
         color: data.color ?? "",
         status: (data.status ?? "active") as "active" | "draft" | "sold" | "removed",
       });
-      setPhotos(Array.isArray(data.photos) ? (data.photos as string[]) : []);
+      const rawPhotos = data.photos;
+      const parsedPhotos = Array.isArray(rawPhotos)
+        ? rawPhotos
+        : typeof rawPhotos === "string"
+          ? (() => { try { return JSON.parse(rawPhotos); } catch { return []; } })()
+          : [];
+      setPhotos(parsedPhotos as string[]);
       setLoading(false);
     })();
   }, [id, user, navigate]);
@@ -111,7 +117,7 @@ const EditListing = () => {
         postage_pence: Math.round(Number(form.postage) * 100),
         color: form.color.trim() || null,
         status: form.status,
-        photos: photos as unknown as string,
+        photos: JSON.stringify(photos),
       })
       .eq("id", Number(id));
     setSaving(false);
