@@ -85,7 +85,7 @@ const ListingDetail = () => {
         .maybeSingle();
 
       setPostagePence(row.postage_pence ?? 0);
-      setListing(mapDbListing({ ...row, profile: p ?? null }));
+      setListing(mapDbListing({ ...row, id: String(row.id), profile: p ?? null }));
       setLoading(false);
     };
 
@@ -102,7 +102,12 @@ const ListingDetail = () => {
       if (Array.isArray(listing.images)) {
         arr = listing.images;
       } else if (typeof listing.images === "string") {
-        arr = JSON.parse(listing.images);
+        const s = listing.images as string;
+        if (s.trim().startsWith("[")) {
+          arr = JSON.parse(s);
+        } else {
+          arr = [s];
+        }
       } else if (listing.image) {
         arr = [listing.image];
       }
@@ -145,13 +150,17 @@ const ListingDetail = () => {
 
     const { data: created, error } = await supabase
       .from("threads")
-      .insert({ listing_id: listing.id, buyer_id: user.id, seller_id: listing.seller.id })
+      .insert({
+        listing_id: listing.id,
+        buyer_id: user.id,
+        seller_id: listing.seller.id,
+      } as any)
       .select("id")
       .single();
 
     if (error || !created) return toast.error("Couldn't start chat");
 
-    navigate(`/messages/${created.id}`);
+    navigate(`/messages/${(created as any).id}`);
   };
 
   return (
