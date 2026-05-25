@@ -185,6 +185,12 @@ const ListingDetail = () => {
                 <Spec label="Size" value={`UK ${listing.sizeUk} · EU ${sizeEu}`} />
                 <Spec label="Condition" value={listing.condition} />
               </div>
+              {listing.description && (
+                <div className="mt-4">
+                  <p className="text-sm font-semibold mb-1">Description</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{listing.description}</p>
+                </div>
+              )}
               <Button className="mt-6 w-full" onClick={handleBuy}>Buy now</Button>
             </div>
           </div>
