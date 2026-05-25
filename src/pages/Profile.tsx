@@ -447,9 +447,12 @@ const Profile = () => {
                       </div>
                       <p className="text-sm text-muted-foreground truncate">{l.brand} · {formatGbp(l.price_pence)}</p>
                     </div>
+                    {l.status !== "sold" && (
                     <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Edit listing">
                       <Link to={`/listing/${l.id}/edit`}><Pencil className="h-4 w-4" /></Link>
                     </Button>
+                    )}
+                    {l.status !== "sold" && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive shrink-0" aria-label="Delete listing">
@@ -467,6 +470,7 @@ const Profile = () => {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
+                    )}
                   </Card>
                 ))}
               </div>
