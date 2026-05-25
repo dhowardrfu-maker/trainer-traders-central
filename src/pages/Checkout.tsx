@@ -15,12 +15,18 @@ import { CARRIERS, type CarrierId } from "@/data/carriers";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { loadStripe } from "@stripe/stripe-js";
+import { loadStripe } from "@stripe/stripe-js/pure";
 import { PaymentElement } from "@stripe/react-stripe-js";
 import { Elements, useStripe, useElements } from "@stripe/react-stripe-js";
 
-// ── Stripe singleton ──────────────────────────────────────────────────────────
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
+// ── Stripe singleton — lazy loaded to prevent global badge injection ──────────
+let stripePromise: ReturnType<typeof loadStripe> | null = null;
+const getStripe = () => {
+  if (!stripePromise) {
+    stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
+  }
+  return stripePromise;
+};
 
 // ── Validation ────────────────────────────────────────────────────────────────
 const addressSchema = z.object({
@@ -387,7 +393,7 @@ const Checkout = () => {
                   </div>
                 ) : clientSecret ? (
                   <Elements
-                    stripe={stripePromise}
+                    stripe={getStripe()}
                     options={{ clientSecret, appearance: { theme: "stripe" } }}
                   >
                     <StripePayForm
