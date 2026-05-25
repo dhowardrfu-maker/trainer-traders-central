@@ -37,6 +37,12 @@ interface ProfileRow {
   bio: string | null;
   location: string | null;
   avatar_url: string | null;
+  full_name: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  postcode: string | null;
+  phone: string | null;
 }
 
 interface MyListing {
@@ -91,6 +97,12 @@ const Profile = () => {
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [addressLine1, setAddressLine1] = useState("");
+  const [addressLine2, setAddressLine2] = useState("");
+  const [city, setCity] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [phone, setPhone] = useState("");
 
   const [listings, setListings] = useState<MyListing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
@@ -118,7 +130,7 @@ const Profile = () => {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("user_id, username, display_name, bio, location, avatar_url")
+        .select("user_id, username, display_name, bio, location, avatar_url, full_name, address_line1, address_line2, city, postcode, phone")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
@@ -129,6 +141,12 @@ const Profile = () => {
         setBio(data.bio ?? "");
         setLocation(data.location ?? "");
         setAvatarUrl(data.avatar_url ?? "");
+        setFullName(data.full_name ?? "");
+        setAddressLine1(data.address_line1 ?? "");
+        setAddressLine2(data.address_line2 ?? "");
+        setCity(data.city ?? "");
+        setPostcode(data.postcode ?? "");
+        setPhone(data.phone ?? "");
       }
       setProfileLoading(false);
     })();
@@ -254,6 +272,8 @@ const Profile = () => {
   const purchases = useMemo(() => orders.filter((o) => o.buyer_id === user?.id), [orders, user]);
   const sales = useMemo(() => orders.filter((o) => o.seller_id === user?.id), [orders, user]);
 
+  const isProfileComplete = !!(fullName && addressLine1 && city && postcode && phone);
+
   const handleSaveProfile = async () => {
     if (!user) return;
     setSaving(true);
@@ -266,6 +286,12 @@ const Profile = () => {
         bio: bio.trim() || null,
         location: location.trim() || null,
         avatar_url: avatarUrl.trim() || null,
+        full_name: fullName.trim() || null,
+        address_line1: addressLine1.trim() || null,
+        address_line2: addressLine2.trim() || null,
+        city: city.trim() || null,
+        postcode: postcode.trim().toUpperCase() || null,
+        phone: phone.trim() || null,
       })
       .eq("user_id", user.id);
     setSaving(false);
@@ -351,18 +377,58 @@ const Profile = () => {
                   <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="lowercase, letters/numbers" maxLength={30} />
                   <p className="text-xs text-muted-foreground">Lowercase letters, numbers and underscores only.</p>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="London, UK" maxLength={80} />
+
+                <div className="border-t border-border pt-5">
+                  <p className="text-sm font-semibold mb-4">Shipping address <span className="text-destructive">*</span></p>
+                  <p className="text-xs text-muted-foreground mb-4">Required before you can list items for sale. Used as the sender address on shipping labels.</p>
+                  <div className="grid gap-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="full_name">Full name</Label>
+                      <Input id="full_name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" maxLength={100} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="address_line1">Address line 1</Label>
+                      <Input id="address_line1" value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} placeholder="47 Example Street" maxLength={120} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="address_line2">Address line 2 <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                      <Input id="address_line2" value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} placeholder="Apartment, flat, etc." maxLength={120} />
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div className="grid gap-2">
+                        <Label htmlFor="city">Town / City</Label>
+                        <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Stourport on Severn" maxLength={60} />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="postcode">Postcode</Label>
+                        <Input id="postcode" value={postcode} onChange={(e) => setPostcode(e.target.value.toUpperCase())} placeholder="DY13 8PW" maxLength={8} />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="phone">Phone number</Label>
+                      <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07700 900000" maxLength={20} />
+                    </div>
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="avatar">Avatar URL</Label>
-                  <Input id="avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" />
+
+                <div className="border-t border-border pt-5">
+                  <p className="text-sm font-semibold mb-4">Profile</p>
+                  <div className="grid gap-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="location">Location <span className="text-muted-foreground font-normal">(public)</span></Label>
+                      <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="London, UK" maxLength={80} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="avatar">Avatar URL</Label>
+                      <Input id="avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="bio">Bio</Label>
+                      <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell buyers about your collection…" rows={4} maxLength={300} />
+                    </div>
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell buyers about your collection…" rows={4} maxLength={300} />
-                </div>
+
                 <div className="flex justify-end">
                   <Button onClick={handleSaveProfile} disabled={saving} className="rounded-full font-semibold">
                     {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -379,8 +445,11 @@ const Profile = () => {
               <p className="text-sm text-muted-foreground">
                 {listingsLoading ? "Loading…" : `${listings.length} listing${listings.length === 1 ? "" : "s"}`}
               </p>
-              <Button size="sm" className="rounded-full gap-1.5 font-semibold" onClick={() => navigate("/sell")}>
-                <Plus className="h-4 w-4" /> New listing
+              {!isProfileComplete && (
+                <p className="text-xs text-destructive">Complete your profile (address & phone) before listing.</p>
+              )}
+              <Button size="sm" className="rounded-full gap-1.5 font-semibold" onClick={() => isProfileComplete ? navigate("/sell") : navigate("/profile?tab=profile")} variant={isProfileComplete ? "default" : "outline"}>
+                <Plus className="h-4 w-4" /> {isProfileComplete ? "New listing" : "Complete profile first"}
               </Button>
             </div>
             {listingsLoading ? (

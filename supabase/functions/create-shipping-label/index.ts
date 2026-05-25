@@ -6,8 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SENDCLOUD_API = "https://panel.sendcloud.sc/api/v2";
-const SHIPPING_METHOD_CODE = "royal_mailv2:tracked_48/kg=0-2,size=s,labelless";
+// Sendcloud API v3 — required for this account
+const SENDCLOUD_API = "https://panel.sendcloud.sc/api/v3";
+// Evri Standard Delivery dropoff shipping option code
+const EVRI_SHIPPING_OPTION_CODE = "hermes_c2c_gb:s2a/dropoff";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return json(null, 200);
@@ -49,64 +51,112 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Call Sendcloud API to create parcel
     const publicKey = Deno.env.get("SENDCLOUD_PUBLIC_KEY")!;
     const secretKey = Deno.env.get("SENDCLOUD_SECRET_KEY")!;
     const credentials = btoa(`${publicKey}:${secretKey}`);
 
-    const parcelPayload = {
-      parcel: {
+    // Load seller's address from their profile
+    const { data: sellerProfile, error: profileErr } = await supabase
+      .from("profiles")
+      .select("full_name, address_line1, address_line2, city, postcode, phone")
+      .eq("user_id", order.seller_id)
+      .maybeSingle();
+
+    if (profileErr || !sellerProfile?.full_name || !sellerProfile?.address_line1 || !sellerProfile?.city || !sellerProfile?.postcode) {
+      return json({ error: "Seller profile address is incomplete. Please update your profile before generating a label." }, 400);
+    }
+
+    // Create and announce shipment via Sendcloud API v3
+    const shipmentPayload = {
+      to_address: {
         name: order.ship_to_name,
-        address: order.ship_to_line1,
-        address_2: order.ship_to_line2 ?? "",
+        address_line_1: order.ship_to_line1,
+        address_line_2: order.ship_to_line2 ?? "",
         city: order.ship_to_city,
         postal_code: order.ship_to_postcode,
-        country: { iso_2: "GB" },
-        telephone: "",
+        country_code: "GB",
         email: "",
-        weight: "1.000",
-        shipment: { id: SHIPPING_METHOD_CODE },
-        order_number: order.id,
-        request_label: true,
-        apply_shipping_rules: false,
+        phone_number: "",
       },
+      from_address: {
+        name: sellerProfile.full_name,
+        address_line_1: sellerProfile.address_line1,
+        address_line_2: sellerProfile.address_line2 ?? "",
+        city: sellerProfile.city,
+        postal_code: sellerProfile.postcode,
+        country_code: "GB",
+        phone_number: sellerProfile.phone ?? "",
+        email: "",
+      },
+      parcels: [
+        {
+          weight: { value: 1.0, unit: "kg" },
+          order_number: String(order.id),
+        },
+      ],
+      ship_with: {
+        type: "shipping_option_code",
+        properties: {
+          shipping_option_code: EVRI_SHIPPING_OPTION_CODE,
+        },
+      },
+      apply_shipping_rules: false,
     };
 
-    const scRes = await fetch(`${SENDCLOUD_API}/parcels`, {
+    const scRes = await fetch(`${SENDCLOUD_API}/shipments/announce`, {
       method: "POST",
       headers: {
         "Authorization": `Basic ${credentials}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(parcelPayload),
+      body: JSON.stringify(shipmentPayload),
     });
 
     const scData = await scRes.json();
 
     if (!scRes.ok) {
       console.error("Sendcloud error:", JSON.stringify(scData));
-      return json({ error: scData?.error?.message ?? "Label creation failed" }, 500);
+      return json({ error: scData?.message ?? scData?.error?.message ?? "Label creation failed" }, 500);
     }
 
-    const parcel = scData.parcel;
-    const labelUrl = parcel.label?.label_printer ?? null;
-    const qrUrl = parcel.label?.normal_printer?.[0] ?? labelUrl;
-    const trackingNumber = parcel.tracking_number ?? null;
-    const sendcloudParcelId = parcel.id ?? null;
+    // v3 response: data.parcels array
+    const parcel = scData?.data?.parcels?.[0] ?? scData?.data;
+    const trackingNumber = parcel?.tracking_number ?? null;
+    const sendcloudParcelId = parcel?.id ?? null;
+    const labelPrinterUrl = parcel?.label?.label_printer ?? parcel?.label?.normal_printer?.[0] ?? null;
+
+    let labelDataUrl: string | null = null;
+
+    if (labelPrinterUrl) {
+      // Fetch the PDF label server-side to avoid CORS issues on the client
+      const pdfRes = await fetch(labelPrinterUrl, {
+        headers: { "Authorization": `Basic ${credentials}` },
+      });
+      if (pdfRes.ok) {
+        const pdfBytes = await pdfRes.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(pdfBytes)));
+        labelDataUrl = `data:application/pdf;base64,${base64}`;
+      } else {
+        console.error("Failed to fetch PDF label:", pdfRes.status);
+        labelDataUrl = labelPrinterUrl;
+      }
+    }
+
+    const qrUrl = parcel?.label?.normal_printer?.[0] ?? labelPrinterUrl;
 
     // Update order with label details
     await supabase
       .from("orders")
       .update({
         sendcloud_parcel_id: String(sendcloudParcelId),
-        sendcloud_label_url: labelUrl,
+        sendcloud_label_url: labelDataUrl,
         sendcloud_qr_url: qrUrl,
         sendcloud_tracking_number: trackingNumber,
         status: "label_created",
       })
       .eq("id", order_id);
 
-    return json({ label_url: labelUrl, qr_url: qrUrl, tracking_number: trackingNumber });
+    return json({ label_url: labelDataUrl, qr_url: qrUrl, tracking_number: trackingNumber });
   } catch (e) {
     console.error(e);
     return json({ error: "Internal error" }, 500);

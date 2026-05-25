@@ -15,14 +15,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Header = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
-  const handleSell = () => {
+  const handleSell = async () => {
     if (!user) {
       navigate("/auth");
+      return;
+    }
+    // Check profile is complete before allowing listing
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, address_line1, city, postcode, phone")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const isComplete = !!(data?.full_name && data?.address_line1 && data?.city && data?.postcode && data?.phone);
+    if (!isComplete) {
+      toast.error("Please complete your profile (name, address & phone) before listing.");
+      navigate("/profile?tab=profile");
       return;
     }
     navigate("/sell");
