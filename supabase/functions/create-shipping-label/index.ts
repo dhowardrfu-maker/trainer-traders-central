@@ -42,8 +42,11 @@ Deno.serve(async (req) => {
     // Only the seller can generate the label
     if (order.seller_id !== user.id) return json({ error: "Unauthorized" }, 403);
 
+    console.log("Order loaded:", order.id, "seller:", order.seller_id);
+
     // If label already generated, return existing
     if (order.sendcloud_label_url) {
+      console.log("Label already exists, returning cached");
       return json({
         label_url: order.sendcloud_label_url,
         qr_url: order.sendcloud_qr_url,
@@ -103,6 +106,9 @@ Deno.serve(async (req) => {
       apply_shipping_rules: false,
     };
 
+    console.log("Seller profile loaded:", sellerProfile.full_name, sellerProfile.postcode);
+    console.log("Calling Sendcloud API v3...");
+
     const scRes = await fetch(`${SENDCLOUD_API}/shipments/announce`, {
       method: "POST",
       headers: {
@@ -112,37 +118,69 @@ Deno.serve(async (req) => {
       body: JSON.stringify(shipmentPayload),
     });
 
+    console.log("Sendcloud response status:", scRes.status);
     const scData = await scRes.json();
+    console.log("Sendcloud response data:", JSON.stringify(scData).slice(0, 500));
 
     if (!scRes.ok) {
       console.error("Sendcloud error:", JSON.stringify(scData));
       return json({ error: scData?.message ?? scData?.error?.message ?? "Label creation failed" }, 500);
     }
 
-    // v3 response: data.parcels array
-    const parcel = scData?.data?.parcels?.[0] ?? scData?.data;
-    const trackingNumber = parcel?.tracking_number ?? null;
-    const sendcloudParcelId = parcel?.id ?? null;
-    const labelPrinterUrl = parcel?.label?.label_printer ?? parcel?.label?.normal_printer?.[0] ?? null;
+    // v3 response: data object directly (not data.parcels array)
+    const shipment = scData?.data;
+    console.log("Shipment keys:", Object.keys(shipment ?? {}).join(", "));
+    const shipmentId = shipment?.id ?? null;
+    const trackingNumber = shipment?.parcels?.[0]?.tracking_number ?? shipment?.tracking_number ?? null;
+    const sendcloudParcelId = shipment?.parcels?.[0]?.id ?? shipmentId ?? null;
+    console.log("Shipment ID:", shipmentId, "Tracking:", trackingNumber);
 
-    let labelDataUrl: string | null = null;
+    // In v3, fetch the label separately using the shipment ID
+    let labelPrinterUrl: string | null = null;
+    if (shipmentId) {
+      // Get the parcel ID from the shipment parcels array
+      const parcelId = shipment?.parcels?.[0]?.id ?? null;
+      console.log("Parcel ID:", parcelId);
+      
+      if (parcelId) {
+        // Fetch label using v2 labels endpoint with parcel ID
+        const labelRes = await fetch(`https://panel.sendcloud.sc/api/v2/labels/${parcelId}`, {
+          headers: { "Authorization": `Basic ${credentials}` },
+        });
+        console.log("Label fetch status:", labelRes.status);
+        if (labelRes.ok) {
+          const labelData = await labelRes.json();
+          console.log("Label data:", JSON.stringify(labelData).slice(0, 300));
+          labelPrinterUrl = labelData?.label?.label_printer
+            ?? labelData?.label?.normal_printer?.[0]
+            ?? null;
+        } else {
+          const labelErr = await labelRes.text();
+          console.error("Label fetch error:", labelErr);
+        }
+      }
+    }
+    console.log("Final label URL:", labelPrinterUrl);
 
+    // Fetch PDF server-side to avoid Sendcloud auth requirement on the client
+    let labelDataUrl: string | null = labelPrinterUrl;
     if (labelPrinterUrl) {
-      // Fetch the PDF label server-side to avoid CORS issues on the client
       const pdfRes = await fetch(labelPrinterUrl, {
         headers: { "Authorization": `Basic ${credentials}` },
       });
+      console.log("PDF fetch status:", pdfRes.status);
       if (pdfRes.ok) {
         const pdfBytes = await pdfRes.arrayBuffer();
         const base64 = btoa(String.fromCharCode(...new Uint8Array(pdfBytes)));
         labelDataUrl = `data:application/pdf;base64,${base64}`;
+        console.log("PDF fetched successfully, size:", pdfBytes.byteLength);
       } else {
-        console.error("Failed to fetch PDF label:", pdfRes.status);
+        console.error("PDF fetch failed, falling back to direct URL");
         labelDataUrl = labelPrinterUrl;
       }
     }
 
-    const qrUrl = parcel?.label?.normal_printer?.[0] ?? labelPrinterUrl;
+    const qrUrl = labelPrinterUrl;
 
     // Update order with label details
     await supabase

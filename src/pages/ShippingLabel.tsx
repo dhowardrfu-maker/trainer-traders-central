@@ -68,6 +68,20 @@ const ShippingLabel = () => {
     return () => { cancelled = true; };
   }, [id, user]);
 
+  const openLabel = (url: string) => {
+    if (url.startsWith("data:application/pdf;base64,")) {
+      const base64 = url.split(",")[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank");
+    } else {
+      window.open(url, "_blank");
+    }
+  };
+
   const handleGenerateLabel = async () => {
     if (!order) return;
     setGenerating(true);
@@ -151,7 +165,7 @@ const ShippingLabel = () => {
                   )}
                   <Button
                     className="w-full rounded-full font-semibold"
-                    onClick={() => window.open(labelUrl, "_blank")}
+                    onClick={() => openLabel(labelUrl)}
                   >
                     <Printer className="h-4 w-4 mr-2" />
                     Open &amp; print label
@@ -159,7 +173,7 @@ const ShippingLabel = () => {
                   <Button
                     variant="outline"
                     className="w-full rounded-full"
-                    onClick={() => window.open(labelUrl, "_blank")}
+                    onClick={() => openLabel(labelUrl)}
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Download label (PDF)
