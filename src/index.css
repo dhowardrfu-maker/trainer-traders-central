@@ -133,3 +133,11 @@
     @apply bg-primary text-primary-foreground hover:bg-primary;
   }
 }
+
+/* Hide Stripe "Powered by Stripe" badge */
+#stripe-badge-iframe,
+[id^="stripe-badge"],
+.StripeElement--webkit-autofill ~ *[class*="stripe"],
+a[href*="stripe.com"][target="_blank"]:not([class]) {
+  display: none !important;
+}
