@@ -22,12 +22,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Heart, Loader2, Package, Pencil, Plus, QrCode, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
+import { Heart, Loader2, Package, Pencil, Plus, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
 import { supabase } from "@/integrations/supabase/client";
-import { carrierLabel } from "@/data/carriers";
 import { ProductCard } from "@/components/ProductCard";
 import { mapDbListing, type Listing } from "@/data/listings";
 
@@ -55,7 +54,7 @@ interface OrderRow {
   listing_id: string;
   buyer_id: string;
   seller_id: string;
-  carrier: "royal_mail";
+  carrier: string;
   service_label: string;
   status: string;
   total_pence: number;
@@ -547,7 +546,7 @@ const OrderSection = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm">
-                    {carrierLabel(o.carrier)} · {o.service_label}
+                    Evri Standard Delivery
                   </span>
                   <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wide">
                     {statusLabel(o.status)}
@@ -573,12 +572,6 @@ const OrderSection = ({
               </div>
               <div className="text-right shrink-0">
                 <p className="font-display font-bold">{formatGbp(o.total_pence)}</p>
-                <Link
-                  to={`/order/${o.id}`}
-                  className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-1"
-                >
-                  <QrCode className="h-3 w-3" /> Label
-                </Link>
               </div>
             </div>
           </Card>

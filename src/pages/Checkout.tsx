@@ -140,7 +140,7 @@ function StripePayForm({
 
     const carrier = CARRIERS.find((c) => c.id === carrierId)!;
     const { data, error } = await supabase.rpc("create_order", {
-      _listing_id: listing.id,
+      _listing_id: Number(listing.id),
       _carrier: carrierId,
       _service_label: `${carrier.name} · ${carrier.service}`,
       _postage_pence: postagePence,
@@ -200,7 +200,7 @@ const Checkout = () => {
   const [listing, setListing] = useState<Listing | null>(null);
   const [listingPostagePence, setListingPostagePence] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [carrierId, setCarrierId] = useState<CarrierId>("royal_mail");
+  const [carrierId, setCarrierId] = useState<CarrierId>("evri");
   const [acceptedOfferPence, setAcceptedOfferPence] = useState<number | null>(null);
 
   // Payment intent state
@@ -241,13 +241,13 @@ const Checkout = () => {
       const { data: row, error } = await supabase
         .from("listings")
         .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, postage_pence, photos, created_at, seller_id")
-        .eq("id", id)
+        .eq("id", Number(id))
         .maybeSingle();
 
       if (cancelled) return;
       if (error || !row) { setLoading(false); return; }
       setListingPostagePence(row.postage_pence ?? 0);
-      setListing(mapDbListing({ ...row }));
+      setListing(mapDbListing({ ...row, id: String(row.id) }));
       setLoading(false);
     };
     void load();
@@ -265,7 +265,7 @@ const Checkout = () => {
         .eq("id", offerId)
         .maybeSingle();
       if (cancelled || !data) return;
-      if (data.status === "accepted" && data.buyer_id === user.id && data.listing_id === id) {
+      if (data.status === "accepted" && data.buyer_id === user.id && String(data.listing_id) === String(id)) {
         setAcceptedOfferPence(data.amount_pence);
         toast.success(`Offer applied — £${(data.amount_pence / 100).toFixed(2)}`);
       }
@@ -288,7 +288,7 @@ const Checkout = () => {
     (async () => {
       const { data, error } = await supabase.functions.invoke("create-payment-intent", {
         body: {
-          listing_id: listing.id,
+          listing_id: Number(listing.id),
           carrier_id: carrierId,
           postage_pence: listingPostagePence,
           offer_id: offerId ?? null,

@@ -1,6 +1,6 @@
 import { Truck } from "lucide-react";
 
-export type CarrierId = "royal_mail";
+export type CarrierId = "royal_mail" | "evri";
 
 export interface CarrierOption {
   id: CarrierId;
@@ -15,27 +15,21 @@ export interface CarrierOption {
 
 export const CARRIERS: CarrierOption[] = [
   {
-    id: "royal_mail",
-    name: "Royal Mail",
-    service: "Tracked 48",
-    pricePence: 349,
-    eta: "2–3 working days",
-    description: "Drop at any Post Office or postbox using your QR code.",
+    id: "evri",
+    name: "Evri",
+    service: "Standard Delivery",
+    pricePence: 345,
+    eta: "2–4 working days",
+    description: "Print label at home and drop off at any Evri ParcelShop.",
     icon: Truck,
   },
 ];
 
-const randomBlock = (len: number) => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let out = "";
-  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
+/** Human-readable carrier name — gracefully handles legacy royal_mail DB values */
+export const carrierLabel = (id: CarrierId | string): string => {
+  if (id === "royal_mail") return "Evri"; // legacy orders stored royal_mail; we now ship via Evri
+  return CARRIERS.find((c) => c.id === id)?.name ?? "Evri";
 };
 
-export const generateTrackingCode = (_carrier: CarrierId = "royal_mail"): string => {
-  // Royal Mail tracked-style: AA123456789GB
-  return `RM${randomBlock(2)}${Math.floor(Math.random() * 9e8 + 1e8)}GB`;
-};
-
-export const carrierLabel = (id: CarrierId): string =>
-  CARRIERS.find((c) => c.id === id)?.name ?? id;
+/** Sendcloud shipping method code for Evri Standard Delivery (dropoff) */
+export const EVRI_SENDCLOUD_CODE = "hermes_c2c_gb:s2a/dropoff";

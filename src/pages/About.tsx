@@ -29,7 +29,7 @@ const About = () => {
         </p>
         <h2 className="text-xl font-bold mt-8">What makes us different</h2>
         <ul className="mt-3 space-y-2">
-          <li>🇬🇧 UK-first, with Royal Mail Tracked 48 shipping built in.</li>
+          <li>🇬🇧 UK-first, with Evri Standard Delivery shipping built in.</li>
           <li>💬 Real-time messaging and negotiable offers between buyers and sellers.</li>
           <li>⭐ Verified reviews — only after a confirmed order.</li>
           <li>🛡️ AI-moderated photos to keep listings safe and on-brand.</li>

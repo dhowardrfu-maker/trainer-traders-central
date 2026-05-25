@@ -86,7 +86,7 @@ const Privacy = () => {
               <li><strong>Stripe</strong> — payment processing</li>
               <li><strong>Supabase</strong> — secure database and authentication</li>
               <li><strong>Vercel</strong> — website hosting</li>
-              <li><strong>Royal Mail</strong> — shipping label generation</li>
+              <li><strong>Evri (via Sendcloud)</strong> — shipping label generation</li>
               <li><strong>Zoho Mail</strong> — email communications</li>
             </ul>
             <h3 className="font-semibold mt-3 mb-1">4.3 Legal Requirements</h3>
