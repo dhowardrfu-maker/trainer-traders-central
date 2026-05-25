@@ -172,7 +172,7 @@ const OrderConfirmation = () => {
               </p>
             </div>
 
-            {user && order.buyer_id === user.id && (
+            {user && order.buyer_id === user.id && order.status === "delivered" && (
               <div className="mt-6">
                 <ReviewForm orderId={order.id} buyerId={order.buyer_id} sellerId={order.seller_id} />
               </div>
