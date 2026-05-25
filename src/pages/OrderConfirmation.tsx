@@ -59,7 +59,7 @@ const OrderConfirmation = () => {
     return () => { cancelled = true; };
   }, [id]);
 
-  const trackingNumber = order?.sendcloud_tracking_number || order?.tracking_code;
+  const trackingNumber = order?.sendcloud_tracking_number || null;
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">

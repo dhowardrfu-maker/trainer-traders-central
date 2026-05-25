@@ -61,6 +61,7 @@ interface OrderRow {
   status: string;
   total_pence: number;
   tracking_code: string;
+  sendcloud_tracking_number: string | null;
   created_at: string;
   ship_to_name: string;
   ship_to_line1?: string;
@@ -176,7 +177,7 @@ const Profile = () => {
       const [buyRes, sellRes] = await Promise.all([
         supabase
           .from("orders")
-          .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_line1, ship_to_line2, ship_to_city, ship_to_postcode")
+          .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, sendcloud_tracking_number, created_at, ship_to_name, ship_to_line1, ship_to_line2, ship_to_city, ship_to_postcode")
           .eq("buyer_id", user.id),
         supabase.rpc("get_my_sales"),
       ]);
@@ -587,7 +588,9 @@ const OrderSection = ({
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
-                  {o.tracking_code}
+                  {o.sendcloud_tracking_number && (
+                    <p className="text-xs font-mono text-muted-foreground">{o.sendcloud_tracking_number}</p>
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1 truncate">
                   To {o.ship_to_name} · {o.ship_to_city} {o.ship_to_postcode}
