@@ -149,12 +149,7 @@ const AuthPage = () => {
     <div className="min-h-screen bg-gradient-soft flex flex-col">
       <header className="container py-5">
         <Link to="/" className="inline-flex items-center gap-2">
-          <div className="h-9 w-9 rounded-xl bg-gradient-hero flex items-center justify-center text-primary-foreground font-display font-bold text-base">
-            PK
-          </div>
-          <span className="font-display font-bold text-xl tracking-tight">
-            PrelovedKicks
-          </span>
+          <img src="/logo.png" alt="PrelovedKicks" className="h-9 w-auto" />
         </Link>
       </header>
 
