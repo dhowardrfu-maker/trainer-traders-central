@@ -6,8 +6,7 @@ import { MobileTabBar } from "@/components/MobileTabBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,9 +33,6 @@ interface ProfileRow {
   user_id: string;
   username: string | null;
   display_name: string | null;
-  bio: string | null;
-  location: string | null;
-  avatar_url: string | null;
   full_name: string | null;
   address_line1: string | null;
   address_line2: string | null;
@@ -94,9 +90,6 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
-  const [bio, setBio] = useState("");
-  const [location, setLocation] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
   const [fullName, setFullName] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
@@ -130,7 +123,7 @@ const Profile = () => {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("user_id, username, display_name, bio, location, avatar_url, full_name, address_line1, address_line2, city, postcode, phone")
+        .select("user_id, username, display_name, full_name, address_line1, address_line2, city, postcode, phone")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
@@ -138,9 +131,6 @@ const Profile = () => {
         setProfile(data);
         setDisplayName(data.display_name ?? "");
         setUsername(data.username ?? "");
-        setBio(data.bio ?? "");
-        setLocation(data.location ?? "");
-        setAvatarUrl(data.avatar_url ?? "");
         setFullName(data.full_name ?? "");
         setAddressLine1(data.address_line1 ?? "");
         setAddressLine2(data.address_line2 ?? "");
@@ -283,9 +273,6 @@ const Profile = () => {
       .update({
         display_name: displayName.trim() || null,
         username: trimmedUsername || null,
-        bio: bio.trim() || null,
-        location: location.trim() || null,
-        avatar_url: avatarUrl.trim() || null,
         full_name: fullName.trim() || null,
         address_line1: addressLine1.trim() || null,
         address_line2: addressLine2.trim() || null,
@@ -326,7 +313,6 @@ const Profile = () => {
       <main className="container py-6 md:py-10 max-w-3xl">
         <div className="flex items-center gap-4 mb-6">
           <Avatar className="h-16 w-16 border border-border">
-            {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
             <AvatarFallback className="bg-primary-soft text-primary font-display font-bold text-xl">
               {initial}
             </AvatarFallback>
@@ -372,11 +358,6 @@ const Profile = () => {
                   <Label htmlFor="display_name">Display name</Label>
                   <Input id="display_name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="How should buyers see you?" maxLength={60} />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="lowercase, letters/numbers" maxLength={30} />
-                  <p className="text-xs text-muted-foreground">Lowercase letters, numbers and underscores only.</p>
-                </div>
 
                 <div className="border-t border-border pt-5">
                   <p className="text-sm font-semibold mb-4">Shipping address <span className="text-destructive">*</span></p>
@@ -412,28 +393,12 @@ const Profile = () => {
                 </div>
 
                 <div className="border-t border-border pt-5">
-                  <p className="text-sm font-semibold mb-4">Profile</p>
-                  <div className="grid gap-3">
-                    <div className="grid gap-2">
-                      <Label htmlFor="location">Location <span className="text-muted-foreground font-normal">(public)</span></Label>
-                      <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="London, UK" maxLength={80} />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="avatar">Avatar URL</Label>
-                      <Input id="avatar" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="bio">Bio</Label>
-                      <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell buyers about your collection…" rows={4} maxLength={300} />
-                    </div>
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveProfile} disabled={saving} className="rounded-full font-semibold">
+                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Save changes
+                    </Button>
                   </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button onClick={handleSaveProfile} disabled={saving} className="rounded-full font-semibold">
-                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Save changes
-                  </Button>
                 </div>
               </Card>
             )}
