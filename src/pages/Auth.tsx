@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
@@ -39,69 +40,151 @@ const AuthPage = () => {
   const [busy, setBusy] = useState(false);
 
   const [signInData, setSignInData] = useState({ email: "", password: "" });
-  const [signUpData, setSignUpData] = useState({ email: "", password: "", username: "" });
+  const [signUpData, setSignUpData] = useState({
+    email: "",
+    password: "",
+    username: "",
+  });
 
   useEffect(() => {
     if (!loading && user) navigate("/", { replace: true });
   }, [user, loading, navigate]);
 
+  // ======================
+  // SIGN IN
+  // ======================
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const parsed = signInSchema.safeParse(signInData);
-    if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
+
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
+
     setBusy(false);
-    if (error) { toast.error(error.message === "Invalid login credentials" ? "Wrong email or password" : error.message); return; }
+
+    if (error) {
+      toast.error(
+        error.message === "Invalid login credentials"
+          ? "Wrong email or password"
+          : error.message
+      );
+      return;
+    }
+
     toast.success("Welcome back 👟");
     navigate("/");
   };
 
+  // ======================
+  // SIGN UP
+  // ======================
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const parsed = signUpSchema.safeParse(signUpData);
-    if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
+
     setBusy(true);
-    const { data, error } = await supabase.auth.signUp({ email: parsed.data.email, password: parsed.data.password, options: { data: { username: parsed.data.username } } });
+
+    const { data, error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: {
+        data: { username: parsed.data.username },
+      },
+    });
+
     setBusy(false);
-    if (error) { toast.error(error.message.includes("already") ? "That email is already registered" : error.message); return; }
-    if (data.session) { toast.success("Account created 🎉"); navigate("/"); }
-    else { toast.success("Account created 🎉 Please sign in."); navigate("/auth"); }
+
+    if (error) {
+      toast.error(
+        error.message.includes("already")
+          ? "That email is already registered"
+          : error.message
+      );
+      return;
+    }
+
+    if (data.session) {
+      toast.success("Account created 🎉");
+      navigate("/");
+    } else {
+      toast.success("Account created 🎉 Please sign in.");
+      navigate("/auth");
+    }
   };
 
+  // ======================
+  // GOOGLE LOGIN
+  // ======================
   const handleGoogle = async () => {
     setBusy(true);
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: "https://www.prelovedkicks.co.uk" } });
-    if (error) { setBusy(false); toast.error("Couldn't start Google sign-in"); }
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: "https://www.prelovedkicks.co.uk",
+      },
+    });
+
+    if (error) {
+      setBusy(false);
+      toast.error("Couldn't start Google sign-in");
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-soft flex flex-col">
-      <header className="container py-6">
-        <Link to="/" className="inline-flex items-center gap-4">
+      <header className="container py-5">
+        <Link to="/" className="inline-flex items-center gap-3">
           <img src="/logo.png" alt="PrelovedKicks" className="h-24 w-auto" />
-          <span className="font-display font-bold text-5xl tracking-tight">
-            PreLoved<span className="text-primary">Kick's</span>
-          </span>
+          <span style={{ fontFamily: "'Bebas Neue', cursive" }} className="font-bold text-5xl tracking-wide">PreLoved<span className="text-primary">Kick's</span></span>
         </Link>
       </header>
 
       <main className="flex-1 flex items-center justify-center px-5 pb-16">
         <div className="w-full max-w-md bg-card rounded-3xl shadow-card p-8">
+
           <div className="text-center mb-6">
-            <h1 className="font-display font-bold text-3xl tracking-tight">Join the community</h1>
-            <p className="text-sm text-muted-foreground mt-1.5">Sign in to sell, save and message</p>
+            <h1 className="font-display font-bold text-3xl tracking-tight">
+              Join the community
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1.5">
+              Sign in to sell, save and message
+            </p>
           </div>
 
-          <Button type="button" variant="outline" className="w-full h-11 rounded-full font-semibold gap-2.5 bg-background" onClick={handleGoogle} disabled={busy}>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full h-11 rounded-full font-semibold gap-2.5 bg-background"
+            onClick={handleGoogle}
+            disabled={busy}
+          >
             <GoogleIcon />
             Continue with Google
           </Button>
 
           <div className="relative my-5">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-3 text-muted-foreground tracking-wider">or with email</span>
+              <span className="bg-card px-3 text-muted-foreground tracking-wider">
+                or with email
+              </span>
             </div>
           </div>
 
@@ -112,22 +195,60 @@ const AuthPage = () => {
             </TabsList>
 
             <TabsContent value="signin" className="mt-5 space-y-4">
-              <Input placeholder="Email" value={signInData.email} onChange={(e) => setSignInData({ ...signInData, email: e.target.value })} />
-              <Input type="password" placeholder="Password" value={signInData.password} onChange={(e) => setSignInData({ ...signInData, password: e.target.value })} />
+              <Input
+                placeholder="Email"
+                value={signInData.email}
+                onChange={(e) =>
+                  setSignInData({ ...signInData, email: e.target.value })
+                }
+              />
+
+              <Input
+                type="password"
+                placeholder="Password"
+                value={signInData.password}
+                onChange={(e) =>
+                  setSignInData({ ...signInData, password: e.target.value })
+                }
+              />
+
               <Button onClick={handleSignIn} className="w-full" disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
               </Button>
             </TabsContent>
 
             <TabsContent value="signup" className="mt-5 space-y-4">
-              <Input placeholder="Username" value={signUpData.username} onChange={(e) => setSignUpData({ ...signUpData, username: e.target.value })} />
-              <Input placeholder="Email" value={signUpData.email} onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })} />
-              <Input type="password" placeholder="Password" value={signUpData.password} onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })} />
+              <Input
+                placeholder="Username"
+                value={signUpData.username}
+                onChange={(e) =>
+                  setSignUpData({ ...signUpData, username: e.target.value })
+                }
+              />
+
+              <Input
+                placeholder="Email"
+                value={signUpData.email}
+                onChange={(e) =>
+                  setSignUpData({ ...signUpData, email: e.target.value })
+                }
+              />
+
+              <Input
+                type="password"
+                placeholder="Password"
+                value={signUpData.password}
+                onChange={(e) =>
+                  setSignUpData({ ...signUpData, password: e.target.value })
+                }
+              />
+
               <Button onClick={handleSignUp} className="w-full" disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
               </Button>
             </TabsContent>
           </Tabs>
+
         </div>
       </main>
     </div>
