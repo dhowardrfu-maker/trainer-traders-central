@@ -138,6 +138,8 @@
 #stripe-badge-iframe,
 [id^="stripe-badge"],
 .StripeElement--webkit-autofill ~ *[class*="stripe"],
-a[href*="stripe.com"][target="_blank"]:not([class]) {
+a[href*="stripe.com"][target="_blank"]:not([class]),
+.LcvUkwqF__Container,
+.bcaESEAW__FloatingActionButton-wrapper {
   display: none !important;
 }
