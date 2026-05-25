@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, Loader2, Package, Printer, Truck } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Package, Truck } from "lucide-react";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { Button } from "@/components/ui/button";
@@ -167,16 +167,16 @@ const ShippingLabel = () => {
                       Tracking: {trackingNumber}
                     </p>
                   )}
+                  {labelUrl.startsWith("data:application/pdf") && (
+                    <iframe
+                      src={labelUrl}
+                      className="w-full rounded-lg border border-border"
+                      style={{ height: "500px" }}
+                      title="Shipping label"
+                    />
+                  )}
                   <Button
                     className="w-full rounded-full font-semibold"
-                    onClick={() => openLabel(labelUrl)}
-                  >
-                    <Printer className="h-4 w-4 mr-2" />
-                    Open &amp; print label
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-full"
                     onClick={() => openLabel(labelUrl)}
                   >
                     <Download className="h-4 w-4 mr-2" />
