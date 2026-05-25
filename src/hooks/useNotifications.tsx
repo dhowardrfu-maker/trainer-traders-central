@@ -9,7 +9,8 @@ export interface Notification {
   title: string;
   body: string | null;
   link: string | null;
-  read_at: string | null;
+  read: boolean | null;
+  read_at?: string | null;
   created_at: string;
   data: Record<string, unknown>;
 }
@@ -31,7 +32,7 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     if (!user) { setNotifications([]); return; }
     const { data } = await supabase
       .from("notifications")
-      .select("id, type, title, body, link, read_at, created_at, data")
+      .select("id, type, title, body, link, read, created_at, data")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(40);
@@ -58,18 +59,17 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
   }, [user]);
 
   const markRead = async (id: string) => {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
-    await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+    await supabase.from("notifications").update({ read: true }).eq("id", id);
   };
 
   const markAllRead = async () => {
     if (!user) return;
-    const now = new Date().toISOString();
-    setNotifications((prev) => prev.map((n) => n.read_at ? n : { ...n, read_at: now }));
-    await supabase.from("notifications").update({ read_at: now }).eq("user_id", user.id).is("read_at", null);
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    await supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false);
   };
 
-  const unreadCount = notifications.filter((n) => !n.read_at).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <NotificationsContext.Provider value={{ notifications, unreadCount, markAllRead, markRead }}>

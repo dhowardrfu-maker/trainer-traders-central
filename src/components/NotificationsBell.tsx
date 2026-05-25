@@ -48,7 +48,7 @@ export const NotificationsBell = () => {
                 <button
                   className={cn(
                     "w-full text-left px-4 py-3 hover:bg-muted/60 transition-colors block",
-                    !n.read_at && "bg-primary-soft/30"
+                    !n.read && "bg-primary-soft/30"
                   )}
                   onClick={() => {
                     void markRead(n.id);
