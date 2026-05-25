@@ -76,7 +76,11 @@ const ShippingLabel = () => {
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       const blob = new Blob([bytes], { type: "application/pdf" });
       const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, "_blank");
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = "evri-shipping-label.pdf";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } else {
       window.open(url, "_blank");
     }
