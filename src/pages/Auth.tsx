@@ -150,7 +150,7 @@ const AuthPage = () => {
       <header className="container py-5">
         <Link to="/" className="inline-flex items-center gap-3">
           <img src="/logo.png" alt="PrelovedKicks" className="h-24 w-auto" />
-          <span style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 900 }} className="text-5xl tracking-tight">PreLoved<span className="text-primary">Kick's</span></span>
+          <span style={{ fontFamily: "'Dancing Script', cursive", fontWeight: 700 }} className="text-6xl">PreLoved<span className="text-primary">Kick's</span></span>
         </Link>
       </header>
 
