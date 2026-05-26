@@ -56,7 +56,7 @@ export const Hero = () => {
         <div className="hidden md:block absolute right-0 top-0 bottom-0 w-[48%] pointer-events-none">
           <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent z-10" />
           <img
-            src="https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=900&q=80&auto=format&fit=crop"
+            src="https://jwvybofahjxtldjjjdpo.supabase.co/storage/v1/object/public/public-assets/Website%20Banner.png"
             alt="Sneakers"
             className="w-full h-full object-cover object-center"
           />
