@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CreditCard, Heart, Loader2, Package, Pencil, Plus, Settings, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
+import { CheckCircle2, CreditCard, Heart, Loader2, Package, Pencil, Plus, Settings, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
@@ -44,6 +44,8 @@ interface ProfileRow {
   city: string | null;
   postcode: string | null;
   phone: string | null;
+  stripe_connect_id: string | null;
+  stripe_connect_enabled: boolean | null;
 }
 
 interface MyListing {
@@ -104,6 +106,7 @@ const Profile = () => {
   const [city, setCity] = useState("");
   const [postcode, setPostcode] = useState("");
   const [phone, setPhone] = useState("");
+  const [connectLoading, setConnectLoading] = useState(false);
 
   const [listings, setListings] = useState<MyListing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
@@ -125,13 +128,33 @@ const Profile = () => {
     if (tab !== initialTab) setSearchParams({ tab }, { replace: true });
   }, [tab, initialTab, setSearchParams]);
 
+  // Handle Stripe Connect return
+  useEffect(() => {
+    const connectParam = searchParams.get("connect");
+    if (connectParam === "success") {
+      toast.success("Payout account connected — you're ready to receive payments!");
+      // Check and update connect status
+      if (user) {
+        supabase.functions.invoke("get-connect-status").then(({ data }) => {
+          if (data?.enabled) {
+            setProfile((prev) => prev ? { ...prev, stripe_connect_enabled: true } : prev);
+          }
+        });
+      }
+      setSearchParams({ tab: "payments" }, { replace: true });
+    } else if (connectParam === "refresh") {
+      toast.error("Payout setup incomplete — please try again.");
+      setSearchParams({ tab: "payments" }, { replace: true });
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("user_id, username, display_name, bio, location, avatar_url, full_name, address_line1, address_line2, city, postcode, phone")
+        .select("user_id, username, display_name, bio, location, avatar_url, full_name, address_line1, address_line2, city, postcode, phone, stripe_connect_id, stripe_connect_enabled")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
@@ -304,6 +327,17 @@ const Profile = () => {
     toast.success("Listing deleted");
   };
 
+  const handleConnectPayout = async () => {
+    setConnectLoading(true);
+    const { data, error } = await supabase.functions.invoke("create-connect-account");
+    setConnectLoading(false);
+    if (error || !data?.url) {
+      toast.error("Couldn't start payout setup — please try again");
+      return;
+    }
+    window.location.href = data.url;
+  };
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -313,6 +347,8 @@ const Profile = () => {
   }
 
   const initial = (displayName || username || user.email || "U")[0].toUpperCase();
+  const connectEnabled = profile?.stripe_connect_enabled === true;
+  const connectStarted = !!profile?.stripe_connect_id;
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -621,10 +657,31 @@ const Profile = () => {
             <Card className="p-6 rounded-2xl space-y-5">
               <h2 className="font-display font-bold text-lg">Payments</h2>
 
-              <div className="grid gap-2">
-                <p className="font-semibold text-sm">Seller payouts</p>
-                <p className="text-sm text-muted-foreground mb-1">Once Stripe Connect is set up, your earnings will be paid directly to your bank account after delivery is confirmed.</p>
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full w-fit">Stripe Connect coming soon</span>
+              {/* Seller payouts */}
+              <div className="rounded-xl border border-border p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-sm">Seller payouts</p>
+                  {connectEnabled && (
+                    <span className="inline-flex items-center gap-1 text-xs text-green-600 font-semibold">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Connected
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {connectEnabled
+                    ? "Your bank account is connected. You'll receive payouts automatically after delivery is confirmed."
+                    : "Connect your bank account to receive payouts when your items are delivered. Takes about 2 minutes."}
+                </p>
+                {!connectEnabled && (
+                  <Button
+                    className="rounded-full font-semibold"
+                    onClick={handleConnectPayout}
+                    disabled={connectLoading}
+                  >
+                    {connectLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {connectStarted ? "Continue payout setup" : "Set up payouts"}
+                  </Button>
+                )}
               </div>
 
               <div className="border-t border-border pt-5">
