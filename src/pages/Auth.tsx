@@ -21,7 +21,7 @@ const signUpSchema = z.object({
     .string()
     .min(3, "At least 3 characters")
     .max(20, "Max 20 characters")
-    .regex(/^[a-zA-Z0-9_]+$/, "Letters, numbers and _ only"),
+    .regex(/^[a-zA-Z0-9_]+$/, "No spaces allowed — use letters, numbers and _ only"),
 });
 
 const GoogleIcon = () => (
@@ -156,8 +156,8 @@ const AuthPage = () => {
     }
 
     if (data.session) {
-      toast.success("Account created 🎉");
-      navigate("/complete-profile");
+      toast.success("Account created 🎉 Welcome to PrelovedKicks!");
+      navigate("/");
     } else {
       toast.success("Account created 🎉 Please sign in.");
       navigate("/auth");
@@ -287,7 +287,6 @@ const AuthPage = () => {
                   setSignInData({ ...signInData, email: e.target.value })
                 }
               />
-
               <Input
                 type="password"
                 placeholder="Password"
@@ -296,7 +295,6 @@ const AuthPage = () => {
                   setSignInData({ ...signInData, password: e.target.value })
                 }
               />
-
               <Button onClick={handleSignIn} className="w-full" disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
               </Button>
@@ -310,7 +308,9 @@ const AuthPage = () => {
                   setSignUpData({ ...signUpData, username: e.target.value })
                 }
               />
-
+              <p className="text-xs text-muted-foreground -mt-2">
+                No spaces — letters, numbers and _ only. E.g. sneaker_head92
+              </p>
               <Input
                 placeholder="Email"
                 value={signUpData.email}
@@ -318,7 +318,6 @@ const AuthPage = () => {
                   setSignUpData({ ...signUpData, email: e.target.value })
                 }
               />
-
               <Input
                 type="password"
                 placeholder="Password"
@@ -327,7 +326,6 @@ const AuthPage = () => {
                   setSignUpData({ ...signUpData, password: e.target.value })
                 }
               />
-
               <Button onClick={handleSignUp} className="w-full" disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
               </Button>
