@@ -157,7 +157,7 @@ const AuthPage = () => {
 
     if (data.session) {
       toast.success("Account created 🎉");
-      navigate("/");
+      navigate("/complete-profile");
     } else {
       toast.success("Account created 🎉 Please sign in.");
       navigate("/auth");

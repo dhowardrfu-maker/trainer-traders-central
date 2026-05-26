@@ -8,6 +8,7 @@ import { FavouritesProvider } from "@/hooks/useFavourites";
 import { NotificationsProvider } from "@/hooks/useNotifications";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
+import CompleteProfile from "./pages/CompleteProfile.tsx";
 import Sell from "./pages/Sell.tsx";
 import ListingDetail from "./pages/ListingDetail.tsx";
 import Checkout from "./pages/Checkout.tsx";
@@ -38,6 +39,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/complete-profile" element={<CompleteProfile />} />
                 <Route path="/sell" element={<Sell />} />
                 <Route path="/listing/:id" element={<ListingDetail />} />
                 <Route path="/checkout/:id" element={<Checkout />} />
