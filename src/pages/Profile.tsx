@@ -6,7 +6,8 @@ import { MobileTabBar } from "@/components/MobileTabBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,11 +22,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Heart, Loader2, Package, Pencil, Plus, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
+import { CreditCard, Heart, Loader2, Package, Pencil, Plus, Settings, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
 import { supabase } from "@/integrations/supabase/client";
+import { carrierLabel } from "@/data/carriers";
 import { ProductCard } from "@/components/ProductCard";
 import { mapDbListing, type Listing } from "@/data/listings";
 
@@ -33,6 +35,9 @@ interface ProfileRow {
   user_id: string;
   username: string | null;
   display_name: string | null;
+  bio: string | null;
+  location: string | null;
+  avatar_url: string | null;
   full_name: string | null;
   address_line1: string | null;
   address_line2: string | null;
@@ -56,12 +61,11 @@ interface OrderRow {
   listing_id: string;
   buyer_id: string;
   seller_id: string;
-  carrier: string;
+  carrier: "royal_mail";
   service_label: string;
   status: string;
   total_pence: number;
   tracking_code: string;
-  sendcloud_tracking_number: string | null;
   created_at: string;
   ship_to_name: string;
   ship_to_line1?: string;
@@ -91,6 +95,9 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [location, setLocation] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [fullName, setFullName] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
@@ -124,7 +131,7 @@ const Profile = () => {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("user_id, username, display_name, full_name, address_line1, address_line2, city, postcode, phone")
+        .select("user_id, username, display_name, bio, location, avatar_url, full_name, address_line1, address_line2, city, postcode, phone")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
@@ -132,6 +139,9 @@ const Profile = () => {
         setProfile(data);
         setDisplayName(data.display_name ?? "");
         setUsername(data.username ?? "");
+        setBio(data.bio ?? "");
+        setLocation(data.location ?? "");
+        setAvatarUrl(data.avatar_url ?? "");
         setFullName(data.full_name ?? "");
         setAddressLine1(data.address_line1 ?? "");
         setAddressLine2(data.address_line2 ?? "");
@@ -144,7 +154,6 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // FIX 1 (Ln 149): cast id to string so MyListing.id (string) matches Supabase number
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -169,7 +178,6 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // FIX 2 (Ln 193): cast order ids to string via toOrderRow helper
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -177,7 +185,7 @@ const Profile = () => {
       const [buyRes, sellRes] = await Promise.all([
         supabase
           .from("orders")
-          .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, sendcloud_tracking_number, created_at, ship_to_name, ship_to_line1, ship_to_line2, ship_to_city, ship_to_postcode")
+          .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_line1, ship_to_line2, ship_to_city, ship_to_postcode")
           .eq("buyer_id", user.id),
         supabase.rpc("get_my_sales"),
       ]);
@@ -194,7 +202,6 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // FIX 3 (Ln 193 listing_id) & FIX 4 (Ln 265): cast offer ids to string, pass number[] to .in()
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -208,7 +215,6 @@ const Profile = () => {
       const listingIds = Array.from(new Set(rows.map((r) => r.listing_id)));
       let listingMap: Record<string, { title: string; photos: string[] }> = {};
       if (listingIds.length) {
-        // listing_id from offers is already the correct type for .in()
         const { data: ls } = await supabase.from("listings").select("id, title, photos").in("id", listingIds);
         listingMap = Object.fromEntries((ls ?? []).map((l) => [String(l.id), { title: l.title as string, photos: (l.photos as unknown) as string[] }]));
       }
@@ -224,7 +230,6 @@ const Profile = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-  // FIX 5 (Ln 216): favIds are strings, Supabase .in() on numeric id needs number[]
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -263,8 +268,6 @@ const Profile = () => {
   const purchases = useMemo(() => orders.filter((o) => o.buyer_id === user?.id), [orders, user]);
   const sales = useMemo(() => orders.filter((o) => o.seller_id === user?.id), [orders, user]);
 
-  const isProfileComplete = !!(fullName && addressLine1 && city && postcode && phone);
-
   const handleSaveProfile = async () => {
     if (!user) return;
     setSaving(true);
@@ -274,6 +277,9 @@ const Profile = () => {
       .update({
         display_name: displayName.trim() || null,
         username: trimmedUsername || null,
+        bio: bio.trim() || null,
+        location: location.trim() || null,
+        avatar_url: avatarUrl.trim() || null,
         full_name: fullName.trim() || null,
         address_line1: addressLine1.trim() || null,
         address_line2: addressLine2.trim() || null,
@@ -314,6 +320,7 @@ const Profile = () => {
       <main className="container py-6 md:py-10 max-w-3xl">
         <div className="flex items-center gap-4 mb-6">
           <Avatar className="h-16 w-16 border border-border">
+            {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
             <AvatarFallback className="bg-primary-soft text-primary font-display font-bold text-xl">
               {initial}
             </AvatarFallback>
@@ -329,7 +336,7 @@ const Profile = () => {
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid grid-cols-5 w-full mb-6">
+          <TabsList className="grid grid-cols-7 w-full mb-6">
             <TabsTrigger value="profile" className="gap-1.5">
               <UserIcon className="h-4 w-4" /> <span className="hidden sm:inline">Profile</span>
             </TabsTrigger>
@@ -345,6 +352,12 @@ const Profile = () => {
             <TabsTrigger value="orders" className="gap-1.5">
               <Package className="h-4 w-4" /> <span className="hidden sm:inline">Orders</span>
             </TabsTrigger>
+            <TabsTrigger value="account" className="gap-1.5">
+              <Settings className="h-4 w-4" /> <span className="hidden sm:inline">Account</span>
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="gap-1.5">
+              <CreditCard className="h-4 w-4" /> <span className="hidden sm:inline">Payments</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* PROFILE */}
@@ -358,6 +371,20 @@ const Profile = () => {
                 <div className="grid gap-2">
                   <Label htmlFor="display_name">Display name</Label>
                   <Input id="display_name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="How should buyers see you?" maxLength={60} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="lowercase, letters/numbers" maxLength={30} />
+                  <p className="text-xs text-muted-foreground">Lowercase letters, numbers and underscores only.</p>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="location">Location <span className="text-muted-foreground font-normal">(public)</span></Label>
+                  <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="London, UK" maxLength={80} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="bio">About you <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell buyers about your collection…" rows={4} maxLength={300} />
+                  <p className="text-xs text-muted-foreground text-right">{bio.length}/300</p>
                 </div>
 
                 <div className="border-t border-border pt-5">
@@ -393,13 +420,11 @@ const Profile = () => {
                   </div>
                 </div>
 
-                <div className="border-t border-border pt-5">
-                  <div className="flex justify-end">
-                    <Button onClick={handleSaveProfile} disabled={saving} className="rounded-full font-semibold">
-                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Save changes
-                    </Button>
-                  </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveProfile} disabled={saving} className="rounded-full font-semibold">
+                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Save changes
+                  </Button>
                 </div>
               </Card>
             )}
@@ -411,11 +436,8 @@ const Profile = () => {
               <p className="text-sm text-muted-foreground">
                 {listingsLoading ? "Loading…" : `${listings.length} listing${listings.length === 1 ? "" : "s"}`}
               </p>
-              {!isProfileComplete && (
-                <p className="text-xs text-destructive">Complete your profile (address & phone) before listing.</p>
-              )}
-              <Button size="sm" className="rounded-full gap-1.5 font-semibold" onClick={() => isProfileComplete ? navigate("/sell") : navigate("/profile?tab=profile")} variant={isProfileComplete ? "default" : "outline"}>
-                <Plus className="h-4 w-4" /> {isProfileComplete ? "New listing" : "Complete profile first"}
+              <Button size="sm" className="rounded-full gap-1.5 font-semibold" onClick={() => navigate("/sell")}>
+                <Plus className="h-4 w-4" /> New listing
               </Button>
             </div>
             {listingsLoading ? (
@@ -447,12 +469,9 @@ const Profile = () => {
                       </div>
                       <p className="text-sm text-muted-foreground truncate">{l.brand} · {formatGbp(l.price_pence)}</p>
                     </div>
-                    {l.status !== "sold" && (
                     <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Edit listing">
                       <Link to={`/listing/${l.id}/edit`}><Pencil className="h-4 w-4" /></Link>
                     </Button>
-                    )}
-                    {l.status !== "sold" && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive shrink-0" aria-label="Delete listing">
@@ -470,7 +489,6 @@ const Profile = () => {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                    )}
                   </Card>
                 ))}
               </div>
@@ -553,6 +571,79 @@ const Profile = () => {
               </div>
             )}
           </TabsContent>
+
+          {/* ACCOUNT SETTINGS */}
+          <TabsContent value="account">
+            <div className="space-y-4">
+              <Card className="p-6 rounded-2xl space-y-5">
+                <h2 className="font-display font-bold text-lg">Account settings</h2>
+
+                <div className="grid gap-2">
+                  <Label>Email address</Label>
+                  <div className="flex items-center gap-2">
+                    <Input value={user?.email ?? ""} disabled className="bg-muted" />
+                    <span className="text-xs text-green-600 font-semibold whitespace-nowrap">✓ Verified</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-5 grid gap-2">
+                  <Label>Change password</Label>
+                  <p className="text-sm text-muted-foreground">We'll send a password reset link to your email address.</p>
+                  <Button
+                    variant="outline"
+                    className="rounded-full w-fit"
+                    onClick={async () => {
+                      if (!user?.email) return;
+                      await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: "https://www.prelovedkicks.co.uk/auth" });
+                      toast.success("Password reset email sent");
+                    }}
+                  >
+                    Send reset email
+                  </Button>
+                </div>
+
+                <div className="border-t border-border pt-5 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-sm">Holiday mode</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Pause your listings while you're away. Buyers won't be able to purchase.</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">Coming soon</span>
+                </div>
+
+                <div className="border-t border-border pt-5">
+                  <p className="font-semibold text-sm text-destructive">Danger zone</p>
+                  <p className="text-xs text-muted-foreground mt-1 mb-3">Permanently delete your account and all your data.</p>
+                  <Button variant="outline" className="rounded-full text-destructive border-destructive hover:bg-destructive hover:text-white" onClick={() => toast.error("Please contact support@prelovedkicks.co.uk to delete your account.")}>
+                    Delete account
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* PAYMENTS */}
+          <TabsContent value="payments">
+            <Card className="p-6 rounded-2xl space-y-5">
+              <h2 className="font-display font-bold text-lg">Payments</h2>
+
+              <div className="rounded-xl border border-border p-4 bg-muted/40">
+                <p className="font-semibold text-sm mb-1">Buyer protection</p>
+                <p className="text-sm text-muted-foreground">All purchases are protected by our 4% buyer protection fee. You'll never lose money on a fraudulent sale.</p>
+              </div>
+
+              <div className="border-t border-border pt-5">
+                <p className="font-semibold text-sm mb-1">Seller payouts</p>
+                <p className="text-sm text-muted-foreground mb-3">Once Stripe Connect is set up, your earnings will be paid directly to your bank account after delivery is confirmed.</p>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">Stripe Connect coming soon</span>
+              </div>
+
+              <div className="border-t border-border pt-5">
+                <p className="font-semibold text-sm mb-1">Payment methods</p>
+                <p className="text-sm text-muted-foreground">Accepted: Visa, Mastercard, Amex, Google Pay, Apple Pay, Klarna, Amazon Pay, Revolut Pay.</p>
+              </div>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </main>
       <MobileTabBar />
@@ -585,16 +676,14 @@ const OrderSection = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm">
-                    Evri Standard Delivery
+                    {carrierLabel(o.carrier)} · {o.service_label}
                   </span>
                   <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wide">
                     {statusLabel(o.status)}
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
-                  {o.sendcloud_tracking_number && (
-                    <p className="text-xs font-mono text-muted-foreground">{o.sendcloud_tracking_number}</p>
-                  )}
+                  {o.tracking_code}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1 truncate">
                   To {o.ship_to_name} · {o.ship_to_city} {o.ship_to_postcode}
@@ -613,6 +702,12 @@ const OrderSection = ({
               </div>
               <div className="text-right shrink-0">
                 <p className="font-display font-bold">{formatGbp(o.total_pence)}</p>
+                <Link
+                  to={`/order/${o.id}`}
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-1"
+                >
+                  <Package className="h-3 w-3" /> Label
+                </Link>
               </div>
             </div>
           </Card>
