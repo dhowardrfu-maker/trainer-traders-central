@@ -167,7 +167,7 @@ const Sell = () => {
         price_pence: pricePence,
         postage_pence: postagePence,
         description: d.description || null,
-        photos: photoUrls,
+        photos: photoUrls as unknown as string,
         status: "active",
       });
       if (error) throw error;
