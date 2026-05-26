@@ -14,6 +14,13 @@ import { ukToEu, BRANDS, CONDITIONS, GENDERS, UK_SIZES } from "@/data/listing-op
 const MAX_PHOTOS = 6;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
+const POSTAGE_OPTIONS = [
+  { label: "Small parcel — up to 2kg (£3.45)", value: 3.45 },
+  { label: "Medium parcel — up to 5kg (£4.49)", value: 4.49 },
+  { label: "Large parcel — up to 10kg (£5.99)", value: 5.99 },
+  { label: "Extra large parcel — up to 15kg (£7.99)", value: 7.99 },
+];
+
 const schema = z.object({
   title: z.string().min(3, "Title required"),
   brand: z.string().min(1, "Brand required"),
@@ -60,13 +67,11 @@ const Sell = () => {
 
   const onAddPhotos = (files: FileList | null) => {
     if (!files) return;
-
     const incoming = Array.from(files).filter((f) => {
       if (!f.type.startsWith("image/")) return false;
       if (f.size > MAX_FILE_BYTES) return false;
       return true;
     });
-
     setPhotos((prev) => [...prev, ...incoming].slice(0, MAX_PHOTOS));
   };
 
@@ -75,13 +80,10 @@ const Sell = () => {
 
   const uploadPhotos = async (): Promise<string[]> => {
     if (!user) throw new Error("Not signed in");
-
     const paths: string[] = [];
-
     for (const file of photos) {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-
       const { error: upErr } = await supabase.storage
         .from("listing-photos")
         .upload(path, file, {
@@ -89,16 +91,13 @@ const Sell = () => {
           upsert: false,
           contentType: file.type || "image/jpeg",
         });
-
       if (upErr) {
         console.error("[Sell] upload error", upErr);
         throw new Error(`Photo upload failed: ${upErr.message}`);
       }
-
       const { data: signed } = await supabase.storage
         .from("listing-photos")
         .createSignedUrl(path, 300);
-
       if (signed?.signedUrl) {
         try {
           const { data: mod } = await supabase.functions.invoke("moderate-image", {
@@ -117,22 +116,18 @@ const Sell = () => {
           console.warn("[Sell] moderation skipped", modErr);
         }
       }
-
       paths.push(path);
     }
-
     return paths;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
     if (photos.length === 0) {
       toast.error("Add at least one photo");
       return;
     }
-
     const cleaned = {
       title: form.title.trim(),
       brand: form.brand,
@@ -145,26 +140,20 @@ const Sell = () => {
       postage: typeof form.postage === "number" ? Number(form.postage) : undefined,
       description: form.description.trim() || undefined,
     };
-
     const parsed = schema.safeParse(cleaned);
-
     if (!parsed.success) {
       console.log(parsed.error.issues);
       toast.error(parsed.error.issues.map((i) => i.message).join(", "));
       return;
     }
-
     setSubmitting(true);
-
     try {
       const photoUrls = await uploadPhotos();
       const d = parsed.data;
-
       const sizeUk = Number(d.size_uk);
       const sizeEu = Number(ukToEu(sizeUk));
       const pricePence = Math.round(Number(d.price) * 100);
       const postagePence = Math.round(Number(d.postage) * 100);
-
       const { error } = await supabase.from("listings").insert({
         seller_id: user.id,
         title: d.title,
@@ -181,9 +170,7 @@ const Sell = () => {
         photos: photoUrls,
         status: "active",
       });
-
       if (error) throw error;
-
       toast.success("Listing posted ✨");
       navigate("/");
     } catch (err) {
@@ -196,7 +183,6 @@ const Sell = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur border-b">
         <div className="container h-16 flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -218,7 +204,6 @@ const Sell = () => {
               </button>
             </div>
           ))}
-
           {photos.length < MAX_PHOTOS && (
             <label className="border rounded-xl flex items-center justify-center">
               <Camera />
@@ -310,28 +295,34 @@ const Sell = () => {
           type="number"
           placeholder="Price (£)"
           value={form.price}
-          onChange={(e) =>
-            setForm({ ...form, price: Number(e.target.value) })
-          }
+          onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
         />
 
         {/* POSTAGE */}
-        <Input
-          type="number"
-          placeholder="Postage cost (£)"
-          value={form.postage}
-          onChange={(e) =>
-            setForm({ ...form, postage: Number(e.target.value) })
-          }
-        />
+        <Select
+          value={form.postage ? String(form.postage) : ""}
+          onValueChange={(v) => setForm({ ...form, postage: Number(v) })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Postage (Evri)" />
+          </SelectTrigger>
+          <SelectContent>
+            {POSTAGE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={String(o.value)}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground -mt-4">
+          Shipped via Evri drop-off. Buyer pays postage at checkout.
+        </p>
 
         {/* DESCRIPTION */}
         <Textarea
           placeholder="Description (optional)"
           value={form.description}
-          onChange={(e) =>
-            setForm({ ...form, description: e.target.value })
-          }
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
 
         <Button type="submit" disabled={submitting} className="w-full">
