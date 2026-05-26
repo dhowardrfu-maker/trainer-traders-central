@@ -50,7 +50,14 @@ Deno.serve(async (req) => {
     const protection_pence = Math.round(item_pence * BUYER_PROTECTION_RATE);
     const total_pence = item_pence + protection_pence + postage_pence;
 
-    const paymentIntent = await stripe.paymentIntents.create({
+    // Check if seller has a verified Connect account
+    const { data: sellerProfile } = await supabase
+      .from("profiles")
+      .select("stripe_connect_id, stripe_connect_enabled")
+      .eq("user_id", listing.seller_id)
+      .maybeSingle();
+
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: total_pence,
       currency: "gbp",
       automatic_payment_methods: { enabled: true },
@@ -65,9 +72,27 @@ Deno.serve(async (req) => {
         offer_id: offer_id ?? "",
       },
       description: `PrelovedKicks — ${listing.brand} ${listing.title}`,
-    });
+    };
 
-    return json({ client_secret: paymentIntent.client_secret, item_pence, protection_pence, postage_pence, total_pence });
+    // If seller has a verified Connect account, route funds via Connect
+    if (sellerProfile?.stripe_connect_id && sellerProfile?.stripe_connect_enabled) {
+      const platform_fee = protection_pence + postage_pence;
+      paymentIntentParams.application_fee_amount = platform_fee;
+      paymentIntentParams.transfer_data = {
+        destination: sellerProfile.stripe_connect_id,
+      };
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+
+    return json({
+      client_secret: paymentIntent.client_secret,
+      payment_intent_id: paymentIntent.id,
+      item_pence,
+      protection_pence,
+      postage_pence,
+      total_pence,
+    });
   } catch (e) {
     console.error(e);
     return json({ error: "Internal error" }, 500);
