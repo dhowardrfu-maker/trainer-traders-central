@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
@@ -38,6 +37,9 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [isRecovery, setIsRecovery] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [signInData, setSignInData] = useState({ email: "", password: "" });
   const [signUpData, setSignUpData] = useState({
@@ -46,9 +48,45 @@ const AuthPage = () => {
     username: "",
   });
 
+  // Detect Supabase password recovery session
   useEffect(() => {
-    if (!loading && user) navigate("/", { replace: true });
-  }, [user, loading, navigate]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsRecovery(true);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user && !isRecovery) navigate("/", { replace: true });
+  }, [user, loading, navigate, isRecovery]);
+
+  // ======================
+  // RESET PASSWORD
+  // ======================
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords don't match");
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Password updated — please sign in");
+    setIsRecovery(false);
+    await supabase.auth.signOut();
+    navigate("/auth", { replace: true });
+  };
 
   // ======================
   // SIGN IN
@@ -144,6 +182,53 @@ const AuthPage = () => {
       toast.error("Couldn't start Google sign-in");
     }
   };
+
+  // ======================
+  // RECOVERY SCREEN
+  // ======================
+  if (isRecovery) {
+    return (
+      <div className="min-h-screen bg-gradient-soft flex flex-col">
+        <header className="container py-5">
+          <Link to="/" className="inline-flex items-center gap-3">
+            <img src="/logo.png" alt="PrelovedKicks" className="h-24 w-auto" />
+            <span className="font-display font-bold text-5xl tracking-tight">PreLoved<span className="text-primary">Kick's</span></span>
+          </Link>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center px-5 pb-16">
+          <div className="w-full max-w-md bg-card rounded-3xl shadow-card p-8">
+            <div className="text-center mb-6">
+              <h1 className="font-display font-bold text-3xl tracking-tight">
+                Choose a new password
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1.5">
+                Enter a new password for your PrelovedKicks account.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <Input
+                type="password"
+                placeholder="New password (min 8 characters)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <Input
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+              <Button onClick={handleResetPassword} className="w-full" disabled={busy}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update password"}
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-soft flex flex-col">
