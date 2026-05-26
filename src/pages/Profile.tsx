@@ -373,11 +373,6 @@ const Profile = () => {
                   <Input id="display_name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="How should buyers see you?" maxLength={60} />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="lowercase, letters/numbers" maxLength={30} />
-                  <p className="text-xs text-muted-foreground">Lowercase letters, numbers and underscores only.</p>
-                </div>
-                <div className="grid gap-2">
                   <Label htmlFor="location">Location <span className="text-muted-foreground font-normal">(public)</span></Label>
                   <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="London, UK" maxLength={80} />
                 </div>
@@ -626,15 +621,10 @@ const Profile = () => {
             <Card className="p-6 rounded-2xl space-y-5">
               <h2 className="font-display font-bold text-lg">Payments</h2>
 
-              <div className="rounded-xl border border-border p-4 bg-muted/40">
-                <p className="font-semibold text-sm mb-1">Buyer protection</p>
-                <p className="text-sm text-muted-foreground">All purchases are protected by our 4% buyer protection fee. You'll never lose money on a fraudulent sale.</p>
-              </div>
-
-              <div className="border-t border-border pt-5">
-                <p className="font-semibold text-sm mb-1">Seller payouts</p>
-                <p className="text-sm text-muted-foreground mb-3">Once Stripe Connect is set up, your earnings will be paid directly to your bank account after delivery is confirmed.</p>
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">Stripe Connect coming soon</span>
+              <div className="grid gap-2">
+                <p className="font-semibold text-sm">Seller payouts</p>
+                <p className="text-sm text-muted-foreground mb-1">Once Stripe Connect is set up, your earnings will be paid directly to your bank account after delivery is confirmed.</p>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full w-fit">Stripe Connect coming soon</span>
               </div>
 
               <div className="border-t border-border pt-5">
