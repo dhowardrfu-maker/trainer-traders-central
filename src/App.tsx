@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { FavouritesProvider } from "@/hooks/useFavourites";
 import { NotificationsProvider } from "@/hooks/useNotifications";
+import { CookieBanner } from "@/components/CookieBanner";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Admin from "./pages/Admin.tsx";
@@ -59,6 +60,7 @@ const App = () => (
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <CookieBanner />
             </FavouritesProvider>
           </NotificationsProvider>
         </AuthProvider>
