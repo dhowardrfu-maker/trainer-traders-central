@@ -37,6 +37,13 @@ export const CATEGORIES = [
   { label: "adidas" },
   { label: "Jordan" },
   { label: "New Balance" },
+  { label: "Yeezy" },
+  { label: "Asics" },
+  { label: "Converse" },
+  { label: "Vans" },
+  { label: "Puma" },
+  { label: "Reebok" },
+  { label: "Other" },
 ];
 
 const conditionMap: Record<string, Condition> = {
@@ -80,9 +87,7 @@ interface DbListingRow {
 // Handles: array, JSON string array, plain string, null
 const normalisePhotos = (photos: unknown): string[] => {
   if (!photos) return [];
-  // Already an array
   if (Array.isArray(photos)) return photos.filter(Boolean).map(String);
-  // String — try to JSON parse first
   if (typeof photos === "string") {
     const trimmed = photos.trim();
     if (trimmed.startsWith("[")) {
@@ -93,7 +98,6 @@ const normalisePhotos = (photos: unknown): string[] => {
         // fall through to treat as single URL
       }
     }
-    // Plain URL string
     return trimmed ? [trimmed] : [];
   }
   return [];

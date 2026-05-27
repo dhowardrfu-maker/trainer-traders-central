@@ -8,7 +8,7 @@ export const CONDITIONS = [
 
 export const BRANDS = [
   "Nike", "adidas", "Jordan", "New Balance", "Yeezy", "Asics",
-  "Converse", "Vans", "Puma", "Reebok", "Salomon", "On", "Hoka", "Other",
+  "Converse", "Vans", "Puma", "Reebok", "Other",
 ] as const;
 
 export const GENDERS = [
