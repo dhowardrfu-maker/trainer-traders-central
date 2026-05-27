@@ -192,6 +192,7 @@ function StripePayForm({
       _ship_to_city: parsed.data.ship_to_city,
       _ship_to_postcode: parsed.data.ship_to_postcode.toUpperCase(),
       _offer_id: offerId ?? null,
+      _stripe_payment_intent_id: paymentIntent.id,
     });
 
     setBusy(false);
