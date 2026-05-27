@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Img } from "@/components/Img";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { z } from "zod";
-import { ArrowLeft, Loader2, Check, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Loader2, ShieldCheck, Info, X } from "lucide-react";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { Button } from "@/components/ui/button";
@@ -14,12 +14,10 @@ import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
 import { CARRIERS, type CarrierId } from "@/data/carriers";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { loadStripe } from "@stripe/stripe-js/pure";
 import { PaymentElement } from "@stripe/react-stripe-js";
 import { Elements, useStripe, useElements } from "@stripe/react-stripe-js";
 
-// ── Stripe singleton — lazy loaded to prevent global badge injection ──────────
 let stripePromise: ReturnType<typeof loadStripe> | null = null;
 const getStripe = () => {
   if (!stripePromise) {
@@ -28,7 +26,6 @@ const getStripe = () => {
   return stripePromise;
 };
 
-// ── Validation ────────────────────────────────────────────────────────────────
 const addressSchema = z.object({
   ship_to_name: z.string().min(2, "Enter the recipient's name").max(100),
   ship_to_line1: z.string().min(3, "Enter the address line").max(120),
@@ -41,7 +38,6 @@ const addressSchema = z.object({
     .regex(/^[A-Z0-9 ]+$/i, "Letters, numbers and spaces only"),
 });
 
-// ── Address state type ────────────────────────────────────────────────────────
 interface AddressState {
   ship_to_name: string;
   ship_to_line1: string;
@@ -68,7 +64,47 @@ const loadSavedAddress = (): AddressState => {
   return defaultAddress;
 };
 
-// ── Inner payment form (needs Stripe context) ─────────────────────────────────
+// Buyer Protection Modal
+const BuyerProtectionModal = ({ onClose }: { onClose: () => void }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <div className="relative bg-card rounded-3xl shadow-xl p-6 max-w-sm w-full space-y-4 z-10">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+          </div>
+          <h2 className="font-display font-bold text-lg">Buyer Protection</h2>
+        </div>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      <p className="text-sm text-muted-foreground">For every purchase made with us, we make sure you're covered.</p>
+      <div className="space-y-3">
+        <div className="rounded-xl bg-muted/50 p-3 space-y-1">
+          <p className="text-sm font-semibold">Refund policy</p>
+          <p className="text-xs text-muted-foreground">You can receive a refund if your order:</p>
+          <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+            <li>Was never shipped or is lost</li>
+            <li>Arrives damaged</li>
+            <li>Is significantly not as described</li>
+          </ul>
+        </div>
+        <div className="rounded-xl bg-muted/50 p-3 space-y-1">
+          <p className="text-sm font-semibold">48-hour window</p>
+          <p className="text-xs text-muted-foreground">You have 48 hours from confirmed delivery to raise any issues with your order.</p>
+        </div>
+        <div className="rounded-xl bg-muted/50 p-3 space-y-1">
+          <p className="text-sm font-semibold">Secure transactions</p>
+          <p className="text-xs text-muted-foreground">Your money is held securely until you confirm receipt. The seller is only paid once you're happy.</p>
+        </div>
+      </div>
+      <Button className="w-full rounded-full font-semibold" onClick={onClose}>Got it</Button>
+    </div>
+  </div>
+);
+
 interface PayFormProps {
   listing: Listing;
   carrierId: CarrierId;
@@ -165,9 +201,7 @@ function StripePayForm({
       return;
     }
 
-    // Clear saved address on successful order
     sessionStorage.removeItem(ADDRESS_KEY);
-
     toast.success("Payment successful — generating your label!");
     onSuccess(data);
   };
@@ -195,7 +229,6 @@ function StripePayForm({
   );
 }
 
-// ── Main Checkout page ────────────────────────────────────────────────────────
 const Checkout = () => {
   const { id } = useParams<{ id: string }>();
   const [params] = useSearchParams();
@@ -208,8 +241,8 @@ const Checkout = () => {
   const [loading, setLoading] = useState(true);
   const [carrierId, setCarrierId] = useState<CarrierId>("evri");
   const [acceptedOfferPence, setAcceptedOfferPence] = useState<number | null>(null);
+  const [showProtectionModal, setShowProtectionModal] = useState(false);
 
-  // Payment intent state
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [itemPence, setItemPence] = useState(0);
   const [protectionPence, setProtectionPence] = useState(0);
@@ -217,10 +250,8 @@ const Checkout = () => {
   const [totalPence, setTotalPence] = useState(0);
   const [fetchingIntent, setFetchingIntent] = useState(false);
 
-  // Load address from sessionStorage on mount
   const [address, setAddress] = useState<AddressState>(loadSavedAddress);
 
-  // Save address to sessionStorage whenever it changes
   useEffect(() => {
     try {
       sessionStorage.setItem(ADDRESS_KEY, JSON.stringify(address));
@@ -231,7 +262,6 @@ const Checkout = () => {
     if (!authLoading && !user) navigate("/auth");
   }, [authLoading, user, navigate]);
 
-  // Load listing
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -260,7 +290,6 @@ const Checkout = () => {
     return () => { cancelled = true; };
   }, [id]);
 
-  // Load accepted offer
   useEffect(() => {
     if (!offerId || !user || !id) return;
     let cancelled = false;
@@ -283,7 +312,6 @@ const Checkout = () => {
   const isSample = listing?.isSample === true;
   const isOwn = !!(user && listing?.seller.id && user.id === listing.seller.id);
 
-  // Create Stripe PaymentIntent when listing is ready
   useEffect(() => {
     if (!listing || isSample || isOwn || !user) return;
 
@@ -327,6 +355,7 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
       <Header />
+      {showProtectionModal && <BuyerProtectionModal onClose={() => setShowProtectionModal(false)} />}
       <main className="container py-4 md:py-8 max-w-4xl">
         <button
           onClick={() => navigate(-1)}
@@ -335,12 +364,8 @@ const Checkout = () => {
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
 
-        <h1 className="font-display font-bold text-3xl md:text-4xl tracking-tight mb-1">
-          Checkout
-        </h1>
-        <p className="text-sm text-muted-foreground mb-6">
-          Pay securely with Stripe.
-        </p>
+        <h1 className="font-display font-bold text-3xl md:text-4xl tracking-tight mb-1">Checkout</h1>
+        <p className="text-sm text-muted-foreground mb-6">Pay securely with Stripe.</p>
 
         {loading ? (
           <Skeleton className="h-96 w-full rounded-2xl" />
@@ -348,10 +373,7 @@ const Checkout = () => {
           <p className="text-muted-foreground">Listing not found.</p>
         ) : (
           <div className="grid lg:grid-cols-[1fr_380px] gap-6">
-            {/* Left column */}
             <div className="space-y-6">
-
-              {/* Address */}
               <section className="rounded-2xl border border-border p-5">
                 <h2 className="font-display font-bold text-lg mb-4">Delivery address</h2>
                 <div className="grid sm:grid-cols-2 gap-3">
@@ -378,7 +400,6 @@ const Checkout = () => {
                 </div>
               </section>
 
-              {/* Stripe payment */}
               <section className="rounded-2xl border border-border p-5">
                 <h2 className="font-display font-bold text-lg mb-4">Payment</h2>
                 {isSample ? (
@@ -392,10 +413,7 @@ const Checkout = () => {
                     <Loader2 className="h-4 w-4 animate-spin" /> Setting up payment…
                   </div>
                 ) : clientSecret ? (
-                  <Elements
-                    stripe={getStripe()}
-                    options={{ clientSecret, appearance: { theme: "stripe" } }}
-                  >
+                  <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: "stripe" } }}>
                     <StripePayForm
                       listing={listing}
                       carrierId={carrierId}
@@ -431,7 +449,20 @@ const Checkout = () => {
                 <div className="border-t border-border pt-4 space-y-2 text-sm">
                   <Row label={acceptedOfferPence != null ? "Item (offer price)" : "Item"} value={`£${(itemPence / 100).toFixed(2)}`} />
                   <Row label="Postage" value={`£${(postagePence / 100).toFixed(2)}`} />
-                  <Row label="Buyer protection (4%)" value={protectionPence ? `£${(protectionPence / 100).toFixed(2)}` : "—"} />
+                  {/* Buyer protection row with info icon */}
+                  <div className="flex justify-between text-muted-foreground">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      onClick={() => setShowProtectionModal(true)}
+                    >
+                      <span>Buyer protection</span>
+                      <Info className="h-3.5 w-3.5 text-primary" />
+                    </button>
+                    <span className="text-foreground font-medium">
+                      {protectionPence ? `£${(protectionPence / 100).toFixed(2)}` : "—"}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="border-t border-border pt-4 flex justify-between items-baseline">
