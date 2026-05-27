@@ -7,7 +7,7 @@ const Privacy = () => {
       <Header />
       <main className="container py-8 max-w-3xl">
         <h1 className="font-display font-bold text-4xl tracking-tight mb-2">Privacy Policy</h1>
-        <p className="text-sm text-muted-foreground mb-8">Last updated: 21 May 2026</p>
+        <p className="text-sm text-muted-foreground mb-8">Last updated: 27 May 2026</p>
 
         <section className="prose prose-sm max-w-none space-y-8 text-foreground">
 
@@ -29,25 +29,29 @@ const Privacy = () => {
               <li>Profile photo (if provided)</li>
               <li>Location (town/city, if provided)</li>
             </ul>
-            <h3 className="font-semibold mt-3 mb-1">2.2 Transaction Data</h3>
+            <h3 className="font-semibold mt-3 mb-1">2.2 Seller Address Data</h3>
+            <p>If you sell on PrelovedKicks, we collect your full shipping address (name, address lines, town/city, postcode, and phone number). This data is required to generate Evri shipping labels and is used as the sender address on all outbound parcels. This information is stored securely and is never shared publicly or with buyers.</p>
+            <h3 className="font-semibold mt-3 mb-1">2.3 Transaction Data</h3>
             <ul className="list-disc pl-5 space-y-1">
               <li>Items purchased or sold</li>
               <li>Delivery address (buyers)</li>
               <li>Payment information (processed by Stripe — we do not store card details)</li>
               <li>Order history and tracking information</li>
+              <li>Dispute descriptions and photos submitted as evidence</li>
+              <li>Cancellation requests and reasons</li>
             </ul>
-            <h3 className="font-semibold mt-3 mb-1">2.3 Listing Data</h3>
+            <h3 className="font-semibold mt-3 mb-1">2.4 Listing Data</h3>
             <ul className="list-disc pl-5 space-y-1">
               <li>Photos and descriptions you upload</li>
               <li>Pricing and item details</li>
             </ul>
-            <h3 className="font-semibold mt-3 mb-1">2.4 Communications</h3>
+            <h3 className="font-semibold mt-3 mb-1">2.5 Communications</h3>
             <ul className="list-disc pl-5 space-y-1">
               <li>Messages sent between buyers and sellers through our platform</li>
               <li>Offers made and received</li>
               <li>Reviews and ratings</li>
             </ul>
-            <h3 className="font-semibold mt-3 mb-1">2.5 Technical Data</h3>
+            <h3 className="font-semibold mt-3 mb-1">2.6 Technical Data</h3>
             <ul className="list-disc pl-5 space-y-1">
               <li>IP address</li>
               <li>Browser type and version</li>
@@ -62,8 +66,9 @@ const Privacy = () => {
             <ul className="list-disc pl-5 space-y-1">
               <li>Creating and managing your account (Contract)</li>
               <li>Processing transactions and payments (Contract)</li>
-              <li>Generating shipping labels and QR codes (Contract)</li>
+              <li>Generating shipping labels using your sender address (Contract)</li>
               <li>Communicating with you about your orders (Contract)</li>
+              <li>Processing seller payouts via Stripe Connect (Contract)</li>
               <li>Sending important service updates (Legitimate interest)</li>
               <li>Resolving disputes between buyers and sellers (Legitimate interest)</li>
               <li>Preventing fraud and ensuring platform security (Legitimate interest)</li>
@@ -83,10 +88,10 @@ const Privacy = () => {
             </ul>
             <h3 className="font-semibold mt-3 mb-1">4.2 With Service Providers</h3>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Stripe</strong> — payment processing</li>
+              <li><strong>Stripe</strong> — payment processing and seller payouts (via Stripe Connect)</li>
               <li><strong>Supabase</strong> — secure database and authentication</li>
               <li><strong>Vercel</strong> — website hosting</li>
-              <li><strong>Evri (via Sendcloud)</strong> — shipping label generation</li>
+              <li><strong>Evri (via Sendcloud)</strong> — shipping label generation using seller address data</li>
               <li><strong>Zoho Mail</strong> — email communications</li>
             </ul>
             <h3 className="font-semibold mt-3 mb-1">4.3 Legal Requirements</h3>
@@ -95,7 +100,7 @@ const Privacy = () => {
 
           <div>
             <h2 className="font-bold text-xl mb-2">5. Cookies</h2>
-            <p>We use cookies to keep you logged in, remember your preferences, analyse how our site is used, and improve performance and security. You can control cookies through your browser settings, though disabling them may affect some features.</p>
+            <p>We use cookies to keep you logged in, remember your preferences, analyse how our site is used, and improve performance and security. When you first visit PrelovedKicks, you will be asked to accept or decline non-essential cookies. You can change your cookie preferences at any time through your browser settings, though disabling them may affect some features.</p>
           </div>
 
           <div>
@@ -128,8 +133,9 @@ const Privacy = () => {
               <li>Encrypted connections (HTTPS) across our entire platform</li>
               <li>Row-level security so users can only access their own data</li>
               <li>Secure authentication via Supabase</li>
-              <li>Private storage for listing photos</li>
+              <li>Private storage for listing photos and dispute evidence</li>
               <li>No storage of payment card details — all handled by Stripe</li>
+              <li>Seller bank details held securely by Stripe — never stored by PrelovedKicks</li>
             </ul>
           </div>
 
