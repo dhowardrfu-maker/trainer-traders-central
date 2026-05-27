@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,7 +49,6 @@ const AuthPage = () => {
     username: "",
   });
 
-  // Detect Supabase password recovery session
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
@@ -62,99 +62,53 @@ const AuthPage = () => {
     if (!loading && user && !isRecovery) navigate("/", { replace: true });
   }, [user, loading, navigate, isRecovery]);
 
-  // ======================
-  // RESET PASSWORD
-  // ======================
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error("Passwords don't match");
-      return;
-    }
+    if (newPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    if (newPassword !== confirmPassword) { toast.error("Passwords don't match"); return; }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     toast.success("Password updated — please sign in");
     setIsRecovery(false);
     await supabase.auth.signOut();
     navigate("/auth", { replace: true });
   };
 
-  // ======================
-  // SIGN IN
-  // ======================
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const parsed = signInSchema.safeParse(signInData);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
-      return;
-    }
-
+    if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setBusy(true);
-
     const { error } = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
       password: parsed.data.password,
     });
-
     setBusy(false);
-
     if (error) {
-      toast.error(
-        error.message === "Invalid login credentials"
-          ? "Wrong email or password"
-          : error.message
-      );
+      toast.error(error.message === "Invalid login credentials" ? "Wrong email or password" : error.message);
       return;
     }
-
     toast.success("Welcome back 👟");
     navigate("/");
   };
 
-  // ======================
-  // SIGN UP
-  // ======================
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-
     const parsed = signUpSchema.safeParse(signUpData);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
-      return;
-    }
-
+    if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setBusy(true);
-
     const { data, error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
-      options: {
-        data: { username: parsed.data.username },
-      },
+      options: { data: { username: parsed.data.username } },
     });
-
     setBusy(false);
-
     if (error) {
-      toast.error(
-        error.message.includes("already")
-          ? "That email is already registered"
-          : error.message
-      );
+      toast.error(error.message.includes("already") ? "That email is already registered" : error.message);
       return;
     }
-
     if (data.session) {
       toast.success("Account created 🎉 Welcome to PrelovedKicks!");
       navigate("/");
@@ -164,62 +118,28 @@ const AuthPage = () => {
     }
   };
 
-  // ======================
-  // GOOGLE LOGIN
-  // ======================
   const handleGoogle = async () => {
     setBusy(true);
-
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: "https://www.prelovedkicks.co.uk",
-      },
+      options: { redirectTo: "https://www.prelovedkicks.co.uk" },
     });
-
-    if (error) {
-      setBusy(false);
-      toast.error("Couldn't start Google sign-in");
-    }
+    if (error) { setBusy(false); toast.error("Couldn't start Google sign-in"); }
   };
 
-  // ======================
-  // RECOVERY SCREEN
-  // ======================
   if (isRecovery) {
     return (
-      <div className="min-h-screen bg-gradient-soft flex flex-col">
-        <header className="container py-5">
-          <Link to="/" className="inline-flex items-center gap-3">
-            <img src="/logo.png" alt="PrelovedKicks" className="h-24 w-auto" />
-            <span className="font-display font-bold text-5xl tracking-tight">PreLoved<span className="text-primary">Kick's</span></span>
-          </Link>
-        </header>
-
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
         <main className="flex-1 flex items-center justify-center px-5 pb-16">
           <div className="w-full max-w-md bg-card rounded-3xl shadow-card p-8">
             <div className="text-center mb-6">
-              <h1 className="font-display font-bold text-3xl tracking-tight">
-                Choose a new password
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1.5">
-                Enter a new password for your PrelovedKicks account.
-              </p>
+              <h1 className="font-display font-bold text-3xl tracking-tight">Choose a new password</h1>
+              <p className="text-sm text-muted-foreground mt-1.5">Enter a new password for your PrelovedKicks account.</p>
             </div>
-
             <div className="space-y-4">
-              <Input
-                type="password"
-                placeholder="New password (min 8 characters)"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-              <Input
-                type="password"
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <Input type="password" placeholder="New password (min 8 characters)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <Input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
               <Button onClick={handleResetPassword} className="w-full" disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update password"}
               </Button>
@@ -231,24 +151,13 @@ const AuthPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-soft flex flex-col">
-      <header className="container py-5">
-        <Link to="/" className="inline-flex items-center gap-3">
-          <img src="/logo.png" alt="PrelovedKicks" className="h-24 w-auto" />
-          <span className="font-display font-bold text-5xl tracking-tight">PreLoved<span className="text-primary">Kick's</span></span>
-        </Link>
-      </header>
-
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header />
       <main className="flex-1 flex items-center justify-center px-5 pb-16">
         <div className="w-full max-w-md bg-card rounded-3xl shadow-card p-8">
-
           <div className="text-center mb-6">
-            <h1 className="font-display font-bold text-3xl tracking-tight">
-              Join the community
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1.5">
-              Sign in to sell, save and message
-            </p>
+            <h1 className="font-display font-bold text-3xl tracking-tight">Join the community</h1>
+            <p className="text-sm text-muted-foreground mt-1.5">Sign in to sell, save and message</p>
           </div>
 
           <Button
@@ -267,9 +176,7 @@ const AuthPage = () => {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-3 text-muted-foreground tracking-wider">
-                or with email
-              </span>
+              <span className="bg-card px-3 text-muted-foreground tracking-wider">or with email</span>
             </div>
           </div>
 
@@ -280,58 +187,23 @@ const AuthPage = () => {
             </TabsList>
 
             <TabsContent value="signin" className="mt-5 space-y-4">
-              <Input
-                placeholder="Email"
-                value={signInData.email}
-                onChange={(e) =>
-                  setSignInData({ ...signInData, email: e.target.value })
-                }
-              />
-              <Input
-                type="password"
-                placeholder="Password"
-                value={signInData.password}
-                onChange={(e) =>
-                  setSignInData({ ...signInData, password: e.target.value })
-                }
-              />
+              <Input placeholder="Email" value={signInData.email} onChange={(e) => setSignInData({ ...signInData, email: e.target.value })} />
+              <Input type="password" placeholder="Password" value={signInData.password} onChange={(e) => setSignInData({ ...signInData, password: e.target.value })} />
               <Button onClick={handleSignIn} className="w-full" disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
               </Button>
             </TabsContent>
 
             <TabsContent value="signup" className="mt-5 space-y-4">
-              <Input
-                placeholder="Username"
-                value={signUpData.username}
-                onChange={(e) =>
-                  setSignUpData({ ...signUpData, username: e.target.value })
-                }
-              />
-              <p className="text-xs text-muted-foreground -mt-2">
-                No spaces — letters, numbers and _ only. E.g. sneaker_head92
-              </p>
-              <Input
-                placeholder="Email"
-                value={signUpData.email}
-                onChange={(e) =>
-                  setSignUpData({ ...signUpData, email: e.target.value })
-                }
-              />
-              <Input
-                type="password"
-                placeholder="Password"
-                value={signUpData.password}
-                onChange={(e) =>
-                  setSignUpData({ ...signUpData, password: e.target.value })
-                }
-              />
+              <Input placeholder="Username" value={signUpData.username} onChange={(e) => setSignUpData({ ...signUpData, username: e.target.value })} />
+              <p className="text-xs text-muted-foreground -mt-2">No spaces — letters, numbers and _ only. E.g. sneaker_head92</p>
+              <Input placeholder="Email" value={signUpData.email} onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })} />
+              <Input type="password" placeholder="Password" value={signUpData.password} onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })} />
               <Button onClick={handleSignUp} className="w-full" disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
               </Button>
             </TabsContent>
           </Tabs>
-
         </div>
       </main>
     </div>
