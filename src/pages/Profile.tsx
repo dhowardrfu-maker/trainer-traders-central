@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CheckCircle2, CreditCard, Heart, Loader2, Package, Pencil, Plus, Settings, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CreditCard, Heart, Loader2, Package, Pencil, Plus, Settings, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
@@ -74,6 +74,9 @@ interface OrderRow {
   ship_to_line2?: string | null;
   ship_to_city: string;
   ship_to_postcode: string;
+  cancellation_requested_by: string | null;
+  cancellation_reason: string | null;
+  cancellation_agreed: boolean | null;
 }
 
 const formatGbp = (pence: number) => `£${(pence / 100).toFixed(2)}`;
@@ -113,6 +116,7 @@ const Profile = () => {
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [cancelBusy, setCancelBusy] = useState<string | null>(null);
 
   const [offerRows, setOfferRows] = useState<Array<{
     id: string; amount_pence: number; status: string; buyer_id: string; seller_id: string;
@@ -128,12 +132,10 @@ const Profile = () => {
     if (tab !== initialTab) setSearchParams({ tab }, { replace: true });
   }, [tab, initialTab, setSearchParams]);
 
-  // Handle Stripe Connect return
   useEffect(() => {
     const connectParam = searchParams.get("connect");
     if (connectParam === "success") {
       toast.success("Payout account connected — you're ready to receive payments!");
-      // Check and update connect status
       if (user) {
         supabase.functions.invoke("get-connect-status").then(({ data }) => {
           if (data?.enabled) {
@@ -208,7 +210,7 @@ const Profile = () => {
       const [buyRes, sellRes] = await Promise.all([
         supabase
           .from("orders")
-          .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_line1, ship_to_line2, ship_to_city, ship_to_postcode")
+          .select("id, listing_id, buyer_id, seller_id, carrier, service_label, status, total_pence, tracking_code, created_at, ship_to_name, ship_to_line1, ship_to_line2, ship_to_city, ship_to_postcode, cancellation_requested_by, cancellation_reason, cancellation_agreed")
           .eq("buyer_id", user.id),
         supabase.rpc("get_my_sales"),
       ]);
@@ -338,6 +340,20 @@ const Profile = () => {
     window.location.href = data.url;
   };
 
+  const handleAgreeCancel = async (orderId: string, listingId: string) => {
+    setCancelBusy(orderId);
+    const { error } = await supabase
+      .from("orders")
+      .update({ cancellation_agreed: true, status: "cancelled" } as never)
+      .eq("id", orderId);
+    if (error) { setCancelBusy(null); toast.error("Couldn't process cancellation"); return; }
+    await supabase.from("listings").update({ status: "active" }).eq("id", Number(listingId));
+    const { error: refundErr } = await supabase.functions.invoke("create-refund", { body: { order_id: orderId } });
+    setCancelBusy(null);
+    toast.success(refundErr ? "Cancelled but refund failed — contact support" : "Order cancelled and refund issued");
+    setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: "cancelled", cancellation_agreed: true } : o));
+  };
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -349,6 +365,11 @@ const Profile = () => {
   const initial = (displayName || username || user.email || "U")[0].toUpperCase();
   const connectEnabled = profile?.stripe_connect_enabled === true;
   const connectStarted = !!profile?.stripe_connect_id;
+
+  // Pending cancellations where the OTHER party requested (so I need to respond)
+  const pendingCancellations = orders.filter(
+    (o) => o.cancellation_requested_by && o.cancellation_requested_by !== user.id && !o.cancellation_agreed && o.status !== "cancelled"
+  );
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -371,6 +392,48 @@ const Profile = () => {
           </div>
         </div>
 
+        {/* Pending cancellation banner */}
+        {pendingCancellations.length > 0 && (
+          <div className="mb-4 space-y-3">
+            {pendingCancellations.map((o) => (
+              <div key={o.id} className="rounded-2xl bg-amber-50 border border-amber-200 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                  <p className="font-semibold text-amber-800 text-sm">
+                    {o.buyer_id === user.id ? "The seller" : "The buyer"} has requested to cancel an order
+                  </p>
+                </div>
+                <div className="bg-white rounded-xl p-3 border border-amber-100">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-1">Reason</p>
+                  <p className="text-sm">{o.cancellation_reason}</p>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    size="sm"
+                    className="rounded-full font-semibold"
+                    onClick={() => handleAgreeCancel(o.id, o.listing_id)}
+                    disabled={cancelBusy === o.id}
+                  >
+                    {cancelBusy === o.id && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
+                    Agree to cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full font-semibold"
+                    onClick={() => window.location.href = `mailto:support@prelovedkicks.co.uk?subject=Order%20Cancellation%20Dispute&body=Order%20ID:%20${o.id}`}
+                  >
+                    Contact support
+                  </Button>
+                  <Button size="sm" variant="ghost" className="rounded-full" asChild>
+                    <Link to={`/order/${o.id}`}>View order</Link>
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList className="grid grid-cols-7 w-full mb-6">
             <TabsTrigger value="profile" className="gap-1.5">
@@ -385,8 +448,13 @@ const Profile = () => {
             <TabsTrigger value="saved" className="gap-1.5">
               <Heart className="h-4 w-4" /> <span className="hidden sm:inline">Saved</span>
             </TabsTrigger>
-            <TabsTrigger value="orders" className="gap-1.5">
+            <TabsTrigger value="orders" className="gap-1.5 relative">
               <Package className="h-4 w-4" /> <span className="hidden sm:inline">Orders</span>
+              {pendingCancellations.length > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-destructive text-destructive-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {pendingCancellations.length}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="account" className="gap-1.5">
               <Settings className="h-4 w-4" /> <span className="hidden sm:inline">Account</span>
@@ -417,7 +485,6 @@ const Profile = () => {
                   <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell buyers about your collection…" rows={4} maxLength={300} />
                   <p className="text-xs text-muted-foreground text-right">{bio.length}/300</p>
                 </div>
-
                 <div className="border-t border-border pt-5">
                   <p className="text-sm font-semibold mb-4">Shipping address <span className="text-destructive">*</span></p>
                   <p className="text-xs text-muted-foreground mb-4">Required before you can list items for sale. Used as the sender address on shipping labels.</p>
@@ -450,7 +517,6 @@ const Profile = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="flex justify-end">
                   <Button onClick={handleSaveProfile} disabled={saving} className="rounded-full font-semibold">
                     {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -500,26 +566,31 @@ const Profile = () => {
                       </div>
                       <p className="text-sm text-muted-foreground truncate">{l.brand} · {formatGbp(l.price_pence)}</p>
                     </div>
-                    <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Edit listing">
-                      <Link to={`/listing/${l.id}/edit`}><Pencil className="h-4 w-4" /></Link>
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive shrink-0" aria-label="Delete listing">
-                          <Trash2 className="h-4 w-4" />
+                    {/* Only show edit/delete for active listings */}
+                    {l.status === "active" && (
+                      <>
+                        <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Edit listing">
+                          <Link to={`/listing/${l.id}/edit`}><Pencil className="h-4 w-4" /></Link>
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="rounded-2xl">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete this listing?</AlertDialogTitle>
-                          <AlertDialogDescription>"{l.title}" will be removed permanently. This can't be undone.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteListing(l.id)} className="rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive shrink-0" aria-label="Delete listing">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="rounded-2xl">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete this listing?</AlertDialogTitle>
+                              <AlertDialogDescription>"{l.title}" will be removed permanently. This can't be undone.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteListing(l.id)} className="rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
                   </Card>
                 ))}
               </div>
@@ -597,8 +668,8 @@ const Profile = () => {
               </div>
             ) : (
               <div className="space-y-8">
-                <OrderSection title="Purchases" empty="You haven't bought anything yet." rows={purchases} isSales={false} />
-                <OrderSection title="Sales" empty="No sales yet — keep listing!" rows={sales} isSales={true} />
+                <OrderSection title="Purchases" empty="You haven't bought anything yet." rows={purchases} isSales={false} userId={user.id} />
+                <OrderSection title="Sales" empty="No sales yet — keep listing!" rows={sales} isSales={true} userId={user.id} />
               </div>
             )}
           </TabsContent>
@@ -608,7 +679,6 @@ const Profile = () => {
             <div className="space-y-4">
               <Card className="p-6 rounded-2xl space-y-5">
                 <h2 className="font-display font-bold text-lg">Account settings</h2>
-
                 <div className="grid gap-2">
                   <Label>Email address</Label>
                   <div className="flex items-center gap-2">
@@ -616,7 +686,6 @@ const Profile = () => {
                     <span className="text-xs text-green-600 font-semibold whitespace-nowrap">✓ Verified</span>
                   </div>
                 </div>
-
                 <div className="border-t border-border pt-5 grid gap-2">
                   <Label>Change password</Label>
                   <p className="text-sm text-muted-foreground">We'll send a password reset link to your email address.</p>
@@ -632,7 +701,6 @@ const Profile = () => {
                     Send reset email
                   </Button>
                 </div>
-
                 <div className="border-t border-border pt-5 flex items-center justify-between">
                   <div>
                     <p className="font-semibold text-sm">Holiday mode</p>
@@ -640,7 +708,6 @@ const Profile = () => {
                   </div>
                   <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">Coming soon</span>
                 </div>
-
                 <div className="border-t border-border pt-5">
                   <p className="font-semibold text-sm text-destructive">Danger zone</p>
                   <p className="text-xs text-muted-foreground mt-1 mb-3">Permanently delete your account and all your data.</p>
@@ -656,8 +723,6 @@ const Profile = () => {
           <TabsContent value="payments">
             <Card className="p-6 rounded-2xl space-y-5">
               <h2 className="font-display font-bold text-lg">Payments</h2>
-
-              {/* Seller payouts */}
               <div className="rounded-xl border border-border p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-sm">Seller payouts</p>
@@ -673,17 +738,12 @@ const Profile = () => {
                     : "Connect your bank account to receive payouts when your items are delivered. Takes about 2 minutes."}
                 </p>
                 {!connectEnabled && (
-                  <Button
-                    className="rounded-full font-semibold"
-                    onClick={handleConnectPayout}
-                    disabled={connectLoading}
-                  >
+                  <Button className="rounded-full font-semibold" onClick={handleConnectPayout} disabled={connectLoading}>
                     {connectLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     {connectStarted ? "Continue payout setup" : "Set up payouts"}
                   </Button>
                 )}
               </div>
-
               <div className="border-t border-border pt-5">
                 <p className="font-semibold text-sm mb-1">Payment methods</p>
                 <p className="text-sm text-muted-foreground">Accepted: Visa, Mastercard, Amex, Google Pay, Apple Pay, Klarna, Amazon Pay, Revolut Pay.</p>
@@ -703,11 +763,13 @@ const OrderSection = ({
   empty,
   rows,
   isSales = false,
+  userId,
 }: {
   title: string;
   empty: string;
   rows: OrderRow[];
   isSales?: boolean;
+  userId: string;
 }) => (
   <section>
     <h2 className="font-display font-bold text-lg mb-3">{title}</h2>
@@ -718,46 +780,56 @@ const OrderSection = ({
     ) : (
       <div className="grid gap-3">
         {rows.map((o) => (
-          <Card key={o.id} className="p-4 rounded-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-sm">
-                    {carrierLabel(o.carrier)} · {o.service_label}
-                  </span>
-                  <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wide">
-                    {statusLabel(o.status)}
-                  </Badge>
+          <Link key={o.id} to={`/order/${o.id}`} className="block">
+            <Card className="p-4 rounded-2xl hover:border-primary/40 transition-colors cursor-pointer">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm">
+                      {carrierLabel(o.carrier)} · {o.service_label}
+                    </span>
+                    <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wide">
+                      {statusLabel(o.status)}
+                    </Badge>
+                    {o.cancellation_requested_by && o.cancellation_requested_by !== userId && !o.cancellation_agreed && o.status !== "cancelled" && (
+                      <Badge variant="outline" className="rounded-full text-[10px] uppercase border-amber-400 text-amber-600">
+                        Cancel requested
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
+                    {o.tracking_code}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    To {o.ship_to_name} · {o.ship_to_city} {o.ship_to_postcode}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                  {isSales && o.status !== "cancelled" && (
+                    <span
+                      onClick={(e) => e.preventDefault()}
+                      className="inline-block mt-3"
+                    >
+                      <Link
+                        to={`/shipping/${o.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Truck className="h-3 w-3" /> Ship this order
+                      </Link>
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
-                  {o.tracking_code}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1 truncate">
-                  To {o.ship_to_name} · {o.ship_to_city} {o.ship_to_postcode}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                </p>
-                {isSales && (
-                  <Link
-                    to={`/shipping/${o.id}`}
-                    className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
-                  >
-                    <Truck className="h-3 w-3" /> Ship this order
-                  </Link>
-                )}
+                <div className="text-right shrink-0">
+                  <p className="font-display font-bold">{formatGbp(o.total_pence)}</p>
+                  <span className="text-xs text-primary inline-flex items-center gap-1 mt-1">
+                    <Package className="h-3 w-3" /> View order
+                  </span>
+                </div>
               </div>
-              <div className="text-right shrink-0">
-                <p className="font-display font-bold">{formatGbp(o.total_pence)}</p>
-                <Link
-                  to={`/order/${o.id}`}
-                  className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-1"
-                >
-                  <Package className="h-3 w-3" /> Label
-                </Link>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </Link>
         ))}
       </div>
     )}
