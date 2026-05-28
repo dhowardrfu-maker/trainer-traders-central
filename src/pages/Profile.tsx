@@ -84,14 +84,6 @@ const formatGbp = (pence: number) => `£${(pence / 100).toFixed(2)}`;
 const statusLabel = (status: string) =>
   status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 
-// Resolve storage path to public URL
-const resolvePhotoUrl = (path: string | null | undefined): string => {
-  if (!path) return "";
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
-  return data.publicUrl;
-};
-
 // Helper — insert a notification row directly into the notifications table
 const notify = async (userId: string, type: string, title: string, body: string | null, link: string | null) => {
   await supabase.from("notifications").insert({
@@ -703,7 +695,7 @@ const Profile = () => {
                     <Card key={o.id} className="p-3 rounded-2xl flex items-center gap-3">
                       <Link to={`/listing/${o.listing_id}`} className="shrink-0">
                         <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted">
-                          {o.listing_photo ? <Img src={resolvePhotoUrl(o.listing_photo)} alt="" className="h-full w-full object-cover" /> : null}
+                          {o.listing_photo ? <Img src={o.listing_photo} alt="" className="h-full w-full object-cover" /> : null}
                         </div>
                       </Link>
                       <div className="flex-1 min-w-0">
