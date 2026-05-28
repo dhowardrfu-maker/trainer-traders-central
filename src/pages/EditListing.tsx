@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, GripVertical, ImagePlus, Loader2, X } from "lucide-react";
+import { ArrowLeft, ImagePlus, Loader2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useSEO } from "@/hooks/useSEO";
 
+// Resolve a storage path or existing URL to a display URL
+const resolvePhotoUrl = (path: string): string => {
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
+  return data.publicUrl;
+};
+
 const EditListing = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -19,7 +26,9 @@ const EditListing = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // photos stores the raw paths/URLs as saved in DB; displayUrls stores resolved display URLs
   const [photos, setPhotos] = useState<string[]>([]);
+  const [displayUrls, setDisplayUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragIndex = useRef<number | null>(null);
@@ -63,15 +72,21 @@ const EditListing = () => {
         status: (data.status ?? "active") as "active" | "draft" | "sold" | "removed",
       });
       const rawPhotos = data.photos;
-      const parsedPhotos = Array.isArray(rawPhotos)
+      const parsedPhotos: string[] = Array.isArray(rawPhotos)
         ? rawPhotos
         : typeof rawPhotos === "string"
           ? (() => { try { return JSON.parse(rawPhotos); } catch { return []; } })()
           : [];
-      setPhotos(parsedPhotos as string[]);
+      setPhotos(parsedPhotos);
+      setDisplayUrls(parsedPhotos.map(resolvePhotoUrl));
       setLoading(false);
     })();
   }, [id, user, navigate]);
+
+  // Keep displayUrls in sync with photos
+  useEffect(() => {
+    setDisplayUrls(photos.map(resolvePhotoUrl));
+  }, [photos]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -87,8 +102,8 @@ const EditListing = () => {
       const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from("listing-photos").upload(path, file);
       if (error) { toast.error(`Failed to upload ${file.name}`); continue; }
-      const { data: urlData } = supabase.storage.from("listing-photos").getPublicUrl(path);
-      uploaded.push(urlData.publicUrl);
+      // Store the path (not the public URL) so it's consistent with how Sell.tsx saves
+      uploaded.push(path);
     }
     setPhotos((prev) => [...prev, ...uploaded]);
     setUploading(false);
@@ -165,9 +180,9 @@ const EditListing = () => {
           <Label>Photos</Label>
           <p className="text-xs text-muted-foreground">Drag to reorder · First photo is the cover</p>
           <div className="grid grid-cols-4 gap-2">
-            {photos.map((url, i) => (
+            {displayUrls.map((url, i) => (
               <div
-                key={url}
+                key={photos[i]}
                 draggable
                 onDragStart={() => onDragStart(i)}
                 onDragOver={(e) => onDragOver(e, i)}
