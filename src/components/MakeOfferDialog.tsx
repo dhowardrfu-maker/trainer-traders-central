@@ -3,7 +3,6 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -28,30 +27,44 @@ interface Props {
 export const MakeOfferDialog = ({ listingId, sellerId, buyerId, askingPrice, trigger, onSubmitted }: Props) => {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState<string>(Math.max(1, Math.round(askingPrice * 0.9)).toString());
-  const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const num = Number(amount);
     if (!Number.isFinite(num) || num <= 0) {
-      toast.error("Enter a valid offer");
+      toast.error("Enter a valid offer amount");
+      return;
+    }
+    if (num >= askingPrice) {
+      toast.error("Offer must be less than the asking price");
       return;
     }
     setBusy(true);
     const { error } = await supabase.from("offers").insert({
-      listing_id: listingId,
+      listing_id: Number(listingId),
       seller_id: sellerId,
       buyer_id: buyerId,
       amount_pence: Math.round(num * 100),
-      message: message.trim() || null,
     });
-    setBusy(false);
     if (error) {
+      setBusy(false);
       toast.error(error.message);
       return;
     }
-    toast.success("Offer sent");
+
+    // Notify seller
+    await supabase.from("notifications").insert({
+      user_id: sellerId,
+      type: "offer_received",
+      title: "You have a new offer!",
+      body: `Someone offered £${num.toFixed(2)} on your listing. Tap to accept or decline.`,
+      link: "/profile?tab=offers",
+      read: false,
+    });
+
+    setBusy(false);
+    toast.success("Offer sent!");
     setOpen(false);
     onSubmitted?.();
   };
@@ -67,13 +80,15 @@ export const MakeOfferDialog = ({ listingId, sellerId, buyerId, askingPrice, tri
         <form onSubmit={submit} className="space-y-4">
           <div className="grid gap-2">
             <Label htmlFor="amount">Your offer (£)</Label>
-            <Input id="amount" type="number" min={1} step={1} value={amount}
-              onChange={(e) => setAmount(e.target.value)} required />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="message">Message <span className="text-muted-foreground font-normal">(optional)</span></Label>
-            <Textarea id="message" rows={3} maxLength={300} placeholder="Add a friendly note…"
-              value={message} onChange={(e) => setMessage(e.target.value)} />
+            <Input
+              id="amount"
+              type="number"
+              min={1}
+              step={1}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+            />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={busy} className="rounded-full font-semibold">
