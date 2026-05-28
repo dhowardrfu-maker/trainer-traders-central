@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle, CheckCircle2, CreditCard, Heart, Loader2, Package, Pencil, Plus, Settings, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, CreditCard, Heart, Loader2, Package, Pencil, Plus, Settings, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
@@ -115,6 +115,7 @@ const Profile = () => {
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [fullName, setFullName] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
@@ -314,6 +315,24 @@ const Profile = () => {
 
   const purchases = useMemo(() => orders.filter((o) => o.buyer_id === user?.id), [orders, user]);
   const sales = useMemo(() => orders.filter((o) => o.seller_id === user?.id), [orders, user]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Image must be under 5MB"); return; }
+    setAvatarUploading(true);
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `avatars/${user.id}.${ext}`;
+    const { error } = await supabase.storage
+      .from("listing-photos")
+      .upload(path, file, { cacheControl: "3600", upsert: true, contentType: file.type });
+    if (error) { toast.error("Couldn't upload photo"); setAvatarUploading(false); return; }
+    const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
+    setAvatarUrl(data.publicUrl);
+    setAvatarUploading(false);
+    toast.success("Photo uploaded — save your profile to apply it");
+  };
 
   const handleSaveProfile = async () => {
     if (!user) return;
@@ -568,6 +587,29 @@ const Profile = () => {
               </div>
             ) : (
               <Card className="p-6 space-y-5 rounded-2xl">
+                {/* Avatar upload */}
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <Avatar className="h-16 w-16 border border-border">
+                      {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
+                      <AvatarFallback className="bg-primary-soft text-primary font-display font-bold text-xl">
+                        {initial}
+                      </AvatarFallback>
+                    </Avatar>
+                    <label className="absolute -bottom-1 -right-1 h-6 w-6 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
+                      {avatarUploading ? (
+                        <Loader2 className="h-3 w-3 text-white animate-spin" />
+                      ) : (
+                        <Camera className="h-3 w-3 text-white" />
+                      )}
+                      <input type="file" hidden accept="image/*" onChange={handleAvatarUpload} disabled={avatarUploading} />
+                    </label>
+                  </div>
+                  <div className="text-sm">
+                    <p className="font-semibold">Profile photo</p>
+                    <p className="text-xs text-muted-foreground">JPG or PNG, max 5MB</p>
+                  </div>
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="display_name">Display name</Label>
                   <Input id="display_name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="How should buyers see you?" maxLength={60} />
