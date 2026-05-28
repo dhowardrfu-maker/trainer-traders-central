@@ -100,7 +100,7 @@ const OrderConfirmation = () => {
   const isSeller = user?.id === order?.seller_id;
   const canCancel = ["pending_postage", "label_created"].includes(order?.status ?? "");
   const canRaiseDispute = order?.status === "shipped";
-  const cancellationPending = !!order?.cancellation_requested_by && !order?.cancellation_agreed;
+  const cancellationPending = !!order?.cancellation_requested_by && order?.cancellation_agreed !== true && order?.status !== 'cancelled';
   const otherPartyRequestedCancel = cancellationPending && order?.cancellation_requested_by !== user?.id;
   const iRequestedCancel = cancellationPending && order?.cancellation_requested_by === user?.id;
 
