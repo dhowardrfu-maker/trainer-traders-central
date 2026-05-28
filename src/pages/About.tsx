@@ -23,15 +23,15 @@ const About = () => {
           PrelovedKicks is the UK marketplace built for sneakerheads who care about both style and sustainability.
         </p>
         <p className="mt-6">
-          Every pair of trainers tells a story. Instead of letting them sit unworn in the back of a wardrobe — or worse,
-          end up in landfill — PrelovedKicks gives them a second chance. Buyers find rare and everyday pairs at fair prices.
+          Every pair of trainers tells a story. Instead of letting them sit unworn in the back of a wardrobe, or worse,
+          end up in landfill, PrelovedKicks gives them a second chance. Buyers find rare and everyday pairs at fair prices.
           Sellers earn back what their kicks are really worth.
         </p>
         <h2 className="text-xl font-bold mt-8">What makes us different</h2>
         <ul className="mt-3 space-y-2">
           <li>🇬🇧 UK-first, with Evri Standard Delivery shipping built in.</li>
           <li>💬 Real-time messaging and negotiable offers between buyers and sellers.</li>
-          <li>⭐ Verified reviews — only after a confirmed order.</li>
+          <li>⭐ Verified reviews, only after a confirmed order.</li>
           <li>🛡️ AI-moderated photos to keep listings safe and on-brand.</li>
         </ul>
       </main>
