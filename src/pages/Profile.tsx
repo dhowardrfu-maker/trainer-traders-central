@@ -123,6 +123,7 @@ const Profile = () => {
   const [postcode, setPostcode] = useState("");
   const [phone, setPhone] = useState("");
   const [connectLoading, setConnectLoading] = useState(false);
+  const [connectEnabled, setConnectEnabled] = useState(false);
 
   const [listings, setListings] = useState<MyListing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
@@ -463,7 +464,6 @@ const Profile = () => {
   }
 
   const initial = (displayName || username || user.email || "U")[0].toUpperCase();
-  const [connectEnabled, setConnectEnabled] = useState(false);
   const connectStarted = !!profile?.stripe_connect_id;
 
   // Recheck Connect status from Stripe on load if account exists but not yet enabled
