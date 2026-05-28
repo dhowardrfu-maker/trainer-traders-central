@@ -25,7 +25,7 @@ const Privacy = () => {
             <ul className="list-disc pl-5 space-y-1">
               <li>Name and username</li>
               <li>Email address</li>
-              <li>Password (stored securely, encrypted — we never see your plain-text password)</li>
+              <li>Password (stored securely and encrypted, we never see your plain-text password)</li>
               <li>Profile photo (if provided)</li>
               <li>Location (town/city, if provided)</li>
             </ul>
@@ -34,8 +34,8 @@ const Privacy = () => {
             <h3 className="font-semibold mt-3 mb-1">2.3 Transaction Data</h3>
             <ul className="list-disc pl-5 space-y-1">
               <li>Items purchased or sold</li>
-              <li>Buyer delivery address (used for shipping label generation only — shared with Evri via Sendcloud, not displayed to sellers within the platform)</li>
-              <li>Payment information (processed by Stripe — we do not store card details)</li>
+              <li>Buyer delivery address (used for shipping label generation only, shared with Evri via Sendcloud and not displayed to sellers within the platform)</li>
+              <li>Payment information (processed by Stripe, we do not store card details)</li>
               <li>Order history and tracking information</li>
               <li>Dispute descriptions and photos submitted as evidence</li>
               <li>Cancellation requests and reasons</li>
@@ -90,11 +90,11 @@ const Privacy = () => {
             </ul>
             <h3 className="font-semibold mt-3 mb-1">4.2 With Service Providers</h3>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Stripe</strong> — payment processing and seller payouts via Stripe Connect. Stripe&apos;s privacy policy applies to data processed by Stripe.</li>
-              <li><strong>Supabase</strong> — secure database and authentication hosting</li>
-              <li><strong>Vercel</strong> — website hosting and deployment</li>
-              <li><strong>Sendcloud / Evri</strong> — shipping label generation using buyer delivery address and seller sender address</li>
-              <li><strong>Zoho Mail</strong> — transactional email communications</li>
+              <li><strong>Stripe</strong>: payment processing and seller payouts via Stripe Connect. Stripe&apos;s privacy policy applies to data processed by Stripe.</li>
+              <li><strong>Supabase</strong>: secure database and authentication hosting</li>
+              <li><strong>Vercel</strong>: website hosting and deployment</li>
+              <li><strong>Sendcloud / Evri</strong>: shipping label generation using buyer delivery address and seller sender address</li>
+              <li><strong>Zoho Mail</strong>: transactional email communications</li>
             </ul>
             <p className="mt-2">All service providers are required to handle your data securely and in accordance with applicable data protection law.</p>
             <h3 className="font-semibold mt-3 mb-1">4.3 Legal Requirements</h3>
@@ -121,12 +121,12 @@ const Privacy = () => {
             <h2 className="font-bold text-xl mb-2">7. Your Rights</h2>
             <p>Under UK GDPR, you have the following rights:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li><strong>Right of access</strong> — request a copy of the data we hold about you</li>
-              <li><strong>Right to rectification</strong> — ask us to correct inaccurate data</li>
-              <li><strong>Right to erasure</strong> — ask us to delete your data (subject to legal retention obligations)</li>
-              <li><strong>Right to restrict processing</strong> — ask us to limit how we use your data</li>
-              <li><strong>Right to data portability</strong> — receive your data in a portable format</li>
-              <li><strong>Right to object</strong> — object to processing based on legitimate interests</li>
+              <li><strong>Right of access</strong>: request a copy of the data we hold about you</li>
+              <li><strong>Right to rectification</strong>: ask us to correct inaccurate data</li>
+              <li><strong>Right to erasure</strong>: ask us to delete your data (subject to legal retention obligations)</li>
+              <li><strong>Right to restrict processing</strong>: ask us to limit how we use your data</li>
+              <li><strong>Right to data portability</strong>: receive your data in a portable format</li>
+              <li><strong>Right to object</strong>: object to processing based on legitimate interests</li>
             </ul>
             <p className="mt-2">To exercise any of these rights, contact us at <a href="mailto:support@prelovedkicks.co.uk" className="underline">support@prelovedkicks.co.uk</a>. We will respond within 30 days.</p>
           </div>
@@ -139,8 +139,8 @@ const Privacy = () => {
               <li>Row-level security so users can only access their own data</li>
               <li>Secure authentication via Supabase</li>
               <li>Private storage for listing photos and dispute evidence</li>
-              <li>No storage of payment card details — all handled by Stripe</li>
-              <li>Seller bank details and identity documents held securely by Stripe — never stored by PrelovedKicks</li>
+              <li>No storage of payment card details, all handled by Stripe</li>
+              <li>Seller bank details and identity documents are held securely by Stripe and never stored by PrelovedKicks</li>
             </ul>
             <p className="mt-2">In the event of a data breach that is likely to result in a risk to your rights and freedoms, we will notify you and the ICO as required by UK GDPR.</p>
           </div>
@@ -165,7 +165,7 @@ const Privacy = () => {
             <p>If you are unhappy with how we handle your data, you have the right to complain to the Information Commissioner&apos;s Office (ICO):</p>
             <p className="mt-2"><strong>Website:</strong> ico.org.uk<br />
             <strong>Phone:</strong> 0303 123 1113</p>
-            <p className="mt-2">We would appreciate the opportunity to address your concerns first — please contact us at <a href="mailto:support@prelovedkicks.co.uk" className="underline">support@prelovedkicks.co.uk</a> before contacting the ICO.</p>
+            <p className="mt-2">We would appreciate the opportunity to address your concerns first, so please contact us at <a href="mailto:support@prelovedkicks.co.uk" className="underline">support@prelovedkicks.co.uk</a> before contacting the ICO.</p>
           </div>
 
           <div>

@@ -42,7 +42,7 @@ const Terms = () => {
             <h3 className="font-semibold mt-3 mb-1">5.1 Listing Requirements</h3>
             <ul className="list-disc pl-5 space-y-1">
               <li>All items listed must be genuine trainers or footwear.</li>
-              <li>Listings must be accurate — photos must be of the actual item you are selling.</li>
+              <li>Listings must be accurate. Photos must be of the actual item you are selling.</li>
               <li>Counterfeit, fake, or replica goods are strictly prohibited and may result in permanent account suspension.</li>
               <li>You must own the item you are listing or have the legal right to sell it.</li>
               <li>Prices must be set in pounds sterling (GBP).</li>
@@ -54,7 +54,7 @@ const Terms = () => {
               <li>You are responsible for the accuracy of your listings including condition, size, and brand.</li>
             </ul>
             <h3 className="font-semibold mt-3 mb-1">5.3 Seller Fees</h3>
-            <p>PrelovedKicks does not charge sellers a listing fee or commission. Selling on the platform is free. The buyer pays a 4% buyer protection fee on top of the item price at checkout — this fee is not deducted from the seller&apos;s payout.</p>
+            <p>PrelovedKicks does not charge sellers a listing fee or commission. Selling on the platform is free. The buyer pays a 4% buyer protection fee on top of the item price at checkout, and this fee is not deducted from the seller&apos;s payout.</p>
             <h3 className="font-semibold mt-3 mb-1">5.4 Seller Payouts</h3>
             <p>To receive payment for your sales, you must connect a UK bank account via our secure payment provider, Stripe, and complete Stripe&apos;s identity verification process. Until verification is complete, payouts cannot be processed. Once verified, payouts are made automatically once the buyer confirms receipt of the item, or after 48 hours from confirmed delivery with no dispute raised. Postage costs are deducted from the payout as they are paid directly to the shipping provider.</p>
             <h3 className="font-semibold mt-3 mb-1">5.5 Prohibited Items</h3>
@@ -100,15 +100,15 @@ const Terms = () => {
             <h3 className="font-semibold mt-3 mb-1">9.1 Confirming Receipt</h3>
             <p>Once your item has been shipped, you will be able to confirm receipt through your order page. You have two options:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li><strong>Item received, all ok</strong> — the seller will be paid out immediately.</li>
-              <li><strong>I have an issue</strong> — you must describe the issue and may upload photos as evidence.</li>
+              <li><strong>Item received, all ok</strong>, and the seller will be paid out immediately.</li>
+              <li><strong>I have an issue</strong>, where you must describe the problem and may upload photos as evidence.</li>
             </ul>
             <h3 className="font-semibold mt-3 mb-1">9.2 Raising a Dispute</h3>
             <p>If you have an issue with your order, you must raise it within 48 hours of Evri confirming delivery. If no action is taken within 48 hours of confirmed delivery, the seller will be paid out automatically.</p>
             <p className="mt-2">When a dispute is raised, the seller will be notified and may choose to:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li><strong>Issue a full refund</strong> — the buyer receives a full refund with no return required.</li>
-              <li><strong>Request a return</strong> — a return shipping label will be generated for the buyer.</li>
+              <li><strong>Issue a full refund</strong>, where the buyer receives a full refund with no return required.</li>
+              <li><strong>Request a return</strong>, where a return shipping label will be generated for the buyer.</li>
             </ul>
             <p className="mt-2">If the dispute cannot be resolved between the parties, our support team will review the evidence and make a final decision.</p>
             <h3 className="font-semibold mt-3 mb-1">9.3 Item Not as Described</h3>
