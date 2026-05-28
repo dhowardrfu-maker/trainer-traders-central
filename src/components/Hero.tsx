@@ -18,7 +18,7 @@ export const Hero = () => {
             <span className="text-primary">already broken in.</span>
           </h1>
           <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-lg">
-            Real people selling real kicks. Find your next pair or turn your unworn trainers into cash, it takes less than a minute to list.
+            Thousands of second-hand trainers from real people. List in 60 seconds, ship with Evri, safe and tracked delivery every time.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button
