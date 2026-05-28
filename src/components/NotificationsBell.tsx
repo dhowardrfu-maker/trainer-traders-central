@@ -29,35 +29,53 @@ export const NotificationsBell = () => {
         <Button variant="ghost" size="icon" className="rounded-full relative" aria-label="Notifications">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent" />
+            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-[#2d9b6f] text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none shadow-sm">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 rounded-xl p-0 max-h-96 overflow-y-auto">
-        <DropdownMenuLabel className="px-4 py-3 flex items-center justify-between sticky top-0 bg-background">
-          <span>Notifications</span>
-          {unreadCount > 0 && <span className="text-xs text-muted-foreground font-normal">{unreadCount} new</span>}
+      <DropdownMenuContent align="end" className="w-80 rounded-xl p-0 max-h-[420px] overflow-y-auto">
+        <DropdownMenuLabel className="px-4 py-3 flex items-center justify-between sticky top-0 bg-background z-10">
+          <span className="font-semibold">Notifications</span>
+          {unreadCount > 0 && (
+            <span className="text-xs text-muted-foreground font-normal">{unreadCount} new</span>
+          )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="m-0" />
         {notifications.length === 0 ? (
-          <p className="px-4 py-8 text-sm text-muted-foreground text-center">No notifications yet</p>
+          <div className="px-4 py-10 text-center">
+            <Bell className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No notifications yet</p>
+          </div>
         ) : (
           <ul>
             {notifications.map((n) => (
-              <li key={n.id}>
+              <li key={n.id} className="border-b border-border last:border-0">
                 <button
                   className={cn(
-                    "w-full text-left px-4 py-3 hover:bg-muted/60 transition-colors block",
-                    !n.read && "bg-primary-soft/30"
+                    "w-full text-left px-4 py-3.5 hover:bg-muted/60 transition-colors block",
+                    !n.read && "bg-[#2d9b6f]/6 border-l-2 border-l-[#2d9b6f]"
                   )}
                   onClick={() => {
                     void markRead(n.id);
                     if (n.link) navigate(n.link);
                   }}
                 >
-                  <p className="font-semibold text-sm">{n.title}</p>
-                  {n.body && <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.body}</p>}
-                  <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wide">{timeAgo(n.created_at)} ago</p>
+                  <div className="flex items-start gap-2">
+                    {!n.read && (
+                      <span className="mt-1.5 h-2 w-2 rounded-full bg-[#2d9b6f] shrink-0" />
+                    )}
+                    <div className={cn("flex-1 min-w-0", n.read && "pl-4")}>
+                      <p className="font-semibold text-sm leading-snug">{n.title}</p>
+                      {n.body && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.body}</p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground mt-1.5 uppercase tracking-wide">
+                        {timeAgo(n.created_at)} ago
+                      </p>
+                    </div>
+                  </div>
                 </button>
               </li>
             ))}
