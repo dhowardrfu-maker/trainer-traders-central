@@ -84,6 +84,18 @@ const formatGbp = (pence: number) => `£${(pence / 100).toFixed(2)}`;
 const statusLabel = (status: string) =>
   status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 
+// Helper — insert a notification row directly into the notifications table
+const notify = async (userId: string, type: string, title: string, body: string | null, link: string | null) => {
+  await supabase.from("notifications").insert({
+    user_id: userId,
+    type,
+    title,
+    body,
+    link,
+    read: false,
+  });
+};
+
 const Profile = () => {
   const { user, loading: authLoading } = useAuth();
   const { ids: favIds } = useFavourites();
@@ -123,6 +135,7 @@ const Profile = () => {
     listing_id: string; created_at: string; listing_title?: string; listing_photo?: string | null;
   }>>([]);
   const [offersLoading, setOffersLoading] = useState(true);
+  const [offerBusy, setOfferBusy] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -340,7 +353,53 @@ const Profile = () => {
     window.location.href = data.url;
   };
 
-  const handleAgreeCancel = async (orderId: string, listingId: string) => {
+  // ACCEPT OFFER
+  const handleAcceptOffer = async (offerId: string, buyerId: string, listingId: string, listingTitle: string, amountPence: number) => {
+    setOfferBusy(offerId);
+    const { error } = await supabase
+      .from("offers")
+      .update({ status: "accepted" })
+      .eq("id", offerId);
+    if (error) { setOfferBusy(null); toast.error("Couldn't accept offer"); return; }
+
+    // Notify buyer
+    await notify(
+      buyerId,
+      "offer_accepted",
+      "Your offer was accepted! 🎉",
+      `Your offer of £${(amountPence / 100).toFixed(2)} on ${listingTitle ?? "a listing"} was accepted. Tap to complete your purchase.`,
+      `/checkout/${listingId}?offer=${offerId}`
+    );
+
+    setOfferBusy(null);
+    toast.success("Offer accepted — buyer has been notified");
+    setOfferRows((prev) => prev.map((o) => o.id === offerId ? { ...o, status: "accepted" } : o));
+  };
+
+  // DECLINE OFFER
+  const handleDeclineOffer = async (offerId: string, buyerId: string, listingTitle: string, amountPence: number) => {
+    setOfferBusy(offerId);
+    const { error } = await supabase
+      .from("offers")
+      .update({ status: "rejected" })
+      .eq("id", offerId);
+    if (error) { setOfferBusy(null); toast.error("Couldn't decline offer"); return; }
+
+    // Notify buyer
+    await notify(
+      buyerId,
+      "offer_declined",
+      "Your offer was declined",
+      `Your offer of £${(amountPence / 100).toFixed(2)} on ${listingTitle ?? "a listing"} was not accepted by the seller.`,
+      null
+    );
+
+    setOfferBusy(null);
+    toast.success("Offer declined");
+    setOfferRows((prev) => prev.map((o) => o.id === offerId ? { ...o, status: "rejected" } : o));
+  };
+
+  const handleAgreeCancel = async (orderId: string, listingId: string, requestedBy: string) => {
     setCancelBusy(orderId);
     const { error } = await supabase
       .from("orders")
@@ -349,6 +408,16 @@ const Profile = () => {
     if (error) { setCancelBusy(null); toast.error("Couldn't process cancellation"); return; }
     await supabase.from("listings").update({ status: "active" }).eq("id", Number(listingId));
     const { error: refundErr } = await supabase.functions.invoke("create-refund", { body: { order_id: orderId } });
+
+    // Notify the party who originally requested cancellation
+    await notify(
+      requestedBy,
+      "cancellation_agreed",
+      "Cancellation agreed — refund issued",
+      "The other party agreed to cancel. A full refund has been issued.",
+      `/order/${orderId}`
+    );
+
     setCancelBusy(null);
     toast.success(refundErr ? "Cancelled but refund failed — contact support" : "Order cancelled and refund issued");
     setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: "cancelled", cancellation_agreed: true } : o));
@@ -366,9 +435,13 @@ const Profile = () => {
   const connectEnabled = profile?.stripe_connect_enabled === true;
   const connectStarted = !!profile?.stripe_connect_id;
 
-  // Pending cancellations where the OTHER party requested (so I need to respond)
   const pendingCancellations = orders.filter(
     (o) => o.cancellation_requested_by && o.cancellation_requested_by !== user.id && !o.cancellation_agreed && o.status !== "cancelled"
+  );
+
+  // Pending offers received (seller view — status pending)
+  const pendingOffersReceived = offerRows.filter(
+    (o) => o.seller_id === user.id && o.status === "pending"
   );
 
   return (
@@ -411,7 +484,7 @@ const Profile = () => {
                   <Button
                     size="sm"
                     className="rounded-full font-semibold"
-                    onClick={() => handleAgreeCancel(o.id, o.listing_id)}
+                    onClick={() => handleAgreeCancel(o.id, o.listing_id, o.cancellation_requested_by!)}
                     disabled={cancelBusy === o.id}
                   >
                     {cancelBusy === o.id && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
@@ -442,8 +515,13 @@ const Profile = () => {
             <TabsTrigger value="listings" className="gap-1.5">
               <ShoppingBag className="h-4 w-4" /> <span className="hidden sm:inline">Listings</span>
             </TabsTrigger>
-            <TabsTrigger value="offers" className="gap-1.5">
+            <TabsTrigger value="offers" className="gap-1.5 relative">
               <Tag className="h-4 w-4" /> <span className="hidden sm:inline">Offers</span>
+              {pendingOffersReceived.length > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-[#2d9b6f] text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {pendingOffersReceived.length}
+                </span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="saved" className="gap-1.5">
               <Heart className="h-4 w-4" /> <span className="hidden sm:inline">Saved</span>
@@ -566,7 +644,6 @@ const Profile = () => {
                       </div>
                       <p className="text-sm text-muted-foreground truncate">{l.brand} · {formatGbp(l.price_pence)}</p>
                     </div>
-                    {/* Only show edit/delete for active listings */}
                     {l.status === "active" && (
                       <>
                         <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Edit listing">
@@ -612,7 +689,8 @@ const Profile = () => {
             ) : (
               <div className="grid gap-3">
                 {offerRows.map((o) => {
-                  const role = o.buyer_id === user.id ? "Sent" : "Received";
+                  const isSeller = o.seller_id === user.id;
+                  const role = isSeller ? "Received" : "Sent";
                   return (
                     <Card key={o.id} className="p-3 rounded-2xl flex items-center gap-3">
                       <Link to={`/listing/${o.listing_id}`} className="shrink-0">
@@ -630,8 +708,31 @@ const Profile = () => {
                           £{(o.amount_pence / 100).toFixed(2)} · {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                         </p>
                       </div>
+                      {/* Buyer: accepted offer — show Buy button */}
                       {o.status === "accepted" && o.buyer_id === user.id && (
                         <Button size="sm" className="rounded-full" onClick={() => navigate(`/checkout/${o.listing_id}?offer=${o.id}`)}>Buy</Button>
+                      )}
+                      {/* Seller: pending offer — show Accept / Decline */}
+                      {isSeller && o.status === "pending" && (
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            className="rounded-full font-semibold"
+                            disabled={offerBusy === o.id}
+                            onClick={() => handleAcceptOffer(o.id, o.buyer_id, o.listing_id, o.listing_title ?? "a listing", o.amount_pence)}
+                          >
+                            {offerBusy === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Accept"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-full font-semibold"
+                            disabled={offerBusy === o.id}
+                            onClick={() => handleDeclineOffer(o.id, o.buyer_id, o.listing_title ?? "a listing", o.amount_pence)}
+                          >
+                            Decline
+                          </Button>
+                        </div>
                       )}
                     </Card>
                   );
@@ -807,10 +908,7 @@ const OrderSection = ({
                     {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
                   {isSales && o.status !== "cancelled" && (
-                    <span
-                      onClick={(e) => e.preventDefault()}
-                      className="inline-block mt-3"
-                    >
+                    <span onClick={(e) => e.preventDefault()} className="inline-block mt-3">
                       <Link
                         to={`/shipping/${o.id}`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"

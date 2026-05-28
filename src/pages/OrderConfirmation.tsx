@@ -38,6 +38,18 @@ interface OrderRow {
   dispute_status: string | null;
 }
 
+// Helper — insert a notification row directly into the notifications table
+const notify = async (userId: string, type: string, title: string, body: string | null, link: string | null) => {
+  await supabase.from("notifications").insert({
+    user_id: userId,
+    type,
+    title,
+    body,
+    link,
+    read: false,
+  });
+};
+
 const OrderConfirmation = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -104,8 +116,20 @@ const OrderConfirmation = () => {
         cancellation_reason: cancelReason.trim(),
       })
       .eq("id", order.id);
+    if (error) { setBusy(false); toast.error("Couldn't submit cancellation request"); return; }
+
+    // Notify the other party
+    const otherPartyId = isBuyer ? order.seller_id : order.buyer_id;
+    const requesterLabel = isBuyer ? "The buyer" : "The seller";
+    await notify(
+      otherPartyId,
+      "cancellation_requested",
+      `${requesterLabel} has requested to cancel an order`,
+      cancelReason.trim(),
+      `/order/${order.id}`
+    );
+
     setBusy(false);
-    if (error) { toast.error("Couldn't submit cancellation request"); return; }
     toast.success("Cancellation request sent — waiting for the other party to agree");
     setShowCancelForm(false);
     setOrder((prev) => prev ? { ...prev, cancellation_requested_by: user.id, cancellation_reason: cancelReason.trim() } : prev);
@@ -115,21 +139,25 @@ const OrderConfirmation = () => {
   const handleAgreeCancel = async () => {
     if (!user || !order) return;
     setBusy(true);
-    // Mark cancellation agreed
     const { error } = await supabase
       .from("orders")
       .update({ cancellation_agreed: true, status: "cancelled" })
       .eq("id", order.id);
     if (error) { setBusy(false); toast.error("Couldn't process cancellation"); return; }
-    // Reinstate listing
-    await supabase
-      .from("listings")
-      .update({ status: "active" })
-      .eq("id", Number(order.listing_id));
-    // Trigger Stripe refund via edge function
-    const { error: refundErr } = await supabase.functions.invoke("create-refund", {
-      body: { order_id: order.id },
-    });
+    await supabase.from("listings").update({ status: "active" }).eq("id", Number(order.listing_id));
+    const { error: refundErr } = await supabase.functions.invoke("create-refund", { body: { order_id: order.id } });
+
+    // Notify the party who originally requested the cancellation
+    if (order.cancellation_requested_by) {
+      await notify(
+        order.cancellation_requested_by,
+        "cancellation_agreed",
+        "Cancellation agreed — refund issued",
+        "The other party agreed to cancel. A full refund has been issued.",
+        `/order/${order.id}`
+      );
+    }
+
     setBusy(false);
     if (refundErr) {
       toast.error("Order cancelled but refund failed — please contact support@prelovedkicks.co.uk");
@@ -144,7 +172,6 @@ const OrderConfirmation = () => {
     if (!disputeDescription.trim()) { toast.error("Please describe the issue"); return; }
     if (!user || !order) return;
     setBusy(true);
-    // Upload dispute images if any
     const imagePaths: string[] = [];
     for (const file of disputeImages) {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -164,8 +191,18 @@ const OrderConfirmation = () => {
         status: "disputed",
       })
       .eq("id", order.id);
+    if (error) { setBusy(false); toast.error("Couldn't raise dispute"); return; }
+
+    // Notify seller
+    await notify(
+      order.seller_id,
+      "dispute_raised",
+      "A buyer has raised an issue with their order",
+      disputeDescription.trim(),
+      `/order/${order.id}`
+    );
+
     setBusy(false);
-    if (error) { toast.error("Couldn't raise dispute"); return; }
     toast.success("Issue raised — the seller has been notified");
     setShowDisputeForm(false);
     setOrder((prev) => prev ? { ...prev, dispute_status: "open", status: "disputed" } : prev);
@@ -180,8 +217,26 @@ const OrderConfirmation = () => {
       .update({ status: "delivered", evri_delivered_at: new Date().toISOString() } as never)
       .eq("id", order.id);
     if (error) { setBusy(false); toast.error("Couldn't confirm receipt"); return; }
-    // Trigger payout
     await supabase.functions.invoke("create-payout", { body: { order_id: order.id } });
+
+    // Notify seller — sale completed
+    await notify(
+      order.seller_id,
+      "sale_completed",
+      "Sale completed — payout on its way! 🎉",
+      "The buyer confirmed receipt. Your payout is being processed.",
+      `/order/${order.id}`
+    );
+
+    // Notify buyer — item delivered
+    await notify(
+      order.buyer_id,
+      "item_delivered",
+      "Great choice! Your item has been marked as received",
+      "We hope you love your kicks. Enjoy!",
+      `/order/${order.id}`
+    );
+
     setBusy(false);
     toast.success("Receipt confirmed — the seller will be paid out");
     setOrder((prev) => prev ? { ...prev, status: "delivered" } : prev);
@@ -194,6 +249,16 @@ const OrderConfirmation = () => {
     const { error } = await supabase.functions.invoke("create-refund", { body: { order_id: order.id } });
     if (error) { setBusy(false); toast.error("Couldn't issue refund"); return; }
     await supabase.from("orders").update({ dispute_status: "refunded", status: "cancelled" } as never).eq("id", order.id);
+
+    // Notify buyer
+    await notify(
+      order.buyer_id,
+      "dispute_refunded",
+      "Refund issued — dispute resolved",
+      "The seller has issued a full refund. It may take a few days to reach your account.",
+      `/order/${order.id}`
+    );
+
     setBusy(false);
     toast.success("Full refund issued to the buyer");
     setOrder((prev) => prev ? { ...prev, dispute_status: "refunded", status: "cancelled" } : prev);
@@ -204,6 +269,16 @@ const OrderConfirmation = () => {
     if (!user || !order) return;
     setBusy(true);
     await supabase.from("orders").update({ dispute_status: "return_requested" } as never).eq("id", order.id);
+
+    // Notify buyer
+    await notify(
+      order.buyer_id,
+      "return_requested",
+      "The seller has requested a return",
+      "A return label will be generated for you shortly.",
+      `/order/${order.id}`
+    );
+
     setBusy(false);
     toast.success("Return requested — a return label will be generated for the buyer");
     setOrder((prev) => prev ? { ...prev, dispute_status: "return_requested" } : prev);
@@ -268,11 +343,7 @@ const OrderConfirmation = () => {
                 </div>
                 <p className="text-sm text-amber-700">Do you agree to cancel this order?</p>
                 <div className="flex gap-3">
-                  <Button
-                    className="rounded-full font-semibold"
-                    onClick={handleAgreeCancel}
-                    disabled={busy}
-                  >
+                  <Button className="rounded-full font-semibold" onClick={handleAgreeCancel} disabled={busy}>
                     {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Agree to cancel
                   </Button>
