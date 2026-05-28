@@ -177,6 +177,7 @@ const Profile = () => {
       if (cancelled) return;
       if (data) {
         setProfile(data);
+        setConnectEnabled(data.stripe_connect_enabled === true);
         setDisplayName(data.display_name ?? "");
         setUsername(data.username ?? "");
         setBio(data.bio ?? "");
@@ -460,7 +461,7 @@ const Profile = () => {
   }
 
   const initial = (displayName || username || user.email || "U")[0].toUpperCase();
-  const [connectEnabled, setConnectEnabled] = useState(profile?.stripe_connect_enabled === true);
+  const [connectEnabled, setConnectEnabled] = useState(false);
   const connectStarted = !!profile?.stripe_connect_id;
 
   // Recheck Connect status from Stripe on load if account exists but not yet enabled
