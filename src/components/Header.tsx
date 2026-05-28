@@ -26,7 +26,6 @@ export const Header = () => {
       navigate("/auth");
       return;
     }
-    // Check profile is complete before allowing listing
     const { data } = await supabase
       .from("profiles")
       .select("full_name, address_line1, city, postcode, phone")
@@ -71,7 +70,7 @@ export const Header = () => {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               name="q"
-              placeholder="Search Nike, Jordan, size 9…"
+              placeholder="Search Nike, Jordan, size 9\u2026"
               className="pl-10 h-11 rounded-full bg-muted border-transparent focus-visible:bg-background"
             />
           </div>
@@ -140,6 +139,7 @@ export const Header = () => {
                 <DropdownMenuItem
                   onClick={async () => {
                     await signOut();
+                    navigate("/");
                     toast.success("Signed out");
                   }}
                   className="text-destructive focus:text-destructive"
