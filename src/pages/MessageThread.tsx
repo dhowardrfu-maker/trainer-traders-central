@@ -23,11 +23,19 @@ interface ThreadInfo {
   id: string;
   buyer_id: string;
   seller_id: string;
-  listing_id: string;
+  listing_id: string | number;
   other_name: string;
   listing_title: string | null;
   listing_photo: string | null;
 }
+
+const parsePhotos = (raw: unknown): string[] => {
+  if (Array.isArray(raw)) return raw as string[];
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw); } catch { return [raw]; }
+  }
+  return [];
+};
 
 const MessageThread = () => {
   const { id } = useParams<{ id: string }>();
@@ -60,11 +68,15 @@ const MessageThread = () => {
         supabase.from("messages").select("id, thread_id, sender_id, body, created_at").eq("thread_id", id).order("created_at", { ascending: true }),
       ]);
       if (cancelled) return;
+
+      const photos = parsePhotos(lRes.data?.photos);
+
       setInfo({
         ...t,
+        listing_id: String(t.listing_id),
         other_name: pRes.data?.display_name || pRes.data?.username || "User",
         listing_title: lRes.data?.title ?? null,
-        listing_photo: lRes.data?.photos?.[0] ?? null,
+        listing_photo: photos[0] ?? null,
       });
       setMessages((mRes.data ?? []) as Message[]);
       setLoading(false);
@@ -138,8 +150,10 @@ const MessageThread = () => {
             )}
           </div>
           {info.listing_photo && (
-            <Link to={`/listing/${info.listing_id}`}>
-              <Img src={info.listing_photo} alt="" className="h-10 w-10 rounded-lg object-cover bg-muted" />
+            <Link to={`/listing/${info.listing_id}`} className="shrink-0">
+              <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted">
+                <Img src={info.listing_photo} alt="" className="h-full w-full object-cover" />
+              </div>
             </Link>
           )}
           <ReportDialog targetType="thread" targetId={info.id} />
