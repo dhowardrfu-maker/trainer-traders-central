@@ -578,8 +578,8 @@ const Profile = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="bio">About you <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                  <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell buyers about your collection…" rows={4} maxLength={300} />
-                  <p className="text-xs text-muted-foreground text-right">{bio.length}/300</p>
+                  <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell buyers about your collection…" rows={6} maxLength={1000} />
+                  <p className="text-xs text-muted-foreground text-right">{bio.length}/1000</p>
                 </div>
                 <div className="border-t border-border pt-5">
                   <p className="text-sm font-semibold mb-4">Shipping address <span className="text-destructive">*</span></p>
