@@ -7,7 +7,7 @@ const Terms = () => {
       <Header />
       <main className="container py-8 max-w-3xl">
         <h1 className="font-display font-bold text-4xl tracking-tight mb-2">Terms and Conditions</h1>
-        <p className="text-sm text-muted-foreground mb-8">Last updated: 27 May 2026</p>
+        <p className="text-sm text-muted-foreground mb-8">Last updated: 28 May 2026</p>
 
         <section className="prose prose-sm max-w-none space-y-8 text-foreground">
 
@@ -53,9 +53,11 @@ const Terms = () => {
               <li>Items must be securely packaged to prevent damage in transit.</li>
               <li>You are responsible for the accuracy of your listings including condition, size, and brand.</li>
             </ul>
-            <h3 className="font-semibold mt-3 mb-1">5.3 Seller Payouts</h3>
-            <p>To receive payment for your sales, you must connect a UK bank account via our secure payment provider, Stripe. Payouts are made automatically once the buyer confirms receipt of the item, or after 48 hours from confirmed delivery with no dispute raised. PrelovedKicks retains the buyer protection fee and postage costs from each transaction.</p>
-            <h3 className="font-semibold mt-3 mb-1">5.4 Prohibited Items</h3>
+            <h3 className="font-semibold mt-3 mb-1">5.3 Seller Fees</h3>
+            <p>PrelovedKicks does not charge sellers a listing fee or commission. Selling on the platform is free. The buyer pays a 4% buyer protection fee on top of the item price at checkout — this fee is not deducted from the seller&apos;s payout.</p>
+            <h3 className="font-semibold mt-3 mb-1">5.4 Seller Payouts</h3>
+            <p>To receive payment for your sales, you must connect a UK bank account via our secure payment provider, Stripe, and complete Stripe&apos;s identity verification process. Until verification is complete, payouts cannot be processed. Once verified, payouts are made automatically once the buyer confirms receipt of the item, or after 48 hours from confirmed delivery with no dispute raised. Postage costs are deducted from the payout as they are paid directly to the shipping provider.</p>
+            <h3 className="font-semibold mt-3 mb-1">5.5 Prohibited Items</h3>
             <ul className="list-disc pl-5 space-y-1">
               <li>Counterfeit or replica goods</li>
               <li>Items that infringe intellectual property rights</li>
@@ -69,14 +71,14 @@ const Terms = () => {
             <h3 className="font-semibold mt-3 mb-1">6.1 Purchases</h3>
             <p>By completing a purchase, you enter into a contract with the seller, not with PrelovedKicks. PrelovedKicks acts as an intermediary platform only.</p>
             <h3 className="font-semibold mt-3 mb-1">6.2 Buyer Protection Fee</h3>
-            <p>A buyer protection fee of 4% of the item price is added to every purchase. This fee helps fund platform operations and dispute resolution, is non-refundable except where a refund is granted due to an item not as described, and is displayed clearly at checkout before payment is taken.</p>
+            <p>A buyer protection fee of 4% of the item price (excluding postage) is added to every purchase. This fee helps fund platform operations and dispute resolution, is non-refundable except where a refund is granted due to an item not as described, and is displayed clearly at checkout before payment is taken.</p>
             <h3 className="font-semibold mt-3 mb-1">6.3 Postage</h3>
-            <p>Postage costs are paid by the buyer and are displayed at checkout. Postage fees are non-refundable once an item has been dispatched.</p>
+            <p>Postage costs are paid by the buyer and are displayed at checkout. All items are shipped via Evri. Postage fees are non-refundable once an item has been dispatched.</p>
           </div>
 
           <div>
             <h2 className="font-bold text-xl mb-2">7. Payments</h2>
-            <p>All payments are processed securely via Stripe. PrelovedKicks does not store your card details. By making a purchase you agree to Stripe's Terms of Service available at stripe.com/legal.</p>
+            <p>All payments are processed securely via Stripe. PrelovedKicks does not store your card details. By making a purchase you agree to Stripe&apos;s Terms of Service available at stripe.com/legal. Funds are held securely until the buyer confirms receipt or the 48-hour window expires.</p>
           </div>
 
           <div>
@@ -114,12 +116,14 @@ const Terms = () => {
             <h3 className="font-semibold mt-3 mb-1">9.4 Change of Mind</h3>
             <p>We do not offer refunds for change of mind purchases once an item has been shipped. You may request a pre-shipping cancellation (see Section 8) if the item has not yet been dispatched.</p>
             <h3 className="font-semibold mt-3 mb-1">9.5 Counterfeit Items</h3>
-            <p>If you receive an item you believe to be counterfeit, contact us immediately at support@prelovedkicks.co.uk.</p>
+            <p>If you receive an item you believe to be counterfeit, contact us immediately at support@prelovedkicks.co.uk. We take counterfeit goods extremely seriously and will investigate all reports promptly.</p>
+            <h3 className="font-semibold mt-3 mb-1">9.6 Statutory Rights</h3>
+            <p>Nothing in this section affects your statutory rights as a consumer under UK law. As a consumer buying from a private seller on our platform, your rights are governed by the contract between you and the seller. PrelovedKicks will assist in resolving disputes where possible.</p>
           </div>
 
           <div>
             <h2 className="font-bold text-xl mb-2">10. Offers and Negotiations</h2>
-            <p>An accepted offer creates a binding obligation for both parties to complete the transaction. Sellers must not accept an offer and then refuse to fulfil it without good reason.</p>
+            <p>An accepted offer creates a binding obligation for both parties to complete the transaction. Sellers must not accept an offer and then refuse to fulfil it without good reason. Buyers must complete the purchase promptly once an offer is accepted.</p>
           </div>
 
           <div>
@@ -129,33 +133,42 @@ const Terms = () => {
 
           <div>
             <h2 className="font-bold text-xl mb-2">12. Prohibited Conduct</h2>
+            <p>You must not:</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Use PrelovedKicks for any unlawful purpose</li>
               <li>Harass, abuse, or threaten other users</li>
               <li>Attempt to circumvent our platform by transacting outside of PrelovedKicks</li>
               <li>Post false or misleading listings</li>
               <li>Manipulate reviews or ratings</li>
+              <li>Use automated tools to scrape, crawl, or extract data from our platform</li>
+              <li>Attempt to gain unauthorised access to our systems or another user&apos;s account</li>
             </ul>
           </div>
 
           <div>
-            <h2 className="font-bold text-xl mb-2">13. Limitation of Liability</h2>
+            <h2 className="font-bold text-xl mb-2">13. Intellectual Property</h2>
+            <p>The PrelovedKicks name, logo, and platform content are owned by or licensed to us. You must not use our branding, trademarks, or content without our prior written permission. By uploading photos or content to our platform, you grant us a non-exclusive licence to display that content on the platform.</p>
+          </div>
+
+          <div>
+            <h2 className="font-bold text-xl mb-2">14. Limitation of Liability</h2>
             <p>PrelovedKicks is a marketplace platform. We are not party to transactions between buyers and sellers and are not liable for the quality, safety, or legality of items listed, the accuracy of listings, or loss or damage arising from transactions between users.</p>
+            <p className="mt-2">To the maximum extent permitted by law, our total liability to you in connection with the platform shall not exceed the total fees paid by you in the 12 months preceding the claim.</p>
             <p className="mt-2">Nothing in these terms limits our liability for death, personal injury caused by our negligence, fraud, or any other liability that cannot be excluded by law.</p>
           </div>
 
           <div>
-            <h2 className="font-bold text-xl mb-2">14. Governing Law</h2>
+            <h2 className="font-bold text-xl mb-2">15. Governing Law</h2>
             <p>These terms are governed by the laws of England and Wales. Any disputes shall be subject to the exclusive jurisdiction of the courts of England and Wales.</p>
           </div>
 
           <div>
-            <h2 className="font-bold text-xl mb-2">15. Consumer Rights</h2>
+            <h2 className="font-bold text-xl mb-2">16. Consumer Rights</h2>
             <p>Nothing in these terms affects your statutory rights as a consumer under UK law, including the Consumer Rights Act 2015 and the Consumer Contracts Regulations 2013.</p>
           </div>
 
           <div>
-            <h2 className="font-bold text-xl mb-2">16. Contact Us</h2>
+            <h2 className="font-bold text-xl mb-2">17. Contact Us</h2>
             <p>Email: <a href="mailto:support@prelovedkicks.co.uk" className="underline">support@prelovedkicks.co.uk</a></p>
           </div>
 
