@@ -18,7 +18,7 @@ export const Hero = () => {
             <span className="text-primary">already broken in.</span>
           </h1>
           <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-lg">
-            Thousands of second-hand trainers from real people. List in 60 seconds, ship with Evri — safe, tracked delivery every time.
+            Real people selling real kicks. Find your next pair or turn your unworn trainers into cash, it takes less than a minute to list.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button
@@ -60,7 +60,6 @@ export const Hero = () => {
             alt="Sneakers"
             className="w-full h-full object-cover object-center"
           />
-          {/* Dark fade at bottom */}
           <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background/60 to-transparent z-10" />
         </div>
       </div>
