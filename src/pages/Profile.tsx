@@ -455,6 +455,15 @@ const Profile = () => {
     setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: "cancelled", cancellation_agreed: true } : o));
   };
 
+  // Recheck Connect status from Stripe on load if account exists but not yet enabled
+  useEffect(() => {
+    if (!user || connectEnabled) return;
+    if (!profile?.stripe_connect_id) return;
+    supabase.functions.invoke("get-connect-status").then(({ data }) => {
+      if (data?.enabled) setConnectEnabled(true);
+    });
+  }, [user, profile?.stripe_connect_id, connectEnabled]);
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -465,15 +474,6 @@ const Profile = () => {
 
   const initial = (displayName || username || user.email || "U")[0].toUpperCase();
   const connectStarted = !!profile?.stripe_connect_id;
-
-  // Recheck Connect status from Stripe on load if account exists but not yet enabled
-  useEffect(() => {
-    if (!user || connectEnabled) return;
-    if (!profile?.stripe_connect_id) return;
-    supabase.functions.invoke("get-connect-status").then(({ data }) => {
-      if (data?.enabled) setConnectEnabled(true);
-    });
-  }, [user, profile?.stripe_connect_id]);
 
   const pendingCancellations = orders.filter(
     (o) => o.cancellation_requested_by && o.cancellation_requested_by !== user.id && !o.cancellation_agreed && o.status !== "cancelled"
