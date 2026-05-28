@@ -291,7 +291,7 @@ const OrderConfirmation = () => {
       <Header />
       <main className="container py-6 md:py-10 max-w-3xl">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/profile")}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 print:hidden"
         >
           <ArrowLeft className="h-4 w-4" /> Back to feed
@@ -591,7 +591,7 @@ const OrderConfirmation = () => {
 
             <div className="mt-5 flex flex-wrap gap-2 print:hidden">
               <Button variant="ghost" asChild className="rounded-full font-semibold ml-auto">
-                <Link to="/">Continue shopping</Link>
+                <Link to="/">Back to feed</Link>
               </Button>
             </div>
 
