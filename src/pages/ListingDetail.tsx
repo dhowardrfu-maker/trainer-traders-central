@@ -262,22 +262,32 @@ const ListingDetail = () => {
                   <Button className="w-full rounded-full font-semibold" size="lg" onClick={handleBuy}>
                     Buy now
                   </Button>
-                  <MakeOfferDialog
-                    listingId={listing.id}
-                    sellerId={listing.seller.id}
-                    buyerId={user!.id}
-                    askingPrice={listing.price}
-                    trigger={
-                      <Button
-                        variant="outline"
-                        className="w-full rounded-full font-semibold"
-                        size="lg"
-                        onClick={() => { if (!user) { navigate("/auth"); } }}
-                      >
-                        <Tag className="h-4 w-4 mr-2" /> Make an offer
-                      </Button>
-                    }
-                  />
+                  {user ? (
+                    <MakeOfferDialog
+                      listingId={listing.id}
+                      sellerId={listing.seller.id}
+                      buyerId={user.id}
+                      askingPrice={listing.price}
+                      trigger={
+                        <Button
+                          variant="outline"
+                          className="w-full rounded-full font-semibold"
+                          size="lg"
+                        >
+                          <Tag className="h-4 w-4 mr-2" /> Make an offer
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-full font-semibold"
+                      size="lg"
+                      onClick={() => navigate("/auth")}
+                    >
+                      <Tag className="h-4 w-4 mr-2" /> Make an offer
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     className="w-full rounded-full font-semibold"
