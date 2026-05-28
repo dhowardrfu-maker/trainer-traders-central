@@ -254,7 +254,15 @@ const Profile = () => {
       let listingMap: Record<string, { title: string; photos: string[] }> = {};
       if (listingIds.length) {
         const { data: ls } = await supabase.from("listings").select("id, title, photos").in("id", listingIds);
-        listingMap = Object.fromEntries((ls ?? []).map((l) => [String(l.id), { title: l.title as string, photos: (l.photos as unknown) as string[] }]));
+        listingMap = Object.fromEntries((ls ?? []).map((l) => {
+          const raw = l.photos;
+          let photos: string[] = [];
+          if (Array.isArray(raw)) photos = raw as string[];
+          else if (typeof raw === "string") {
+            try { photos = JSON.parse(raw); } catch { photos = []; }
+          }
+          return [String(l.id), { title: l.title as string, photos }];
+        }));
       }
       setOfferRows(rows.map((r) => ({
         ...r,
