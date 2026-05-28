@@ -1,19 +1,16 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const SIGN_TTL_SECONDS = 60 * 60; // 1 hour
-const cache = new Map<string, { url: string; exp: number }>();
-
 const isFullUrl = (s: string) => /^(https?:|data:|blob:|\/)/.test(s);
 
 /**
  * Resolve a stored value (storage path or full URL) to a displayable URL.
- * Static/sample images and legacy public URLs pass through unchanged.
+ * The listing-photos bucket is public so we use getPublicUrl (no signing needed).
  * JSON arrays are parsed and the first URL is returned.
  */
 export async function resolvePhotoUrl(pathOrUrl: string | undefined | null): Promise<string> {
   if (!pathOrUrl) return "";
 
-  // If it's a JSON array string, parse it and use the first URL
+  // If it's a JSON array string, parse it and use the first element
   const trimmed = pathOrUrl.trim();
   if (trimmed.startsWith("[")) {
     try {
@@ -29,20 +26,12 @@ export async function resolvePhotoUrl(pathOrUrl: string | undefined | null): Pro
 
   if (isFullUrl(pathOrUrl)) return pathOrUrl;
 
-  const now = Date.now();
-  const hit = cache.get(pathOrUrl);
-  if (hit && hit.exp > now + 60_000) return hit.url;
-
-  const { data, error } = await supabase.storage
+  // Use public URL — no signing required for public buckets
+  const { data } = supabase.storage
     .from("listing-photos")
-    .createSignedUrl(pathOrUrl, SIGN_TTL_SECONDS);
+    .getPublicUrl(pathOrUrl);
 
-  if (error || !data?.signedUrl) {
-    console.warn("[photo] sign failed", pathOrUrl, error);
-    return "";
-  }
-  cache.set(pathOrUrl, { url: data.signedUrl, exp: now + SIGN_TTL_SECONDS * 1000 });
-  return data.signedUrl;
+  return data.publicUrl ?? "";
 }
 
 export async function resolvePhotoUrls(paths: (string | undefined | null)[]): Promise<string[]> {
