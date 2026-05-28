@@ -19,7 +19,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const isDbId = (id: string) =>
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ||
+  /^\d+$/.test(id);
 
 // Resolve a storage path or existing URL to a display URL
 const resolvePhotoUrl = (path: string): string => {
