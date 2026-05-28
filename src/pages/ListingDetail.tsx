@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Img } from "@/components/Img";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Heart, Share2, Star, ShieldCheck, Truck, Package, MessageCircle, Tag } from "lucide-react";
+import { ArrowLeft, Heart, Share2, ShieldCheck, Truck, MessageCircle, Tag } from "lucide-react";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { ukToEu } from "@/data/listing-options";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
 import { MakeOfferDialog } from "@/components/MakeOfferDialog";
-import { OfferPanel } from "@/components/OfferPanel";
 import { SellerReviews } from "@/components/SellerReviews";
 import { ReportDialog } from "@/components/ReportDialog";
 import { useSEO } from "@/hooks/useSEO";
@@ -21,6 +20,14 @@ import { cn } from "@/lib/utils";
 
 const isDbId = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+// Resolve a storage path or existing URL to a display URL
+const resolvePhotoUrl = (path: string): string => {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
+  return data.publicUrl;
+};
 
 const ListingDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +39,11 @@ const ListingDetail = () => {
   const [postagePence, setPostagePence] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
+
+  useSEO({
+    title: listing ? `${listing.title} · PrelovedKicks` : "PrelovedKicks",
+    description: listing?.description ?? undefined,
+  });
 
   const liked = listing ? isFavourited(listing.id) : false;
 
@@ -49,7 +61,6 @@ const ListingDetail = () => {
 
   useEffect(() => {
     let cancelled = false;
-
     const load = async () => {
       if (!id) return;
       setLoading(true);
@@ -100,13 +111,15 @@ const ListingDetail = () => {
     } catch {
       arr = listing.image ? [listing.image] : [];
     }
-    return arr.filter(Boolean);
+    return arr.filter(Boolean).map(resolvePhotoUrl);
   }, [listing]);
 
   const safeActiveImage = Math.min(activeImage, Math.max(images.length - 1, 0));
   const mainImage = images[safeActiveImage] || "";
   const sizeEu = listing ? (listing.sizeEu ?? ukToEu(listing.sizeUk)) : null;
   const isOwnListing = !!(user && listing?.seller.id && user.id === listing.seller.id);
+  const isDbListing = listing && isDbId(listing.id);
+  const isSample = listing?.isSample === true;
 
   const handleBuy = () => {
     if (!user) return navigate("/auth");
@@ -114,7 +127,14 @@ const ListingDetail = () => {
     navigate(`/checkout/${listing!.id}`);
   };
 
-  const isDbListing = listing && isDbId(listing.id);
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copied!");
+    } catch {
+      toast.error("Couldn't copy link");
+    }
+  };
 
   const handleMessageSeller = async () => {
     if (!user) return navigate("/auth");
@@ -147,65 +167,175 @@ const ListingDetail = () => {
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
       <Header />
-      <main className="container py-4 md:py-8">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1 mb-4">
+      <main className="container py-4 md:py-8 max-w-5xl">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4"
+        >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
 
         {loading ? (
-          <Skeleton className="h-96 w-full rounded-xl" />
+          <Skeleton className="h-96 w-full rounded-2xl" />
         ) : !listing ? (
-          <div className="text-center py-20">Listing not found</div>
+          <div className="text-center py-20 text-muted-foreground">Listing not found</div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
+            {/* Images */}
             <div>
-              <div className="aspect-square bg-muted rounded-xl overflow-hidden">
-                {mainImage && <Img src={mainImage} className="w-full h-full object-cover" />}
+              <div className="aspect-square bg-muted rounded-2xl overflow-hidden">
+                {mainImage && (
+                  <img src={mainImage} alt={listing.title} className="w-full h-full object-cover" />
+                )}
               </div>
-              <div className="flex gap-2 mt-3 overflow-x-auto">
-                {images.map((img, i) => (
-                  <button key={i} onClick={() => setActiveImage(i)}>
-                    <img
-                      src={img}
-                      className={cn("h-16 w-16 object-cover rounded", i === activeImage && "ring-2 ring-primary")}
-                    />
-                  </button>
-                ))}
-              </div>
+              {images.length > 1 && (
+                <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                  {images.map((img, i) => (
+                    <button key={i} onClick={() => setActiveImage(i)} className="shrink-0">
+                      <img
+                        src={img}
+                        alt=""
+                        className={cn(
+                          "h-16 w-16 object-cover rounded-xl border-2 transition-all",
+                          i === safeActiveImage ? "border-primary" : "border-transparent"
+                        )}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div>
-              <h1 className="text-2xl font-bold">{listing.title}</h1>
-              <p className="text-3xl mt-2">£{listing.price}</p>
-              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                <Truck className="h-4 w-4" />
-                <span>{postagePence > 0 ? `+ £${(postagePence / 100).toFixed(2)} postage` : "Free postage"}</span>
+            {/* Details */}
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{listing.brand}</p>
+                  <h1 className="font-display font-bold text-2xl md:text-3xl tracking-tight mt-0.5">{listing.title}</h1>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <Button variant="ghost" size="icon" className="rounded-full" onClick={handleFavourite} aria-label="Save">
+                    <Heart className={cn("h-5 w-5", liked && "fill-destructive text-destructive")} />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="rounded-full" onClick={handleShare} aria-label="Share">
+                    <Share2 className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                <Spec label="Size" value={`UK ${listing.sizeUk} · EU ${sizeEu}`} />
-                <Spec label="Condition" value={listing.condition} />
+
+              <div>
+                <p className="font-display font-bold text-3xl">£{listing.price}</p>
+                <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
+                  <Truck className="h-3.5 w-3.5" />
+                  <span>{postagePence > 0 ? `+ £${(postagePence / 100).toFixed(2)} postage` : "Free postage"}</span>
+                </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="bg-muted rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground">Size</p>
+                  <p className="font-semibold mt-0.5">UK {listing.sizeUk} · EU {sizeEu}</p>
+                </div>
+                <div className="bg-muted rounded-xl p-3">
+                  <p className="text-xs text-muted-foreground">Condition</p>
+                  <p className="font-semibold mt-0.5">{listing.condition}</p>
+                </div>
+              </div>
+
               {listing.description && (
-                <div className="mt-4">
+                <div>
                   <p className="text-sm font-semibold mb-1">Description</p>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">{listing.description}</p>
                 </div>
               )}
-              <Button className="mt-6 w-full" onClick={handleBuy}>Buy now</Button>
+
+              {/* Buyer protection badge */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/60 rounded-xl px-3 py-2">
+                <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                <span>Buyer protection included — full refund if item not as described</span>
+              </div>
+
+              {/* Action buttons */}
+              {!isOwnListing && !isSample && (
+                <div className="space-y-2 pt-1">
+                  <Button className="w-full rounded-full font-semibold" size="lg" onClick={handleBuy}>
+                    Buy now
+                  </Button>
+                  <MakeOfferDialog
+                    listingId={listing.id}
+                    sellerId={listing.seller.id}
+                    buyerId={user!.id}
+                    askingPrice={listing.price}
+                    trigger={
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-full font-semibold"
+                        size="lg"
+                        onClick={() => { if (!user) { navigate("/auth"); } }}
+                      >
+                        <Tag className="h-4 w-4 mr-2" /> Make an offer
+                      </Button>
+                    }
+                  />
+                  <Button
+                    variant="ghost"
+                    className="w-full rounded-full font-semibold"
+                    onClick={handleMessageSeller}
+                  >
+                    <MessageCircle className="h-4 w-4 mr-2" /> Message seller
+                  </Button>
+                </div>
+              )}
+
+              {isOwnListing && (
+                <div className="space-y-2 pt-1">
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-full font-semibold"
+                    onClick={() => navigate(`/listing/${listing.id}/edit`)}
+                  >
+                    Edit listing
+                  </Button>
+                </div>
+              )}
+
+              {isSample && (
+                <p className="text-sm text-muted-foreground">
+                  This is a sample listing — <Link to="/sell" className="underline font-semibold">create a real listing</Link> to sell.
+                </p>
+              )}
+
+              {/* Seller info */}
+              {listing.seller?.name && (
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground mb-1">Sold by</p>
+                  <p className="text-sm font-semibold">{listing.seller.name}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
+
+        {/* Seller reviews */}
+        {listing && !isSample && (
+          <div className="mt-10">
+            <SellerReviews sellerId={listing.seller.id} />
+          </div>
+        )}
       </main>
+
+
+
+      {/* Report */}
+      {listing && !isOwnListing && isDbListing && (
+        <div className="container max-w-5xl pb-6">
+          <ReportDialog targetId={listing.id} targetType="listing" />
+        </div>
+      )}
+
       <MobileTabBar />
     </div>
   );
 };
-
-const Spec = ({ label, value }: any) => (
-  <div className="bg-muted p-2 rounded">
-    <p className="text-xs text-muted-foreground">{label}</p>
-    <p className="font-semibold">{value}</p>
-  </div>
-);
 
 export default ListingDetail;
