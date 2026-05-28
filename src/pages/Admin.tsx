@@ -62,7 +62,7 @@ const Admin = () => {
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) navigate("/auth");
+    if (!authLoading && !user) navigate("/auth", { replace: true });
   }, [authLoading, user, navigate]);
 
   // Check admin status

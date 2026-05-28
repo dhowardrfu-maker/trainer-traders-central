@@ -260,7 +260,7 @@ const Checkout = () => {
   }, [address]);
 
   useEffect(() => {
-    if (!authLoading && !user) navigate("/auth");
+    if (!authLoading && !user) navigate("/auth", { replace: true });
   }, [authLoading, user, navigate]);
 
   useEffect(() => {

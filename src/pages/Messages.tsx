@@ -100,7 +100,7 @@ const Messages = () => {
   };
 
   useEffect(() => {
-    if (!authLoading && !user) navigate("/auth");
+    if (!authLoading && !user) navigate("/auth", { replace: true });
   }, [authLoading, user, navigate]);
 
   useEffect(() => {
