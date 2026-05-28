@@ -1,5 +1,6 @@
 import { Heart, Search, MessageCircle, Plus, User, LogOut, ShoppingBag } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +21,19 @@ import { supabase } from "@/integrations/supabase/client";
 export const Header = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) { setProfileAvatarUrl(null); return; }
+    supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.avatar_url) setProfileAvatarUrl(data.avatar_url);
+      });
+  }, [user]);
 
   const handleSell = async () => {
     if (!user) {
@@ -50,7 +64,7 @@ export const Header = () => {
   };
 
   const initial = user?.email?.[0]?.toUpperCase() ?? "U";
-  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const avatarUrl = profileAvatarUrl || (user?.user_metadata?.avatar_url as string | undefined);
 
   return (
     <header className="sticky top-0 z-40 w-full bg-background/85 backdrop-blur-md border-b border-border">
