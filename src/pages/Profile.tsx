@@ -153,6 +153,7 @@ const Profile = () => {
         supabase.functions.invoke("get-connect-status").then(({ data }) => {
           if (data?.enabled) {
             setProfile((prev) => prev ? { ...prev, stripe_connect_enabled: true } : prev);
+          setConnectEnabled(true);
           }
         });
       }
@@ -440,8 +441,17 @@ const Profile = () => {
   }
 
   const initial = (displayName || username || user.email || "U")[0].toUpperCase();
-  const connectEnabled = profile?.stripe_connect_enabled === true;
+  const [connectEnabled, setConnectEnabled] = useState(profile?.stripe_connect_enabled === true);
   const connectStarted = !!profile?.stripe_connect_id;
+
+  // Recheck Connect status from Stripe on load if account exists but not yet enabled
+  useEffect(() => {
+    if (!user || connectEnabled) return;
+    if (!profile?.stripe_connect_id) return;
+    supabase.functions.invoke("get-connect-status").then(({ data }) => {
+      if (data?.enabled) setConnectEnabled(true);
+    });
+  }, [user, profile?.stripe_connect_id]);
 
   const pendingCancellations = orders.filter(
     (o) => o.cancellation_requested_by && o.cancellation_requested_by !== user.id && !o.cancellation_agreed && o.status !== "cancelled"
