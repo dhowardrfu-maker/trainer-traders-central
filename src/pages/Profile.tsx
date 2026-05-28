@@ -331,6 +331,8 @@ const Profile = () => {
     if (error) { toast.error("Couldn't upload photo"); setAvatarUploading(false); return; }
     const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
     setAvatarUrl(data.publicUrl);
+    // Also update Supabase auth metadata so the header avatar updates
+    await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } });
     setAvatarUploading(false);
     toast.success("Photo uploaded — save your profile to apply it");
   };
