@@ -343,6 +343,23 @@ const Profile = () => {
       .upload(path, file, { cacheControl: "3600", upsert: true, contentType: file.type });
     if (error) { toast.error("Couldn't upload photo"); setAvatarUploading(false); return; }
     const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
+
+    // Moderate the photo before saving
+    try {
+      const { data: modResult } = await supabase.functions.invoke("moderate-image", {
+        body: { imageUrl: data.publicUrl },
+      });
+      if (modResult?.allowed === false) {
+        // Delete the uploaded file and reject
+        await supabase.storage.from("listing-photos").remove([path]);
+        toast.error("Photo rejected — please use an appropriate profile picture");
+        setAvatarUploading(false);
+        return;
+      }
+    } catch {
+      // Fail open — if moderation errors, allow the upload
+    }
+
     setAvatarUrl(data.publicUrl);
     await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } });
     setAvatarUploading(false);
