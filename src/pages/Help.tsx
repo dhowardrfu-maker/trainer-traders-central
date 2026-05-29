@@ -33,7 +33,7 @@ const sections: Section[] = [
             <li>Go to <strong>prelovedkicks.co.uk</strong></li>
             <li>Tap the <strong>three dots menu</strong> (top right)</li>
             <li>Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong></li>
-            <li>Tap <strong>Install</strong> — the app icon will appear on your home screen</li>
+            <li>Tap <strong>Install</strong> the app icon will appear on your home screen</li>
           </ol>
         ),
       },
@@ -45,17 +45,17 @@ const sections: Section[] = [
             <li>Go to <strong>prelovedkicks.co.uk</strong></li>
             <li>Tap the <strong>Share button</strong> (the box with an arrow at the bottom)</li>
             <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
-            <li>Tap <strong>Add</strong> — the app icon will appear on your home screen</li>
+            <li>Tap <strong>Add</strong> the app icon will appear on your home screen</li>
           </ol>
         ),
       },
       {
         q: "Is the app free?",
-        a: "Yes — completely free to install and use. There are no subscription fees. We only charge a small buyer protection fee (4%) on purchases.",
+        a: "Yes completely free to install and use. There are no subscription fees. We only charge a small buyer protection fee (4%) on purchases.",
       },
       {
         q: "Is there an app in the App Store or Google Play?",
-        a: "Not yet — but the installed version works just like a native app. You get a home screen icon, full screen experience and fast loading. We're working on a full app store listing.",
+        a: "Not yet but the installed version works just like a native app. You get a home screen icon, full screen experience and fast loading. We're working on a full app store listing.",
       },
     ],
   },
@@ -74,15 +74,15 @@ const sections: Section[] = [
       },
       {
         q: "How do I make an offer?",
-        a: "On any listing tap Make an Offer and enter your price. The seller will accept or decline — you'll get a notification either way. If accepted, you'll be taken straight to checkout to complete the purchase.",
+        a: "On any listing tap Make an Offer and enter your price. The seller will accept or decline you'll get a notification either way. If accepted, you'll be taken straight to checkout to complete the purchase.",
       },
       {
         q: "Can I cancel an order after paying?",
-        a: "Yes, but only before the item has shipped. Go to the order page and request a cancellation — both you and the seller must agree. Once agreed a full refund is issued automatically. After shipping, you'll need to raise a dispute instead.",
+        a: "Yes, but only before the item has shipped. Go to the order page and request a cancellation both you and the seller must agree. Once agreed a full refund is issued automatically. After shipping, you'll need to raise a dispute instead.",
       },
       {
         q: "How long does delivery take?",
-        a: "Most items are shipped via Evri Standard which takes 2–4 working days. The seller has a few days to ship after your order — you'll receive tracking details once they've sent the label.",
+        a: "Most items are shipped via Evri Standard which takes 2–4 working days. The seller has a few days to ship after your order you'll receive tracking details once they've sent the label.",
       },
       {
         q: "What if my item doesn't arrive?",
@@ -97,7 +97,7 @@ const sections: Section[] = [
     items: [
       {
         q: "How do I list a pair of trainers?",
-        a: "Tap Sell in the header or navigation. Fill in the details — brand, title, size, condition, price and photos. Your listing goes through a quick AI moderation check then goes live. The whole process takes under 2 minutes.",
+        a: "Tap Sell in the header or navigation. Fill in the details brand, title, size, condition, price and photos. Your listing goes through a quick AI moderation check then goes live. The whole process takes under 2 minutes.",
       },
       {
         q: "How many photos can I add?",
@@ -109,11 +109,11 @@ const sections: Section[] = [
       },
       {
         q: "How do I ship an order?",
-        a: "Once a buyer pays, go to your Orders tab and tap Ship this order. We'll generate an Evri shipping label automatically — just print it, pack the trainers securely and drop them off at your nearest Evri ParcelShop.",
+        a: "Once a buyer pays, go to your Orders tab and tap Ship this order. We'll generate an Evri shipping label automatically just print it, pack the trainers securely and drop them off at your nearest Evri ParcelShop.",
       },
       {
         q: "Do I need to set up payouts before selling?",
-        a: "Yes — you need to connect your bank account via Stripe before you can receive payments. Go to Profile → Payments → Set up payouts. It takes about 2 minutes and requires ID verification.",
+        a: "Yes you need to connect your bank account via Stripe before you can receive payments. Go to Profile → Payments → Set up payouts. It takes about 2 minutes and requires ID verification.",
       },
       {
         q: "When do I get paid?",
@@ -140,7 +140,7 @@ const sections: Section[] = [
       },
       {
         q: "What is the 4% Buyer Protection fee?",
-        a: "The Buyer Protection fee covers the cost of protecting your purchase — if anything goes wrong we can issue a refund. It's calculated on the item price only and shown clearly at checkout before you pay.",
+        a: "The Buyer Protection fee covers the cost of protecting your purchase if anything goes wrong we can issue a refund. It's calculated on the item price only and shown clearly at checkout before you pay.",
       },
       {
         q: "How do seller payouts work?",
@@ -148,7 +148,7 @@ const sections: Section[] = [
       },
       {
         q: "Can I get a refund?",
-        a: "Yes — if you cancel before shipping (with seller agreement), or raise a successful dispute after delivery. Refunds are issued back to your original payment method and typically take 3–5 business days to appear.",
+        a: "Yes if you cancel before shipping (with seller agreement), or raise a successful dispute after delivery. Refunds are issued back to your original payment method and typically take 3–5 business days to appear.",
       },
     ],
   },
@@ -175,7 +175,7 @@ const sections: Section[] = [
       },
       {
         q: "What if my parcel is lost or damaged?",
-        a: "Raise a dispute from your order page — tap 'I have an issue' and describe what happened. Include photos if the item arrived damaged. We'll review and issue a refund if the claim is valid.",
+        a: "Raise a dispute from your order page tap 'I have an issue' and describe what happened. Include photos if the item arrived damaged. We'll review and issue a refund if the claim is valid.",
       },
     ],
   },
