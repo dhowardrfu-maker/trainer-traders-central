@@ -51,7 +51,7 @@ const sections: Section[] = [
       },
       {
         q: "Is the app free?",
-        a: "Yes completely free to install and use. There are no subscription fees. We only charge a small buyer protection fee (4%) on purchases.",
+        a: "Yes, completely free to install and use. There are no subscription fees.",
       },
       {
         q: "Is there an app in the App Store or Google Play?",
