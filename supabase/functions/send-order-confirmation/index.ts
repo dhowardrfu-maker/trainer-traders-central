@@ -19,7 +19,7 @@ async function sendEmail(to: string, subject: string, html: string, password: st
   });
 
   const read = async () => {
-    const buf = new Uint8Array(1024);
+    const buf = new Uint8Array(4096);
     const n = await conn.read(buf);
     return new TextDecoder().decode(buf.subarray(0, n ?? 0));
   };
@@ -29,10 +29,9 @@ async function sendEmail(to: string, subject: string, html: string, password: st
   };
 
   await read(); // 220 greeting
-  await write(`EHLO smtp.zoho.eu`);
+  await write(`EHLO prelovedkicks.co.uk`);
   await read(); // EHLO response
 
-  // AUTH LOGIN
   await write("AUTH LOGIN");
   await read(); // 334 username prompt
   await write(btoa(ZOHO_USER));
@@ -96,20 +95,17 @@ function orderConfirmationHtml(params: {
     <tr><td align="center">
       <table width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">
 
-        <!-- Header -->
         <tr>
           <td style="background:#18181b;padding:24px 32px;text-align:center;">
             <span style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">PrelovedKicks</span>
           </td>
         </tr>
 
-        <!-- Body -->
         <tr>
           <td style="padding:32px;">
             <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#18181b;">Order confirmed!</h1>
             <p style="margin:0 0 24px;color:#71717a;font-size:15px;">Hi ${params.buyerName}, your payment was successful and your order is on its way.</p>
 
-            <!-- Item -->
             <table width="100%" style="background:#f4f4f5;border-radius:12px;padding:16px;margin-bottom:24px;" cellpadding="0" cellspacing="0">
               <tr>
                 <td>
@@ -120,7 +116,6 @@ function orderConfirmationHtml(params: {
               </tr>
             </table>
 
-            <!-- Price breakdown -->
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
               <tr>
                 <td style="padding:6px 0;font-size:14px;color:#71717a;">Item</td>
@@ -143,7 +138,6 @@ function orderConfirmationHtml(params: {
               </tr>
             </table>
 
-            <!-- Delivery address -->
             <table width="100%" style="background:#f4f4f5;border-radius:12px;padding:16px;margin-bottom:24px;" cellpadding="0" cellspacing="0">
               <tr><td>
                 <p style="margin:0 0 8px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#71717a;">Delivery address</p>
@@ -157,7 +151,6 @@ function orderConfirmationHtml(params: {
               </td></tr>
             </table>
 
-            <!-- CTA -->
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
               <tr>
                 <td align="center">
@@ -170,7 +163,6 @@ function orderConfirmationHtml(params: {
           </td>
         </tr>
 
-        <!-- Footer -->
         <tr>
           <td style="background:#f4f4f5;padding:20px 32px;text-align:center;">
             <p style="margin:0;font-size:12px;color:#a1a1aa;">© ${new Date().getFullYear()} PrelovedKicks · <a href="https://www.prelovedkicks.co.uk/terms" style="color:#a1a1aa;">Terms</a> · <a href="https://www.prelovedkicks.co.uk/privacy" style="color:#a1a1aa;">Privacy</a></p>
@@ -187,45 +179,48 @@ function orderConfirmationHtml(params: {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+  const password = Deno.env.get("ZOHO_SMTP_PASSWORD");
+  if (!password) return json({ error: "SMTP password not configured" }, 500);
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const password = Deno.env.get("ZOHO_SMTP_PASSWORD");
-  if (!password) return json({ error: "SMTP password not configured" }, 500);
-
   try {
     const { order_id } = await req.json();
     if (!order_id) return json({ error: "Missing order_id" }, 400);
 
-    // Fetch order with listing and buyer details
+    // Fetch order
     const { data: order, error: orderErr } = await supabase
       .from("orders")
-      .select(`
-        id, price_pence, postage_pence, total_pence,
-        ship_to_name, ship_to_line1, ship_to_line2, ship_to_city, ship_to_postcode,
-        listings (title, brand, size_uk, condition),
-        buyer:profiles!orders_buyer_id_fkey (username),
-        buyer_auth:buyer_id
-      `)
+      .select("id, buyer_id, price_pence, postage_pence, total_pence, ship_to_name, ship_to_line1, ship_to_line2, ship_to_city, ship_to_postcode, listing_id")
       .eq("id", order_id)
       .maybeSingle();
 
     if (orderErr || !order) return json({ error: "Order not found" }, 404);
 
-    // Get buyer email from auth.users
-    const { data: { user }, error: userErr } = await supabase.auth.admin.getUserById(
-      order.buyer_auth as string
-    );
+    // Fetch listing
+    const { data: listing, error: listingErr } = await supabase
+      .from("listings")
+      .select("title, brand, size_uk, condition")
+      .eq("id", order.listing_id)
+      .maybeSingle();
 
+    if (listingErr || !listing) return json({ error: "Listing not found" }, 404);
+
+    // Fetch buyer profile for username
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("user_id", order.buyer_id)
+      .maybeSingle();
+
+    // Fetch buyer email from auth
+    const { data: { user }, error: userErr } = await supabase.auth.admin.getUserById(order.buyer_id);
     if (userErr || !user?.email) return json({ error: "Buyer email not found" }, 404);
 
-    const listing = order.listings as { title: string; brand: string; size_uk: string; condition: string };
-    const buyerName = (order.buyer as { username: string })?.username ?? "there";
+    const buyerName = profile?.username ?? "there";
     const protectionPence = order.total_pence - order.price_pence - order.postage_pence;
 
     const html = orderConfirmationHtml({
