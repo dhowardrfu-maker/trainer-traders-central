@@ -195,13 +195,18 @@ function StripePayForm({
       _stripe_payment_intent_id: paymentIntent.id,
     });
 
-    setBusy(false);
-
     if (error || !data) {
+      setBusy(false);
       toast.error(error?.message ?? "Order creation failed — contact support");
       return;
     }
 
+    // Send order confirmation email — fire and forget, don't block navigation
+    supabase.functions.invoke("send-order-confirmation", {
+      body: { order_id: data },
+    }).catch((err) => console.error("Order confirmation email failed:", err));
+
+    setBusy(false);
     sessionStorage.removeItem(ADDRESS_KEY);
     toast.success("Payment successful — generating your label!");
     onSuccess(data);
@@ -450,7 +455,6 @@ const Checkout = () => {
                 <div className="border-t border-border pt-4 space-y-2 text-sm">
                   <Row label={acceptedOfferPence != null ? "Item (offer price)" : "Item"} value={`£${(itemPence / 100).toFixed(2)}`} />
                   <Row label="Postage" value={`£${(postagePence / 100).toFixed(2)}`} />
-                  {/* Buyer protection row with info icon */}
                   <div className="flex justify-between text-muted-foreground">
                     <button
                       type="button"
