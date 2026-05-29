@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ const parsePhotos = (raw: unknown): string[] => {
 const MessageThread = () => {
   const { id } = useParams<{ id: string }>();
   const { user, loading: authLoading } = useAuth();
+  const { markThreadRead } = useUnreadMessages();
   const navigate = useNavigate();
   const [info, setInfo] = useState<ThreadInfo | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -80,9 +82,12 @@ const MessageThread = () => {
       });
       setMessages((mRes.data ?? []) as Message[]);
       setLoading(false);
+
+      // Mark thread as read when opened
+      await markThreadRead(id);
     })();
     return () => { cancelled = true; };
-  }, [user, id]);
+  }, [user, id, markThreadRead]);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -94,11 +99,13 @@ const MessageThread = () => {
         (payload) => {
           const m = payload.new as Message;
           setMessages((prev) => prev.some((x) => x.id === m.id) ? prev : [...prev, m]);
+          // Mark as read when new message arrives while viewing thread
+          void markThreadRead(id);
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [id, user]);
+  }, [id, user, markThreadRead]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });

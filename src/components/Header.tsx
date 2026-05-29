@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.png";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +23,7 @@ export const Header = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const { unreadCount: unreadMessages } = useUnreadMessages();
 
   useEffect(() => {
     if (!user) { setProfileAvatarUrl(null); return; }
@@ -109,17 +111,24 @@ export const Header = () => {
           >
             <Heart className="h-5 w-5" />
           </Button>
+
           {user && (
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full hidden sm:inline-flex"
+              className="rounded-full hidden sm:inline-flex relative"
               aria-label="Messages"
               onClick={() => navigate("/messages")}
             >
               <MessageCircle className="h-5 w-5" />
+              {unreadMessages > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-[#2d9b6f] text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none shadow-sm">
+                  {unreadMessages > 99 ? "99+" : unreadMessages}
+                </span>
+              )}
             </Button>
           )}
+
           {user && <NotificationsBell />}
 
           {user ? (
