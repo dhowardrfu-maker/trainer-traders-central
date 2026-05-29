@@ -11,7 +11,6 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // This function is called by the cron job using the service role key
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
@@ -23,15 +22,9 @@ Deno.serve(async (req) => {
   const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2024-06-20" });
 
   try {
-    // Find all orders that:
-    // - are shipped
-    // - have evri_delivered_at set
-    // - evri_delivered_at was more than 48 hours ago
-    // - no dispute raised (dispute_status = 'none')
-    // - payout not yet sent
     const { data: orders, error } = await supabase
       .from("orders")
-      .select("id, seller_id, total_pence, postage_pence, stripe_payment_intent_id, payout_sent")
+      .select("id, seller_id, buyer_id, total_pence, postage_pence, stripe_payment_intent_id, payout_sent")
       .eq("status", "shipped")
       .eq("dispute_status", "none")
       .eq("payout_sent", false)
@@ -51,7 +44,6 @@ Deno.serve(async (req) => {
 
     for (const order of orders) {
       try {
-        // Get seller's Connect account
         const { data: sellerProfile } = await supabase
           .from("profiles")
           .select("stripe_connect_id, stripe_connect_enabled")
@@ -63,12 +55,10 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Calculate seller payout amount
         const postagePence = order.postage_pence ?? 0;
         const protectionPence = Math.round((order.total_pence - postagePence) / 1.04 * 0.04);
         const sellerPence = order.total_pence - postagePence - protectionPence;
 
-        // Transfer to seller
         const transfer = await stripe.transfers.create({
           amount: sellerPence,
           currency: "gbp",
@@ -76,7 +66,6 @@ Deno.serve(async (req) => {
           metadata: { order_id: String(order.id), seller_id: order.seller_id, reason: "auto_payout_48h" },
         });
 
-        // Mark order as delivered and payout sent
         await supabase
           .from("orders")
           .update({
@@ -85,6 +74,24 @@ Deno.serve(async (req) => {
             payout_transfer_id: transfer.id,
           })
           .eq("id", order.id);
+
+        // Notify seller — sale completed (auto payout)
+        await supabase.rpc("insert_notification", {
+          p_user_id: order.seller_id,
+          p_type: "sale_completed",
+          p_title: "Sale completed — payout sent! 🎉",
+          p_body: `Your payout of £${(sellerPence / 100).toFixed(2)} has been sent to your bank account.`,
+          p_link: `/order/${order.id}`,
+        });
+
+        // Notify buyer — sale completed
+        await supabase.rpc("insert_notification", {
+          p_user_id: order.buyer_id,
+          p_type: "sale_completed",
+          p_title: "Your order is complete",
+          p_body: "The seller has been paid. We hope you love your kicks!",
+          p_link: `/order/${order.id}`,
+        });
 
         results.push({ order_id: order.id, status: "paid", transfer_id: transfer.id, amount: sellerPence });
       } catch (e) {

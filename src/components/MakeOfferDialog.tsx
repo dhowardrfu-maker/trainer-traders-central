@@ -20,11 +20,13 @@ interface Props {
   sellerId: string;
   buyerId: string;
   askingPrice: number;
+  listingTitle?: string;
+  brand?: string;
   trigger: React.ReactNode;
   onSubmitted?: () => void;
 }
 
-export const MakeOfferDialog = ({ listingId, sellerId, buyerId, askingPrice, trigger, onSubmitted }: Props) => {
+export const MakeOfferDialog = ({ listingId, sellerId, buyerId, askingPrice, listingTitle, brand, trigger, onSubmitted }: Props) => {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState<string>(Math.max(1, Math.round(askingPrice * 0.9)).toString());
   const [busy, setBusy] = useState(false);
@@ -41,19 +43,21 @@ export const MakeOfferDialog = ({ listingId, sellerId, buyerId, askingPrice, tri
       return;
     }
     setBusy(true);
-    const { error } = await supabase.from("offers").insert({
+
+    const { data: offerData, error } = await supabase.from("offers").insert({
       listing_id: Number(listingId),
       seller_id: sellerId,
       buyer_id: buyerId,
       amount_pence: Math.round(num * 100),
-    });
+    }).select("id").single();
+
     if (error) {
       setBusy(false);
       toast.error(error.message);
       return;
     }
 
-    // Notify seller
+    // Bell notification to seller
     await supabase.from("notifications").insert({
       user_id: sellerId,
       type: "offer_received",
@@ -62,6 +66,44 @@ export const MakeOfferDialog = ({ listingId, sellerId, buyerId, askingPrice, tri
       link: "/profile?tab=offers",
       read: false,
     });
+
+    // Fetch seller email and name, then send email notification — fire and forget
+    ;(async () => {
+      try {
+        const { data: sellerProfile } = await supabase
+          .from("profiles")
+          .select("username, display_name")
+          .eq("user_id", sellerId)
+          .maybeSingle();
+
+        const { data: buyerProfile } = await supabase
+          .from("profiles")
+          .select("username, display_name")
+          .eq("user_id", buyerId)
+          .maybeSingle();
+
+        const { data: authData } = await supabase.functions.invoke("get-user-email", {
+          body: { user_id: sellerId },
+        });
+
+        if (authData?.email) {
+          await supabase.functions.invoke("send-email", {
+            body: {
+              type: "offer_received",
+              to: authData.email,
+              sellerName: sellerProfile?.display_name ?? sellerProfile?.username ?? "there",
+              buyerName: buyerProfile?.display_name ?? buyerProfile?.username ?? "A buyer",
+              amountGbp: num.toFixed(2),
+              listingTitle: listingTitle ?? "your listing",
+              brand: brand ?? "",
+              offerId: offerData?.id ?? "",
+            },
+          });
+        }
+      } catch (err) {
+        console.error("offer_received email failed:", err);
+      }
+    })();
 
     setBusy(false);
     toast.success("Offer sent!");

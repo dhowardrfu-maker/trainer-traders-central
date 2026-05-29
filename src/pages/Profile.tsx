@@ -84,16 +84,26 @@ const formatGbp = (pence: number) => `£${(pence / 100).toFixed(2)}`;
 const statusLabel = (status: string) =>
   status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 
-// Helper — insert a notification row directly into the notifications table
 const notify = async (userId: string, type: string, title: string, body: string | null, link: string | null) => {
   await supabase.from("notifications").insert({
-    user_id: userId,
-    type,
-    title,
-    body,
-    link,
-    read: false,
+    user_id: userId, type, title, body, link, read: false,
   });
+};
+
+// Fire and forget — get user email via edge function then send email notification
+const sendEmailNotification = async (userId: string, emailPayload: Record<string, unknown>) => {
+  try {
+    const { data } = await supabase.functions.invoke("get-user-email", {
+      body: { user_id: userId },
+    });
+    if (data?.email) {
+      await supabase.functions.invoke("send-email", {
+        body: { ...emailPayload, to: data.email },
+      });
+    }
+  } catch (err) {
+    console.error("Email notification failed:", err);
+  }
 };
 
 const Profile = () => {
@@ -135,6 +145,7 @@ const Profile = () => {
   const [offerRows, setOfferRows] = useState<Array<{
     id: string; amount_pence: number; status: string; buyer_id: string; seller_id: string;
     listing_id: string; created_at: string; listing_title?: string; listing_photo?: string | null;
+    listing_brand?: string;
   }>>([]);
   const [offersLoading, setOffersLoading] = useState(true);
   const [offerBusy, setOfferBusy] = useState<string | null>(null);
@@ -155,7 +166,7 @@ const Profile = () => {
         supabase.functions.invoke("get-connect-status").then(({ data }) => {
           if (data?.enabled) {
             setProfile((prev) => prev ? { ...prev, stripe_connect_enabled: true } : prev);
-          setConnectEnabled(true);
+            setConnectEnabled(true);
           }
         });
       }
@@ -255,9 +266,9 @@ const Profile = () => {
         .order("created_at", { ascending: false });
       if (cancelled || !rows) { setOffersLoading(false); return; }
       const listingIds = Array.from(new Set(rows.map((r) => r.listing_id)));
-      let listingMap: Record<string, { title: string; photos: string[] }> = {};
+      let listingMap: Record<string, { title: string; brand: string; photos: string[] }> = {};
       if (listingIds.length) {
-        const { data: ls } = await supabase.from("listings").select("id, title, photos").in("id", listingIds);
+        const { data: ls } = await supabase.from("listings").select("id, title, brand, photos").in("id", listingIds);
         listingMap = Object.fromEntries((ls ?? []).map((l) => {
           const raw = l.photos;
           let photos: string[] = [];
@@ -265,7 +276,7 @@ const Profile = () => {
           else if (typeof raw === "string") {
             try { photos = JSON.parse(raw); } catch { photos = []; }
           }
-          return [String(l.id), { title: l.title as string, photos }];
+          return [String(l.id), { title: l.title as string, brand: l.brand as string, photos }];
         }));
       }
       setOfferRows(rows.map((r) => ({
@@ -273,6 +284,7 @@ const Profile = () => {
         id: String(r.id),
         listing_id: String(r.listing_id),
         listing_title: listingMap[String(r.listing_id)]?.title,
+        listing_brand: listingMap[String(r.listing_id)]?.brand,
         listing_photo: listingMap[String(r.listing_id)]?.photos?.[0] ?? null,
       })));
       setOffersLoading(false);
@@ -332,7 +344,6 @@ const Profile = () => {
     if (error) { toast.error("Couldn't upload photo"); setAvatarUploading(false); return; }
     const { data } = supabase.storage.from("listing-photos").getPublicUrl(path);
     setAvatarUrl(data.publicUrl);
-    // Also update Supabase auth metadata so the header avatar updates
     await supabase.auth.updateUser({ data: { avatar_url: data.publicUrl } });
     setAvatarUploading(false);
     toast.success("Photo uploaded — save your profile to apply it");
@@ -386,7 +397,7 @@ const Profile = () => {
   };
 
   // ACCEPT OFFER
-  const handleAcceptOffer = async (offerId: string, buyerId: string, listingId: string, listingTitle: string, amountPence: number) => {
+  const handleAcceptOffer = async (offerId: string, buyerId: string, listingId: string, listingTitle: string, listingBrand: string, amountPence: number) => {
     setOfferBusy(offerId);
     const { error } = await supabase
       .from("offers")
@@ -394,7 +405,7 @@ const Profile = () => {
       .eq("id", offerId);
     if (error) { setOfferBusy(null); toast.error("Couldn't accept offer"); return; }
 
-    // Notify buyer
+    // Bell notification to buyer
     await notify(
       buyerId,
       "offer_accepted",
@@ -402,6 +413,17 @@ const Profile = () => {
       `Your offer of £${(amountPence / 100).toFixed(2)} on ${listingTitle ?? "a listing"} was accepted. Tap to complete your purchase.`,
       `/checkout/${listingId}?offer=${offerId}`
     );
+
+    // Email notification to buyer — fire and forget
+    sendEmailNotification(buyerId, {
+      type: "offer_accepted",
+      buyerName: "there",
+      amountGbp: (amountPence / 100).toFixed(2),
+      listingTitle: listingTitle ?? "a listing",
+      brand: listingBrand ?? "",
+      listingId,
+      offerId,
+    });
 
     setOfferBusy(null);
     toast.success("Offer accepted — buyer has been notified");
@@ -417,7 +439,6 @@ const Profile = () => {
       .eq("id", offerId);
     if (error) { setOfferBusy(null); toast.error("Couldn't decline offer"); return; }
 
-    // Notify buyer
     await notify(
       buyerId,
       "offer_declined",
@@ -441,7 +462,6 @@ const Profile = () => {
     await supabase.from("listings").update({ status: "active" }).eq("id", Number(listingId));
     const { error: refundErr } = await supabase.functions.invoke("create-refund", { body: { order_id: orderId } });
 
-    // Notify the party who originally requested cancellation
     await notify(
       requestedBy,
       "cancellation_agreed",
@@ -455,7 +475,6 @@ const Profile = () => {
     setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: "cancelled", cancellation_agreed: true } : o));
   };
 
-  // Recheck Connect status from Stripe on load if account exists but not yet enabled
   useEffect(() => {
     if (!user || connectEnabled) return;
     if (!profile?.stripe_connect_id) return;
@@ -479,7 +498,6 @@ const Profile = () => {
     (o) => o.cancellation_requested_by && o.cancellation_requested_by !== user.id && !o.cancellation_agreed && o.status !== "cancelled"
   );
 
-  // Pending offers received (seller view — status pending)
   const pendingOffersReceived = offerRows.filter(
     (o) => o.seller_id === user.id && o.status === "pending"
   );
@@ -505,7 +523,6 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Pending cancellation banner */}
         {pendingCancellations.length > 0 && (
           <div className="mb-4 space-y-3">
             {pendingCancellations.map((o) => (
@@ -521,21 +538,11 @@ const Profile = () => {
                   <p className="text-sm">{o.cancellation_reason}</p>
                 </div>
                 <div className="flex gap-3">
-                  <Button
-                    size="sm"
-                    className="rounded-full font-semibold"
-                    onClick={() => handleAgreeCancel(o.id, o.listing_id, o.cancellation_requested_by!)}
-                    disabled={cancelBusy === o.id}
-                  >
+                  <Button size="sm" className="rounded-full font-semibold" onClick={() => handleAgreeCancel(o.id, o.listing_id, o.cancellation_requested_by!)} disabled={cancelBusy === o.id}>
                     {cancelBusy === o.id && <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />}
                     Agree to cancel
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-full font-semibold"
-                    onClick={() => window.location.href = `mailto:support@prelovedkicks.co.uk?subject=Order%20Cancellation%20Dispute&body=Order%20ID:%20${o.id}`}
-                  >
+                  <Button size="sm" variant="outline" className="rounded-full font-semibold" onClick={() => window.location.href = `mailto:support@prelovedkicks.co.uk?subject=Order%20Cancellation%20Dispute&body=Order%20ID:%20${o.id}`}>
                     Contact support
                   </Button>
                   <Button size="sm" variant="ghost" className="rounded-full" asChild>
@@ -585,26 +592,17 @@ const Profile = () => {
           {/* PROFILE */}
           <TabsContent value="profile">
             {profileLoading ? (
-              <div className="py-10 flex justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
+              <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
             ) : (
               <Card className="p-6 space-y-5 rounded-2xl">
-                {/* Avatar upload */}
                 <div className="flex items-center gap-4">
                   <div className="relative">
                     <Avatar className="h-16 w-16 border border-border">
                       {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
-                      <AvatarFallback className="bg-primary-soft text-primary font-display font-bold text-xl">
-                        {initial}
-                      </AvatarFallback>
+                      <AvatarFallback className="bg-primary-soft text-primary font-display font-bold text-xl">{initial}</AvatarFallback>
                     </Avatar>
                     <label className="absolute -bottom-1 -right-1 h-6 w-6 bg-primary rounded-full flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
-                      {avatarUploading ? (
-                        <Loader2 className="h-3 w-3 text-white animate-spin" />
-                      ) : (
-                        <Camera className="h-3 w-3 text-white" />
-                      )}
+                      {avatarUploading ? <Loader2 className="h-3 w-3 text-white animate-spin" /> : <Camera className="h-3 w-3 text-white" />}
                       <input type="file" hidden accept="image/*" onChange={handleAvatarUpload} disabled={avatarUploading} />
                     </label>
                   </div>
@@ -679,17 +677,13 @@ const Profile = () => {
               </Button>
             </div>
             {listingsLoading ? (
-              <div className="py-10 flex justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
+              <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
             ) : listings.length === 0 ? (
               <Card className="p-10 text-center rounded-2xl">
                 <ShoppingBag className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                 <p className="font-semibold">No listings yet</p>
                 <p className="text-sm text-muted-foreground mt-1">List your first pair to get started.</p>
-                <Button className="mt-4 rounded-full font-semibold" onClick={() => navigate("/sell")}>
-                  <Plus className="h-4 w-4 mr-1.5" /> Sell something
-                </Button>
+                <Button className="mt-4 rounded-full font-semibold" onClick={() => navigate("/sell")}><Plus className="h-4 w-4 mr-1.5" /> Sell something</Button>
               </Card>
             ) : (
               <div className="grid gap-3">
@@ -740,9 +734,7 @@ const Profile = () => {
           {/* OFFERS */}
           <TabsContent value="offers">
             {offersLoading ? (
-              <div className="py-10 flex justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
+              <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
             ) : offerRows.length === 0 ? (
               <Card className="p-10 text-center rounded-2xl">
                 <Tag className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
@@ -771,28 +763,17 @@ const Profile = () => {
                           £{(o.amount_pence / 100).toFixed(2)} · {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                         </p>
                       </div>
-                      {/* Buyer: accepted offer — show Buy button */}
                       {o.status === "accepted" && o.buyer_id === user.id && (
                         <Button size="sm" className="rounded-full" onClick={() => navigate(`/checkout/${o.listing_id}?offer=${o.id}`)}>Buy</Button>
                       )}
-                      {/* Seller: pending offer — show Accept / Decline */}
                       {isSeller && o.status === "pending" && (
                         <div className="flex gap-2 shrink-0">
-                          <Button
-                            size="sm"
-                            className="rounded-full font-semibold"
-                            disabled={offerBusy === o.id}
-                            onClick={() => handleAcceptOffer(o.id, o.buyer_id, o.listing_id, o.listing_title ?? "a listing", o.amount_pence)}
-                          >
+                          <Button size="sm" className="rounded-full font-semibold" disabled={offerBusy === o.id}
+                            onClick={() => handleAcceptOffer(o.id, o.buyer_id, o.listing_id, o.listing_title ?? "a listing", o.listing_brand ?? "", o.amount_pence)}>
                             {offerBusy === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Accept"}
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-full font-semibold"
-                            disabled={offerBusy === o.id}
-                            onClick={() => handleDeclineOffer(o.id, o.buyer_id, o.listing_title ?? "a listing", o.amount_pence)}
-                          >
+                          <Button size="sm" variant="outline" className="rounded-full font-semibold" disabled={offerBusy === o.id}
+                            onClick={() => handleDeclineOffer(o.id, o.buyer_id, o.listing_title ?? "a listing", o.amount_pence)}>
                             Decline
                           </Button>
                         </div>
@@ -807,9 +788,7 @@ const Profile = () => {
           {/* SAVED */}
           <TabsContent value="saved">
             {savedLoading ? (
-              <div className="py-10 flex justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
+              <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
             ) : savedListings.length === 0 ? (
               <Card className="p-10 text-center rounded-2xl">
                 <Heart className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
@@ -827,9 +806,7 @@ const Profile = () => {
           {/* ORDERS */}
           <TabsContent value="orders">
             {ordersLoading ? (
-              <div className="py-10 flex justify-center">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
+              <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
             ) : (
               <div className="space-y-8">
                 <OrderSection title="Purchases" empty="You haven't bought anything yet." rows={purchases} isSales={false} userId={user.id} />
@@ -853,29 +830,26 @@ const Profile = () => {
                 <div className="border-t border-border pt-5 grid gap-2">
                   <Label>Change password</Label>
                   <p className="text-sm text-muted-foreground">We'll send a password reset link to your email address.</p>
-                  <Button
-                    variant="outline"
-                    className="rounded-full w-fit"
-                    onClick={async () => {
-                      if (!user?.email) return;
-                      await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: "https://www.prelovedkicks.co.uk/auth" });
-                      toast.success("Password reset email sent");
-                    }}
-                  >
+                  <Button variant="outline" className="rounded-full w-fit" onClick={async () => {
+                    if (!user?.email) return;
+                    await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: "https://www.prelovedkicks.co.uk/auth" });
+                    toast.success("Password reset email sent");
+                  }}>
                     Send reset email
                   </Button>
                 </div>
                 <div className="border-t border-border pt-5 flex items-center justify-between">
                   <div>
                     <p className="font-semibold text-sm">Holiday mode</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Pause your listings while you're away. Buyers won't be able to purchase.</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Pause your listings while you're away.</p>
                   </div>
                   <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">Coming soon</span>
                 </div>
                 <div className="border-t border-border pt-5">
                   <p className="font-semibold text-sm text-destructive">Danger zone</p>
                   <p className="text-xs text-muted-foreground mt-1 mb-3">Permanently delete your account and all your data.</p>
-                  <Button variant="outline" className="rounded-full text-destructive border-destructive hover:bg-destructive hover:text-white" onClick={() => toast.error("Please contact support@prelovedkicks.co.uk to delete your account.")}>
+                  <Button variant="outline" className="rounded-full text-destructive border-destructive hover:bg-destructive hover:text-white"
+                    onClick={() => toast.error("Please contact support@prelovedkicks.co.uk to delete your account.")}>
                     Delete account
                   </Button>
                 </div>
@@ -923,17 +897,9 @@ const Profile = () => {
 };
 
 const OrderSection = ({
-  title,
-  empty,
-  rows,
-  isSales = false,
-  userId,
+  title, empty, rows, isSales = false, userId,
 }: {
-  title: string;
-  empty: string;
-  rows: OrderRow[];
-  isSales?: boolean;
-  userId: string;
+  title: string; empty: string; rows: OrderRow[]; isSales?: boolean; userId: string;
 }) => (
   <section>
     <h2 className="font-display font-bold text-lg mb-3">{title}</h2>
@@ -949,34 +915,18 @@ const OrderSection = ({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm">
-                      {carrierLabel(o.carrier)} · {o.service_label}
-                    </span>
-                    <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wide">
-                      {statusLabel(o.status)}
-                    </Badge>
+                    <span className="font-semibold text-sm">{carrierLabel(o.carrier)} · {o.service_label}</span>
+                    <Badge variant="secondary" className="rounded-full text-[10px] uppercase tracking-wide">{statusLabel(o.status)}</Badge>
                     {o.cancellation_requested_by && o.cancellation_requested_by !== userId && !o.cancellation_agreed && o.status !== "cancelled" && (
-                      <Badge variant="outline" className="rounded-full text-[10px] uppercase border-amber-400 text-amber-600">
-                        Cancel requested
-                      </Badge>
+                      <Badge variant="outline" className="rounded-full text-[10px] uppercase border-amber-400 text-amber-600">Cancel requested</Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
-                    {o.tracking_code}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1 truncate">
-                    To {o.ship_to_name} · {o.ship_to_city} {o.ship_to_postcode}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 font-mono truncate">{o.tracking_code}</p>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">To {o.ship_to_name} · {o.ship_to_city} {o.ship_to_postcode}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{new Date(o.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
                   {isSales && o.status !== "cancelled" && (
                     <span onClick={(e) => e.preventDefault()} className="inline-block mt-3">
-                      <Link
-                        to={`/shipping/${o.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <Link to={`/shipping/${o.id}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors" onClick={(e) => e.stopPropagation()}>
                         <Truck className="h-3 w-3" /> Ship this order
                       </Link>
                     </span>
