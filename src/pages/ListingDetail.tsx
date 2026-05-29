@@ -22,7 +22,6 @@ const isDbId = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ||
   /^\d+$/.test(id);
 
-// Resolve a storage path or existing URL to a display URL
 const resolvePhotoUrl = (path: string): string => {
   if (!path) return "";
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
@@ -250,13 +249,11 @@ const ListingDetail = () => {
                 </div>
               )}
 
-              {/* Buyer protection badge */}
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/60 rounded-xl px-3 py-2">
                 <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
                 <span>Buyer protection included — full refund if item not as described</span>
               </div>
 
-              {/* Action buttons */}
               {!isOwnListing && !isSample && (
                 <div className="space-y-2 pt-1">
                   <Button className="w-full rounded-full font-semibold" size="lg" onClick={handleBuy}>
@@ -268,31 +265,20 @@ const ListingDetail = () => {
                       sellerId={listing.seller.id}
                       buyerId={user.id}
                       askingPrice={listing.price}
+                      listingTitle={listing.title}
+                      brand={listing.brand}
                       trigger={
-                        <Button
-                          variant="outline"
-                          className="w-full rounded-full font-semibold"
-                          size="lg"
-                        >
+                        <Button variant="outline" className="w-full rounded-full font-semibold" size="lg">
                           <Tag className="h-4 w-4 mr-2" /> Make an offer
                         </Button>
                       }
                     />
                   ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full rounded-full font-semibold"
-                      size="lg"
-                      onClick={() => navigate("/auth")}
-                    >
+                    <Button variant="outline" className="w-full rounded-full font-semibold" size="lg" onClick={() => navigate("/auth")}>
                       <Tag className="h-4 w-4 mr-2" /> Make an offer
                     </Button>
                   )}
-                  <Button
-                    variant="ghost"
-                    className="w-full rounded-full font-semibold"
-                    onClick={handleMessageSeller}
-                  >
+                  <Button variant="ghost" className="w-full rounded-full font-semibold" onClick={handleMessageSeller}>
                     <MessageCircle className="h-4 w-4 mr-2" /> Message seller
                   </Button>
                 </div>
@@ -300,11 +286,7 @@ const ListingDetail = () => {
 
               {isOwnListing && (
                 <div className="space-y-2 pt-1">
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-full font-semibold"
-                    onClick={() => navigate(`/listing/${listing.id}/edit`)}
-                  >
+                  <Button variant="outline" className="w-full rounded-full font-semibold" onClick={() => navigate(`/listing/${listing.id}/edit`)}>
                     Edit listing
                   </Button>
                 </div>
@@ -316,7 +298,6 @@ const ListingDetail = () => {
                 </p>
               )}
 
-              {/* Seller info */}
               {listing.seller?.name && (
                 <div className="border-t border-border pt-4">
                   <p className="text-xs text-muted-foreground mb-1">Sold by</p>
@@ -327,7 +308,6 @@ const ListingDetail = () => {
           </div>
         )}
 
-        {/* Seller reviews */}
         {listing && !isSample && (
           <div className="mt-10">
             <SellerReviews sellerId={listing.seller.id} />
@@ -335,9 +315,6 @@ const ListingDetail = () => {
         )}
       </main>
 
-
-
-      {/* Report */}
       {listing && !isOwnListing && isDbListing && (
         <div className="container max-w-5xl pb-6">
           <ReportDialog targetId={listing.id} targetType="listing" />
