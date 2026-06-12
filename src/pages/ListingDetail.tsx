@@ -14,6 +14,7 @@ import { useFavourites } from "@/hooks/useFavourites";
 import { MakeOfferDialog } from "@/components/MakeOfferDialog";
 import { SellerReviews } from "@/components/SellerReviews";
 import { ReportDialog } from "@/components/ReportDialog";
+import { ImageLightbox } from "@/components/ImageLightbox";
 import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const ListingDetail = () => {
   const [postagePence, setPostagePence] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useSEO({
     title: listing ? `${listing.title} · PrelovedKicks` : "PrelovedKicks",
@@ -183,15 +185,27 @@ const ListingDetail = () => {
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
             {/* Images */}
             <div>
-              <div className="aspect-square bg-muted rounded-2xl overflow-hidden">
+              <button
+                type="button"
+                className="aspect-square bg-muted rounded-2xl overflow-hidden w-full cursor-zoom-in"
+                onClick={() => mainImage && setLightboxOpen(true)}
+                aria-label="View full size image"
+              >
                 {mainImage && (
                   <img src={mainImage} alt={listing.title} className="w-full h-full object-cover" />
                 )}
-              </div>
+              </button>
               {images.length > 1 && (
                 <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
                   {images.map((img, i) => (
-                    <button key={i} onClick={() => setActiveImage(i)} className="shrink-0">
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setActiveImage(i);
+                        setLightboxOpen(true);
+                      }}
+                      className="shrink-0"
+                    >
                       <img
                         src={img}
                         alt=""
@@ -319,6 +333,16 @@ const ListingDetail = () => {
         <div className="container max-w-5xl pb-6">
           <ReportDialog targetId={listing.id} targetType="listing" />
         </div>
+      )}
+
+      {lightboxOpen && images.length > 0 && (
+        <ImageLightbox
+          images={images}
+          activeIndex={safeActiveImage}
+          onClose={() => setLightboxOpen(false)}
+          onChangeIndex={setActiveImage}
+          alt={listing?.title}
+        />
       )}
 
       <MobileTabBar />
