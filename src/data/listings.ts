@@ -35,6 +35,7 @@ export const CATEGORIES = [
   { label: "All", emoji: "👟" },
   { label: "Nike" },
   { label: "adidas" },
+  { label: "adidas Originals" },
   { label: "Jordan" },
   { label: "New Balance" },
   { label: "Yeezy" },
@@ -52,6 +53,12 @@ const conditionMap: Record<string, Condition> = {
   very_good: "Very good",
   good: "Good",
   worn: "Worn",
+  // Also handle label-form values stored directly in the DB
+  "New with tags": "New with tags",
+  "Like new": "Like new",
+  "Very good": "Very good",
+  "Good": "Good",
+  "Worn": "Worn",
 };
 
 export const formatPostedAgo = (iso: string): string => {
