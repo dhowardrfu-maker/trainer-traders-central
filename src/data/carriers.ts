@@ -72,21 +72,35 @@ export const carriersForSize = (size: ParcelSize): CarrierOption[] =>
 export const carrierLabel = (id: CarrierId | string): string =>
   CARRIERS.find((c) => c.id === id)?.name ?? id;
 
-/** Sendcloud shipping method codes per carrier (small/medium/large/extra_large where supported) */
-export const SENDCLOUD_CODES: Record<CarrierId, Partial<Record<ParcelSize, string>>> = {
+/**
+ * Sendcloud "ship_with" config per carrier + parcel size.
+ * Evri uses a shipping_option_code (string). Royal Mail and InPost use
+ * shipping_method_id (numeric), confirmed via Sendcloud's
+ * /api/v2/shipping_methods endpoint for this account.
+ */
+export type ShipWithConfig =
+  | { type: "shipping_option_code"; code: string }
+  | { type: "shipping_method_id"; id: number };
+
+export const SENDCLOUD_SHIP_WITH: Record<CarrierId, Partial<Record<ParcelSize, ShipWithConfig>>> = {
   evri: {
-    small: "hermes_c2c_gb:s2a/dropoff",
-    medium: "hermes_c2c_gb:s2a/dropoff",
-    large: "hermes_c2c_gb:s2a/dropoff",
-    extra_large: "hermes_c2c_gb:s2a/dropoff",
+    small: { type: "shipping_option_code", code: "hermes_c2c_gb:s2a/dropoff" },
+    medium: { type: "shipping_option_code", code: "hermes_c2c_gb:s2a/dropoff" },
+    large: { type: "shipping_option_code", code: "hermes_c2c_gb:s2a/dropoff" },
+    extra_large: { type: "shipping_option_code", code: "hermes_c2c_gb:s2a/dropoff" },
   },
   royal_mail: {
-    small: "royal_mailv2:tracked_48/kg=0-2,size=s,labelless",
-    medium: "royal_mailv2:tracked_48/kg=0-2,size=m,labelless",
+    // Royal Mail Tracked 48 QR — Small Parcel (0-2kg)
+    small: { type: "shipping_method_id", id: 29986 },
+    // Royal Mail Tracked 48 QR — Medium Parcel (0-5kg)
+    medium: { type: "shipping_method_id", id: 29985 },
   },
   inpost: {
-    small: "inpost_gb:l2l/kg=0-15,size=s",
-    medium: "inpost_gb:l2l/kg=0-15,size=m",
-    large: "inpost_gb:l2l/kg=0-15,size=l",
+    // InPost Locker to Locker — Small
+    small: { type: "shipping_method_id", id: 27221 },
+    // InPost Locker to Locker — Medium
+    medium: { type: "shipping_method_id", id: 27222 },
+    // InPost Locker to Locker — Large
+    large: { type: "shipping_method_id", id: 27223 },
   },
 };
