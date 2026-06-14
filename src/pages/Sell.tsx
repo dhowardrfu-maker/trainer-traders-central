@@ -14,12 +14,35 @@ import { ukToEu, BRANDS, CONDITIONS, GENDERS, UK_SIZES } from "@/data/listing-op
 const MAX_PHOTOS = 6;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-const POSTAGE_OPTIONS = [
-  { label: "Small parcel — up to 2kg (£3.45)", value: 3.45 },
-  { label: "Medium parcel — up to 5kg (£4.49)", value: 4.49 },
-  { label: "Large parcel — up to 10kg (£5.99)", value: 5.99 },
-  { label: "Extra large parcel — up to 15kg (£7.99)", value: 7.99 },
+const CARRIERS = [
+  { value: "evri", label: "Evri" },
+  { value: "royal_mail", label: "Royal Mail" },
+  { value: "inpost", label: "InPost" },
 ];
+
+const POSTAGE_OPTIONS: Record<string, { label: string; value: number }[]> = {
+  evri: [
+    { label: "Small parcel — up to 2kg (£3.45)", value: 3.45 },
+    { label: "Medium parcel — up to 5kg (£4.49)", value: 4.49 },
+    { label: "Large parcel — up to 10kg (£5.99)", value: 5.99 },
+    { label: "Extra large parcel — up to 15kg (£7.99)", value: 7.99 },
+  ],
+  royal_mail: [
+    { label: "Small parcel — up to 2kg (£3.04)", value: 3.04 },
+    { label: "Medium parcel — up to 5kg (£4.63)", value: 4.63 },
+  ],
+  inpost: [
+    { label: "Small locker (£2.56)", value: 2.56 },
+    { label: "Medium locker (£3.38)", value: 3.38 },
+    { label: "Large locker (£4.65)", value: 4.65 },
+  ],
+};
+
+const CARRIER_HELP_TEXT: Record<string, string> = {
+  evri: "Shipped via Evri drop-off. Buyer pays postage at checkout.",
+  royal_mail: "Shipped via Royal Mail. Buyer pays postage at checkout. A QR code is provided so the label can be printed for free at a Post Office.",
+  inpost: "Shipped via InPost lockers (locker to locker). Buyer pays postage at checkout.",
+};
 
 const schema = z.object({
   title: z.string().min(3, "Title required"),
@@ -30,6 +53,7 @@ const schema = z.object({
   gender: z.enum(["mens", "womens", "unisex", "kids"]),
   color: z.string().optional(),
   price: z.number().min(1, "Price required"),
+  carrier: z.string().min(1, "Shipping carrier required"),
   postage: z.number().min(0, "Postage required"),
   description: z.string().optional(),
 });
@@ -51,6 +75,7 @@ const Sell = () => {
     gender: "unisex",
     color: "",
     price: "" as number | "",
+    carrier: "",
     postage: "" as number | "",
     description: "",
   });
@@ -137,6 +162,7 @@ const Sell = () => {
       gender: form.gender,
       color: form.color.trim() || undefined,
       price: typeof form.price === "number" ? Number(form.price) : undefined,
+      carrier: form.carrier,
       postage: typeof form.postage === "number" ? Number(form.postage) : undefined,
       description: form.description.trim() || undefined,
     };
@@ -180,6 +206,8 @@ const Sell = () => {
       setSubmitting(false);
     }
   };
+
+  const sizeOptions = form.carrier ? POSTAGE_OPTIONS[form.carrier] ?? [] : [];
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -298,25 +326,48 @@ const Sell = () => {
           onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
         />
 
-        {/* POSTAGE */}
+        {/* SHIPPING CARRIER */}
+        <Select
+          value={form.carrier}
+          onValueChange={(v) =>
+            setForm({ ...form, carrier: v, postage: "" as number | "" })
+          }
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select shipping" />
+          </SelectTrigger>
+          <SelectContent>
+            {CARRIERS.map((c) => (
+              <SelectItem key={c.value} value={c.value}>
+                {c.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* SHIPPING SIZE (depends on carrier) */}
         <Select
           value={form.postage ? String(form.postage) : ""}
           onValueChange={(v) => setForm({ ...form, postage: Number(v) })}
+          disabled={!form.carrier}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Postage (Evri)" />
+            <SelectValue placeholder="Select shipping size" />
           </SelectTrigger>
           <SelectContent>
-            {POSTAGE_OPTIONS.map((o) => (
+            {sizeOptions.map((o) => (
               <SelectItem key={o.value} value={String(o.value)}>
                 {o.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground -mt-4">
-          Shipped via Evri drop-off. Buyer pays postage at checkout.
-        </p>
+
+        {form.carrier && (
+          <p className="text-xs text-muted-foreground -mt-4">
+            {CARRIER_HELP_TEXT[form.carrier]}
+          </p>
+        )}
 
         {/* DESCRIPTION */}
         <Textarea
