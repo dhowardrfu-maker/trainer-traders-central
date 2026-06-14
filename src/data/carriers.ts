@@ -85,8 +85,8 @@ export const SENDCLOUD_CODES: Record<CarrierId, Partial<Record<ParcelSize, strin
     medium: "royal_mailv2:tracked_48/kg=0-2,size=m,labelless",
   },
   inpost: {
-    small: "inpost:locker_to_locker/size=s",
-    medium: "inpost:locker_to_locker/size=m",
-    large: "inpost:locker_to_locker/size=l",
+    small: "inpost_gb:l2l/kg=0-15,size=s",
+    medium: "inpost_gb:l2l/kg=0-15,size=m",
+    large: "inpost_gb:l2l/kg=0-15,size=l",
   },
 };
