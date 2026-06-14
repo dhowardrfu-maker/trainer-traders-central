@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
-import { CARRIERS, type CarrierId } from "@/data/carriers";
+import { CARRIERS, type CarrierId, type ParcelSize, carriersForSize, carrierPriceForSize } from "@/data/carriers";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { loadStripe } from "@stripe/stripe-js/pure";
@@ -55,6 +55,10 @@ const defaultAddress: AddressState = {
   ship_to_city: "",
   ship_to_postcode: "",
 };
+
+// Listings created before size_category existed have no value — default to medium
+// so checkout still works for older listings.
+const DEFAULT_SIZE_CATEGORY: ParcelSize = "medium";
 
 const loadSavedAddress = (): AddressState => {
   try {
@@ -104,6 +108,52 @@ const BuyerProtectionModal = ({ onClose }: { onClose: () => void }) => (
     </div>
   </div>
 );
+
+// Carrier picker — shown to the buyer, options depend on the listing's parcel size
+interface CarrierPickerProps {
+  sizeCategory: ParcelSize;
+  carrierId: CarrierId;
+  onChange: (id: CarrierId) => void;
+}
+
+const CarrierPicker = ({ sizeCategory, carrierId, onChange }: CarrierPickerProps) => {
+  const options = carriersForSize(sizeCategory);
+
+  return (
+    <section className="rounded-2xl border border-border p-5">
+      <h2 className="font-display font-bold text-lg mb-4">Delivery method</h2>
+      <div className="space-y-2">
+        {options.map((option) => {
+          const Icon = option.icon;
+          const price = option.pricesBySize[sizeCategory];
+          const selected = option.id === carrierId;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onChange(option.id)}
+              className={`w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+                selected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+              }`}
+            >
+              <div className={`h-9 w-9 rounded-full flex items-center justify-center ${selected ? "bg-primary/10" : "bg-muted"}`}>
+                <Icon className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">{option.name} · {option.service}</p>
+                <p className="text-xs text-muted-foreground">{option.description}</p>
+                <p className="text-xs text-muted-foreground">{option.eta}</p>
+              </div>
+              <p className="font-display font-bold text-sm">
+                {price != null ? `£${(price / 100).toFixed(2)}` : "—"}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
 
 interface PayFormProps {
   listing: Listing;
@@ -243,7 +293,7 @@ const Checkout = () => {
   const { user, loading: authLoading } = useAuth();
 
   const [listing, setListing] = useState<Listing | null>(null);
-  const [listingPostagePence, setListingPostagePence] = useState(0);
+  const [sizeCategory, setSizeCategory] = useState<ParcelSize>(DEFAULT_SIZE_CATEGORY);
   const [loading, setLoading] = useState(true);
   const [carrierId, setCarrierId] = useState<CarrierId>("evri");
   const [acceptedOfferPence, setAcceptedOfferPence] = useState<number | null>(null);
@@ -282,13 +332,20 @@ const Checkout = () => {
 
       const { data: row, error } = await supabase
         .from("listings")
-        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, postage_pence, photos, created_at, seller_id")
+        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, postage_pence, size_category, photos, created_at, seller_id")
         .eq("id", Number(id))
         .maybeSingle();
 
       if (cancelled) return;
       if (error || !row) { setLoading(false); return; }
-      setListingPostagePence(row.postage_pence ?? 0);
+
+      const resolvedSize: ParcelSize = (row.size_category as ParcelSize | null) ?? DEFAULT_SIZE_CATEGORY;
+      setSizeCategory(resolvedSize);
+
+      // Default to the first carrier that supports this size (Evri always does)
+      const available = carriersForSize(resolvedSize);
+      if (available.length > 0) setCarrierId(available[0].id);
+
       setListing(mapDbListing({ ...row, id: String(row.id) }));
       setLoading(false);
     };
@@ -314,9 +371,14 @@ const Checkout = () => {
     return () => { cancelled = true; };
   }, [offerId, user, id]);
 
-  const carrier = useMemo(() => CARRIERS.find((c) => c.id === carrierId)!, [carrierId]);
   const isSample = listing?.isSample === true;
   const isOwn = !!(user && listing?.seller.id && user.id === listing.seller.id);
+
+  // Postage for the currently selected carrier + this listing's parcel size
+  const selectedPostagePence = useMemo(
+    () => carrierPriceForSize(carrierId, sizeCategory) ?? 0,
+    [carrierId, sizeCategory]
+  );
 
   useEffect(() => {
     if (!listing || isSample || isOwn || !user) return;
@@ -330,7 +392,7 @@ const Checkout = () => {
         body: {
           listing_id: Number(listing.id),
           carrier_id: carrierId,
-          postage_pence: listingPostagePence,
+          postage_pence: selectedPostagePence,
           offer_id: offerId ?? null,
         },
       });
@@ -352,7 +414,7 @@ const Checkout = () => {
     })();
 
     return () => { cancelled = true; };
-  }, [listing, carrierId, listingPostagePence, offerId, isSample, isOwn, user]);
+  }, [listing, carrierId, selectedPostagePence, offerId, isSample, isOwn, user]);
 
   const handleSuccess = (orderId: string) => {
     navigate(`/order/${orderId}`);
@@ -405,6 +467,12 @@ const Checkout = () => {
                   </div>
                 </div>
               </section>
+
+              <CarrierPicker
+                sizeCategory={sizeCategory}
+                carrierId={carrierId}
+                onChange={setCarrierId}
+              />
 
               <section className="rounded-2xl border border-border p-5">
                 <h2 className="font-display font-bold text-lg mb-4">Payment</h2>
@@ -473,7 +541,7 @@ const Checkout = () => {
                 <div className="border-t border-border pt-4 flex justify-between items-baseline">
                   <span className="font-semibold">Total</span>
                   <span className="font-display font-bold text-2xl">
-                    £{totalPence ? (totalPence / 100).toFixed(2) : (listing.price + listingPostagePence / 100).toFixed(2)}
+                    £{totalPence ? (totalPence / 100).toFixed(2) : (listing.price + selectedPostagePence / 100).toFixed(2)}
                   </span>
                 </div>
               </div>
