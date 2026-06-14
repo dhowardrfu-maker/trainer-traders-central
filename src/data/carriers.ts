@@ -16,6 +16,27 @@ export interface CarrierOption {
   badge?: string;
 }
 
+/**
+ * All known carriers, including ones not currently offered to buyers.
+ * Royal Mail is kept here (and in SENDCLOUD_CODES below) so it can be
+ * re-enabled later, but is excluded from ALL_CARRIERS / the buyer picker
+ * because Sendcloud's Royal Mail integration is currently returning
+ * "Carrier returned error: service unavailable" on label generation.
+ */
+const ROYAL_MAIL: CarrierOption = {
+  id: "royal_mail",
+  name: "Royal Mail",
+  service: "Tracked 48",
+  pricesBySize: {
+    small: 304,
+    medium: 463,
+  },
+  eta: "2–3 working days",
+  description: "Get a QR code and have your label printed for free at any Post Office — no printer needed.",
+  icon: Package,
+};
+
+/** Carriers currently offered to buyers at checkout. */
 export const CARRIERS: CarrierOption[] = [
   {
     id: "evri",
@@ -30,18 +51,6 @@ export const CARRIERS: CarrierOption[] = [
     eta: "2–4 working days",
     description: "Print label at home and drop off at any Evri ParcelShop.",
     icon: Truck,
-  },
-  {
-    id: "royal_mail",
-    name: "Royal Mail",
-    service: "Tracked 48",
-    pricesBySize: {
-      small: 304,
-      medium: 463,
-    },
-    eta: "2–3 working days",
-    description: "Get a QR code and have your label printed for free at any Post Office — no printer needed.",
-    icon: Package,
   },
   {
     id: "inpost",
@@ -60,7 +69,7 @@ export const CARRIERS: CarrierOption[] = [
 
 /** Get the price in pence for a given carrier and parcel size, or null if unsupported. */
 export const carrierPriceForSize = (carrierId: CarrierId, size: ParcelSize): number | null => {
-  const carrier = CARRIERS.find((c) => c.id === carrierId);
+  const carrier = [...CARRIERS, ROYAL_MAIL].find((c) => c.id === carrierId);
   return carrier?.pricesBySize[size] ?? null;
 };
 
@@ -70,37 +79,28 @@ export const carriersForSize = (size: ParcelSize): CarrierOption[] =>
 
 /** Human-readable carrier name */
 export const carrierLabel = (id: CarrierId | string): string =>
-  CARRIERS.find((c) => c.id === id)?.name ?? id;
+  [...CARRIERS, ROYAL_MAIL].find((c) => c.id === id)?.name ?? id;
 
 /**
- * Sendcloud "ship_with" config per carrier + parcel size.
- * Evri uses a shipping_option_code (string). Royal Mail and InPost use
- * shipping_method_id (numeric), confirmed via Sendcloud's
- * /api/v2/shipping_methods endpoint for this account.
+ * Sendcloud shipping_option_code per carrier + parcel size, confirmed via
+ * the v3 /compat/shipping-options endpoint for this account.
+ * Royal Mail codes are kept here for when the Sendcloud integration is
+ * working again, even though Royal Mail is not currently offered to buyers.
  */
-export type ShipWithConfig =
-  | { type: "shipping_option_code"; code: string }
-  | { type: "shipping_method_id"; id: number };
-
-export const SENDCLOUD_SHIP_WITH: Record<CarrierId, Partial<Record<ParcelSize, ShipWithConfig>>> = {
+export const SENDCLOUD_CODES: Record<CarrierId, Partial<Record<ParcelSize, string>>> = {
   evri: {
-    small: { type: "shipping_option_code", code: "hermes_c2c_gb:s2a/dropoff" },
-    medium: { type: "shipping_option_code", code: "hermes_c2c_gb:s2a/dropoff" },
-    large: { type: "shipping_option_code", code: "hermes_c2c_gb:s2a/dropoff" },
-    extra_large: { type: "shipping_option_code", code: "hermes_c2c_gb:s2a/dropoff" },
+    small: "hermes_c2c_gb:s2a/dropoff",
+    medium: "hermes_c2c_gb:s2a/dropoff",
+    large: "hermes_c2c_gb:s2a/dropoff",
+    extra_large: "hermes_c2c_gb:s2a/dropoff",
   },
   royal_mail: {
-    // Royal Mail Tracked 48 QR — Small Parcel (0-2kg)
-    small: { type: "shipping_method_id", id: 29986 },
-    // Royal Mail Tracked 48 QR — Medium Parcel (0-5kg)
-    medium: { type: "shipping_method_id", id: 29985 },
+    small: "royal_mailv2:tracked_48/size=s,labelless",
+    medium: "royal_mailv2:tracked_48/size=m,labelless",
   },
   inpost: {
-    // InPost Locker to Locker — Small
-    small: { type: "shipping_method_id", id: 27221 },
-    // InPost Locker to Locker — Medium
-    medium: { type: "shipping_method_id", id: 27222 },
-    // InPost Locker to Locker — Large
-    large: { type: "shipping_method_id", id: 27223 },
+    small: "inpost_gb:l2l/size=s",
+    medium: "inpost_gb:l2l/size=m",
+    large: "inpost_gb:l2l/size=l",
   },
 };
