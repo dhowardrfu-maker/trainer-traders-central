@@ -8,8 +8,37 @@ const corsHeaders = {
 
 // Sendcloud API v3 — required for this account
 const SENDCLOUD_API = "https://panel.sendcloud.sc/api/v3";
-// Evri Standard Delivery dropoff shipping option code
-const EVRI_SHIPPING_OPTION_CODE = "hermes_c2c_gb:s2a/dropoff";
+
+// Sendcloud shipping option codes per carrier + parcel size.
+// Mirrors src/data/carriers.ts SENDCLOUD_CODES — kept in sync manually.
+const SENDCLOUD_CODES: Record<string, Record<string, string>> = {
+  evri: {
+    small: "hermes_c2c_gb:s2a/dropoff",
+    medium: "hermes_c2c_gb:s2a/dropoff",
+    large: "hermes_c2c_gb:s2a/dropoff",
+    extra_large: "hermes_c2c_gb:s2a/dropoff",
+  },
+  royal_mail: {
+    small: "royal_mailv2:tracked_48/kg=0-2,size=s,labelless",
+    medium: "royal_mailv2:tracked_48/kg=0-2,size=m,labelless",
+  },
+  inpost: {
+    small: "inpost_gb:l2l/kg=0-15,size=s",
+    medium: "inpost_gb:l2l/kg=0-15,size=m",
+    large: "inpost_gb:l2l/kg=0-15,size=l",
+  },
+};
+
+const DEFAULT_SIZE = "medium";
+
+// Resolve the Sendcloud shipping option code for a carrier + parcel size,
+// falling back to the medium size for that carrier, and finally to Evri's
+// default code if the carrier/size combination is unsupported.
+const resolveShippingOptionCode = (carrier: string, sizeCategory: string | null): string => {
+  const size = sizeCategory ?? DEFAULT_SIZE;
+  const carrierCodes = SENDCLOUD_CODES[carrier] ?? SENDCLOUD_CODES.evri;
+  return carrierCodes[size] ?? carrierCodes[DEFAULT_SIZE] ?? SENDCLOUD_CODES.evri[DEFAULT_SIZE];
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return json(null, 200);
@@ -42,7 +71,7 @@ Deno.serve(async (req) => {
     // Only the seller can generate the label
     if (order.seller_id !== user.id) return json({ error: "Unauthorized" }, 403);
 
-    console.log("Order loaded:", order.id, "seller:", order.seller_id);
+    console.log("Order loaded:", order.id, "seller:", order.seller_id, "carrier:", order.carrier);
 
     // If label already generated, return existing
     if (order.sendcloud_label_url) {
@@ -53,6 +82,17 @@ Deno.serve(async (req) => {
         tracking_number: order.sendcloud_tracking_number,
       });
     }
+
+    // Look up the listing's parcel size to pick the right shipping option code
+    const { data: listingRow } = await supabase
+      .from("listings")
+      .select("size_category")
+      .eq("id", order.listing_id)
+      .maybeSingle();
+
+    const sizeCategory = listingRow?.size_category ?? null;
+    const shippingOptionCode = resolveShippingOptionCode(order.carrier, sizeCategory);
+    console.log("Carrier:", order.carrier, "Size category:", sizeCategory, "Shipping option code:", shippingOptionCode);
 
     const publicKey = Deno.env.get("SENDCLOUD_PUBLIC_KEY")!;
     const secretKey = Deno.env.get("SENDCLOUD_SECRET_KEY")!;
@@ -100,7 +140,7 @@ Deno.serve(async (req) => {
       ship_with: {
         type: "shipping_option_code",
         properties: {
-          shipping_option_code: EVRI_SHIPPING_OPTION_CODE,
+          shipping_option_code: shippingOptionCode,
         },
       },
       apply_shipping_rules: false,
@@ -141,7 +181,7 @@ Deno.serve(async (req) => {
       // Get the parcel ID from the shipment parcels array
       const parcelId = shipment?.parcels?.[0]?.id ?? null;
       console.log("Parcel ID:", parcelId);
-      
+
       if (parcelId) {
         // Fetch label using v2 labels endpoint with parcel ID
         const labelRes = await fetch(`https://panel.sendcloud.sc/api/v2/labels/${parcelId}`, {
