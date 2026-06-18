@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { carrierLabel } from "@/data/carriers";
 import { toast } from "sonner";
 
 interface OrderRow {
   id: string;
   seller_id: string;
+  carrier: string;
+  service_label: string | null;
   ship_to_name: string;
   ship_to_line1: string;
   ship_to_line2: string | null;
@@ -24,6 +27,31 @@ interface OrderRow {
   sendcloud_tracking_number: string | null;
   sendcloud_label_url: string | null;
 }
+
+// Carrier-specific drop-off instructions shown to the seller
+const dropOffInstructions: Record<string, string> = {
+  evri: "Print label · Drop off at any Evri ParcelShop",
+  royal_mail: "Show QR code at any Post Office — no printer needed",
+  inpost: "Drop off at your chosen InPost locker",
+};
+
+const dropOffDetail: Record<string, string> = {
+  evri: "Print the label, attach it to your parcel, and drop it off at any Evri ParcelShop.",
+  royal_mail: "Show the QR code at any Post Office — they'll print the label for free.",
+  inpost: "Drop your parcel off at the InPost locker you selected at checkout.",
+};
+
+const generateInstructions: Record<string, string> = {
+  evri: "Click below to generate your shipping label. Print it, attach to your parcel and drop off at any Evri ParcelShop.",
+  royal_mail: "Click below to generate your Royal Mail QR code. No printer needed — just show it at any Post Office.",
+  inpost: "Click below to generate your InPost label. Drop your parcel at the InPost locker you selected at checkout.",
+};
+
+const successToast: Record<string, string> = {
+  evri: "Label generated — print it and drop off at any Evri ParcelShop!",
+  royal_mail: "QR code generated — show it at any Post Office!",
+  inpost: "Label generated — drop your parcel at your InPost locker!",
+};
 
 const ShippingLabel = () => {
   const { id } = useParams<{ id: string }>();
@@ -69,6 +97,9 @@ const ShippingLabel = () => {
   }, [id, user]);
 
   const openLabel = (url: string) => {
+    const carrier = order?.carrier ?? "evri";
+    const filename = `${carrierLabel(carrier).toLowerCase().replace(/\s+/g, "-")}-shipping-label.pdf`;
+
     if (url.startsWith("data:application/pdf;base64,")) {
       const base64 = url.split(",")[1];
       const binary = atob(base64);
@@ -78,7 +109,7 @@ const ShippingLabel = () => {
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = "evri-shipping-label.pdf";
+      a.download = filename;
       a.click();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } else {
@@ -103,8 +134,16 @@ const ShippingLabel = () => {
 
     setLabelUrl(data.label_url);
     setTrackingNumber(data.tracking_number);
-    toast.success("Label generated — print it and drop off at any Evri ParcelShop!");
+    toast.success(successToast[order.carrier] ?? "Label generated!");
   };
+
+  // Derive display values from the order's carrier, with safe fallbacks
+  const carrier = order?.carrier ?? "evri";
+  const displayName = order?.service_label ?? `${carrierLabel(carrier)} Standard Delivery`;
+  const instructions = dropOffInstructions[carrier] ?? "Drop off at your chosen carrier";
+  const detail = dropOffDetail[carrier] ?? "Drop off your parcel with the carrier.";
+  const generateText = generateInstructions[carrier] ?? "Click below to generate your shipping label.";
+  const downloadLabel = labelUrl?.startsWith("data:application/pdf") ? "Download label (PDF)" : "Open label";
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
@@ -121,7 +160,7 @@ const ShippingLabel = () => {
           Ship this order
         </h1>
         <p className="text-sm text-muted-foreground mb-6">
-          Generate your shipping label and drop off at any Evri ParcelShop.
+          {order ? `${carrierLabel(carrier)} — ${instructions}` : "Loading order…"}
         </p>
 
         {loading ? (
@@ -149,8 +188,8 @@ const ShippingLabel = () => {
                 <Truck className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <p className="font-semibold">Evri Standard Delivery</p>
-                <p className="text-sm text-muted-foreground">Print label · Drop off at any Evri ParcelShop</p>
+                <p className="font-semibold">{displayName}</p>
+                <p className="text-sm text-muted-foreground">{instructions}</p>
               </div>
             </div>
 
@@ -159,9 +198,7 @@ const ShippingLabel = () => {
               {labelUrl ? (
                 <>
                   <h2 className="font-display font-bold text-lg">Your shipping label is ready</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Print the label, attach it to your parcel, and drop it off at any Evri ParcelShop.
-                  </p>
+                  <p className="text-sm text-muted-foreground">{detail}</p>
                   {trackingNumber && (
                     <p className="text-xs text-muted-foreground font-mono bg-muted px-3 py-2 rounded-lg">
                       Tracking: {trackingNumber}
@@ -180,15 +217,13 @@ const ShippingLabel = () => {
                     onClick={() => openLabel(labelUrl)}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Download label (PDF)
+                    {downloadLabel}
                   </Button>
                 </>
               ) : (
                 <>
                   <h2 className="font-display font-bold text-lg">Ready to ship?</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Click below to generate your Evri shipping label. Print it, attach to your parcel and drop off at any Evri ParcelShop.
-                  </p>
+                  <p className="text-sm text-muted-foreground">{generateText}</p>
                   <Button
                     className="w-full rounded-full font-semibold"
                     onClick={handleGenerateLabel}
