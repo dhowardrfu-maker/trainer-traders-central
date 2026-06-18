@@ -6,11 +6,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Sendcloud API v3 — required for this account
 const SENDCLOUD_API = "https://panel.sendcloud.sc/api/v3";
 
-// Sendcloud shipping option codes per carrier + parcel size.
-// Mirrors src/data/carriers.ts SENDCLOUD_CODES — kept in sync manually.
 const SENDCLOUD_CODES: Record<string, Record<string, string>> = {
   evri: {
     small: "hermes_c2c_gb:s2a/dropoff",
@@ -31,9 +28,6 @@ const SENDCLOUD_CODES: Record<string, Record<string, string>> = {
 
 const DEFAULT_SIZE = "medium";
 
-// Resolve the Sendcloud shipping option code for a carrier + parcel size,
-// falling back to the medium size for that carrier, and finally to Evri's
-// default code if the carrier/size combination is unsupported.
 const resolveShippingOptionCode = (carrier: string, sizeCategory: string | null): string => {
   const size = sizeCategory ?? DEFAULT_SIZE;
   const carrierCodes = SENDCLOUD_CODES[carrier] ?? SENDCLOUD_CODES.evri;
@@ -59,7 +53,6 @@ Deno.serve(async (req) => {
     const { order_id } = await req.json();
     if (!order_id) return json({ error: "Missing order_id" }, 400);
 
-    // Load order from Supabase
     const { data: order, error: orderErr } = await supabase
       .from("orders")
       .select("*")
@@ -68,12 +61,10 @@ Deno.serve(async (req) => {
 
     if (orderErr || !order) return json({ error: "Order not found" }, 404);
 
-    // Only the seller can generate the label
     if (order.seller_id !== user.id) return json({ error: "Unauthorized" }, 403);
 
     console.log("Order loaded:", order.id, "seller:", order.seller_id, "carrier:", order.carrier);
 
-    // If label already generated, return existing
     if (order.sendcloud_label_url) {
       console.log("Label already exists, returning cached");
       return json({
@@ -83,7 +74,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Look up the listing's parcel size to pick the right shipping option code
+    if (order.carrier === "inpost" && !order.service_point_id) {
+      return json({ error: "InPost locker ID is missing on this order. Please contact support." }, 400);
+    }
+
     const { data: listingRow } = await supabase
       .from("listings")
       .select("size_category")
@@ -92,13 +86,12 @@ Deno.serve(async (req) => {
 
     const sizeCategory = listingRow?.size_category ?? null;
     const shippingOptionCode = resolveShippingOptionCode(order.carrier, sizeCategory);
-    console.log("Carrier:", order.carrier, "Size category:", sizeCategory, "Shipping option code:", shippingOptionCode);
+    console.log("Carrier:", order.carrier, "Size:", sizeCategory, "Code:", shippingOptionCode);
 
     const publicKey = Deno.env.get("SENDCLOUD_PUBLIC_KEY")!;
     const secretKey = Deno.env.get("SENDCLOUD_SECRET_KEY")!;
     const credentials = btoa(`${publicKey}:${secretKey}`);
 
-    // Load seller's address from their profile
     const { data: sellerProfile, error: profileErr } = await supabase
       .from("profiles")
       .select("full_name, address_line1, address_line2, city, postcode, phone")
@@ -109,8 +102,7 @@ Deno.serve(async (req) => {
       return json({ error: "Seller profile address is incomplete. Please update your profile before generating a label." }, 400);
     }
 
-    // Create and announce shipment via Sendcloud API v3
-    const shipmentPayload = {
+    const shipmentPayload: Record<string, unknown> = {
       to_address: {
         name: order.ship_to_name,
         address_line_1: order.ship_to_line1,
@@ -146,6 +138,11 @@ Deno.serve(async (req) => {
       apply_shipping_rules: false,
     };
 
+    if (order.carrier === "inpost" && order.service_point_id) {
+      shipmentPayload.to_service_point = { id: order.service_point_id };
+      console.log("InPost service point ID:", order.service_point_id);
+    }
+
     console.log("Seller profile loaded:", sellerProfile.full_name, sellerProfile.postcode);
     console.log("Calling Sendcloud API v3...");
 
@@ -167,7 +164,6 @@ Deno.serve(async (req) => {
       return json({ error: scData?.message ?? scData?.error?.message ?? "Label creation failed" }, 500);
     }
 
-    // v3 response: data object directly (not data.parcels array)
     const shipment = scData?.data;
     console.log("Shipment keys:", Object.keys(shipment ?? {}).join(", "));
     const shipmentId = shipment?.id ?? null;
@@ -175,15 +171,12 @@ Deno.serve(async (req) => {
     const sendcloudParcelId = shipment?.parcels?.[0]?.id ?? shipmentId ?? null;
     console.log("Shipment ID:", shipmentId, "Tracking:", trackingNumber);
 
-    // In v3, fetch the label separately using the shipment ID
     let labelPrinterUrl: string | null = null;
     if (shipmentId) {
-      // Get the parcel ID from the shipment parcels array
       const parcelId = shipment?.parcels?.[0]?.id ?? null;
       console.log("Parcel ID:", parcelId);
 
       if (parcelId) {
-        // Fetch label using v2 labels endpoint with parcel ID
         const labelRes = await fetch(`https://panel.sendcloud.sc/api/v2/labels/${parcelId}`, {
           headers: { "Authorization": `Basic ${credentials}` },
         });
@@ -202,7 +195,6 @@ Deno.serve(async (req) => {
     }
     console.log("Final label URL:", labelPrinterUrl);
 
-    // Fetch PDF server-side to avoid Sendcloud auth requirement on the client
     let labelDataUrl: string | null = labelPrinterUrl;
     if (labelPrinterUrl) {
       const pdfRes = await fetch(labelPrinterUrl, {
@@ -222,7 +214,6 @@ Deno.serve(async (req) => {
 
     const qrUrl = labelPrinterUrl;
 
-    // Update order with label details
     await supabase
       .from("orders")
       .update({
