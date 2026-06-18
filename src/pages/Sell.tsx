@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { ArrowLeft, Camera, Loader2, X } from "lucide-react";
+import imageCompression from "browser-image-compression";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,16 @@ import { ukToEu, BRANDS, CONDITIONS, GENDERS, UK_SIZES } from "@/data/listing-op
 
 const MAX_PHOTOS = 6;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
+
+// Compression target: keeps listing photos sharp on screen while cutting
+// upload size and storage/egress dramatically compared to raw camera photos
+// (which were coming in at 3-4.5MB each).
+const COMPRESSION_OPTIONS = {
+  maxSizeMB: 0.5,
+  maxWidthOrHeight: 1600,
+  useWebWorker: true,
+  fileType: "image/webp" as const,
+};
 
 const SIZE_OPTIONS = [
   { value: "small", label: "Small parcel — up to 2kg" },
@@ -43,6 +54,7 @@ const Sell = () => {
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [compressing, setCompressing] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -67,14 +79,36 @@ const Sell = () => {
     return () => urls.forEach(URL.revokeObjectURL);
   }, [photos]);
 
-  const onAddPhotos = (files: FileList | null) => {
+  // Compress each photo client-side before it's added to state, so large
+  // camera photos (often 3-4.5MB) never reach Storage at full size.
+  const onAddPhotos = async (files: FileList | null) => {
     if (!files) return;
     const incoming = Array.from(files).filter((f) => {
       if (!f.type.startsWith("image/")) return false;
       if (f.size > MAX_FILE_BYTES) return false;
       return true;
     });
-    setPhotos((prev) => [...prev, ...incoming].slice(0, MAX_PHOTOS));
+    if (incoming.length === 0) return;
+
+    setCompressing(true);
+    try {
+      const compressed = await Promise.all(
+        incoming.map(async (file) => {
+          try {
+            const result = await imageCompression(file, COMPRESSION_OPTIONS);
+            // Preserve a sensible filename with the new extension
+            const baseName = file.name.replace(/\.[^.]+$/, "");
+            return new File([result], `${baseName}.webp`, { type: "image/webp" });
+          } catch (err) {
+            console.warn("[Sell] compression failed, using original file", err);
+            return file;
+          }
+        })
+      );
+      setPhotos((prev) => [...prev, ...compressed].slice(0, MAX_PHOTOS));
+    } finally {
+      setCompressing(false);
+    }
   };
 
   const removePhoto = (idx: number) =>
@@ -84,14 +118,14 @@ const Sell = () => {
     if (!user) throw new Error("Not signed in");
     const paths: string[] = [];
     for (const file of photos) {
-      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const ext = (file.name.split(".").pop() || "webp").toLowerCase();
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("listing-photos")
         .upload(path, file, {
           cacheControl: "3600",
           upsert: false,
-          contentType: file.type || "image/jpeg",
+          contentType: file.type || "image/webp",
         });
       if (upErr) {
         console.error("[Sell] upload error", upErr);
@@ -206,12 +240,26 @@ const Sell = () => {
             </div>
           ))}
           {photos.length < MAX_PHOTOS && (
-            <label className="border rounded-xl flex items-center justify-center">
-              <Camera />
-              <input type="file" hidden multiple onChange={(e) => onAddPhotos(e.target.files)} />
+            <label className="border rounded-xl flex items-center justify-center aspect-square">
+              {compressing ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Camera />
+              )}
+              <input
+                type="file"
+                hidden
+                multiple
+                accept="image/*"
+                disabled={compressing}
+                onChange={(e) => onAddPhotos(e.target.files)}
+              />
             </label>
           )}
         </div>
+        {compressing && (
+          <p className="text-xs text-muted-foreground -mt-4">Optimising photos…</p>
+        )}
 
         {/* TITLE */}
         <Input
@@ -326,7 +374,7 @@ const Sell = () => {
           onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
 
-        <Button type="submit" disabled={submitting} className="w-full">
+        <Button type="submit" disabled={submitting || compressing} className="w-full">
           {submitting ? <Loader2 className="animate-spin" /> : "Post listing"}
         </Button>
       </form>
