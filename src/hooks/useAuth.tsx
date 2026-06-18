@@ -17,21 +17,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      setLoading(false);
-    });
+    let mounted = true;
 
+    // getSession() is the authoritative source for initial auth state.
+    // We only set loading=false here, once we have a definitive answer.
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
+      if (!mounted) return;
       setSession(existing);
       setUser(existing?.user ?? null);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // onAuthStateChange handles subsequent changes only (sign in, sign out,
+    // token refresh). It does NOT set loading — that would race with
+    // getSession() and could briefly set user=null before the session is
+    // restored, causing premature redirects to /auth on first page load.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!mounted) return;
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+    });
+
+    return () => {
+      mounted = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
