@@ -78,7 +78,6 @@ Deno.serve(async (req) => {
       return json({ error: "InPost locker ID is missing on this order. Please contact support." }, 400);
     }
 
-    // InPost requires a valid receiver phone number for SMS pickup codes.
     if (order.carrier === "inpost" && !order.ship_to_phone) {
       return json({ error: "A phone number is required for InPost orders. Please contact support." }, 400);
     }
@@ -107,6 +106,22 @@ Deno.serve(async (req) => {
       return json({ error: "Seller profile address is incomplete. Please update your profile before generating a label." }, 400);
     }
 
+    // Fetch real account emails for sender (seller) and receiver (buyer).
+    // Some carriers (InPost included) require both for pickup notifications.
+    // Profiles table doesn't store email — it lives on auth.users, which
+    // needs the service role key to read for users other than the caller.
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const { data: sellerAuth } = await adminClient.auth.admin.getUserById(order.seller_id);
+    const { data: buyerAuth } = await adminClient.auth.admin.getUserById(order.buyer_id);
+
+    const sellerEmail = sellerAuth?.user?.email ?? "";
+    const buyerEmail = buyerAuth?.user?.email ?? "";
+    console.log("Seller email found:", !!sellerEmail, "Buyer email found:", !!buyerEmail);
+
     const shipmentPayload: Record<string, unknown> = {
       to_address: {
         name: order.ship_to_name,
@@ -115,7 +130,7 @@ Deno.serve(async (req) => {
         city: order.ship_to_city,
         postal_code: order.ship_to_postcode,
         country_code: "GB",
-        email: "",
+        email: buyerEmail,
         phone_number: order.ship_to_phone ?? "",
       },
       from_address: {
@@ -126,7 +141,7 @@ Deno.serve(async (req) => {
         postal_code: sellerProfile.postcode,
         country_code: "GB",
         phone_number: sellerProfile.phone ?? "",
-        email: "",
+        email: sellerEmail,
       },
       parcels: [
         {
@@ -173,9 +188,6 @@ Deno.serve(async (req) => {
     console.log("Shipment keys:", Object.keys(shipment ?? {}).join(", "));
     console.log("Shipment errors field:", JSON.stringify(shipment?.errors));
 
-    // If Sendcloud accepted the shipment (201) but flagged internal errors
-    // (e.g. invalid phone), surface that clearly instead of silently
-    // returning an empty label.
     if (Array.isArray(shipment?.errors) && shipment.errors.length > 0) {
       const firstError = shipment.errors[0];
       console.error("Shipment has internal errors:", JSON.stringify(shipment.errors));
