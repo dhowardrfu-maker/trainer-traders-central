@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ReviewForm } from "@/components/ReviewForm";
+import { carrierLabel } from "@/data/carriers";
 import { toast } from "sonner";
 
 interface OrderRow {
@@ -16,6 +17,7 @@ interface OrderRow {
   listing_id: string | number;
   buyer_id: string;
   seller_id: string;
+  carrier: string;
   service_label: string;
   total_pence: number;
   price_pence: number;
@@ -37,6 +39,33 @@ interface OrderRow {
   dispute_images: string[] | null;
   dispute_status: string | null;
 }
+
+// Carrier-specific display details. Falls back to Evri's values for any
+// carrier not listed here, so nothing breaks if a new carrier is added
+// before this map is updated.
+const carrierEta: Record<string, string> = {
+  evri: "2–4 working days",
+  royal_mail: "2–3 working days",
+  inpost: "1–3 working days",
+};
+
+const carrierTrackingDomain: Record<string, string> = {
+  evri: "evri.com",
+  royal_mail: "royalmail.com",
+  inpost: "inpost.co.uk",
+};
+
+const carrierTrackingUrl = (carrier: string, tracking: string): string => {
+  switch (carrier) {
+    case "royal_mail":
+      return `https://www.royalmail.com/track-your-item#/tracking-results/${tracking}`;
+    case "inpost":
+      return `https://www.inpost.co.uk/find-parcel?id=${tracking}`;
+    case "evri":
+    default:
+      return `https://www.evri.com/track-a-parcel#/${tracking}`;
+  }
+};
 
 const notify = async (userId: string, type: string, title: string, body: string | null, link: string | null) => {
   await supabase.from("notifications").insert({
@@ -283,6 +312,11 @@ const OrderConfirmation = () => {
   };
 
   const trackingNumber = order?.sendcloud_tracking_number || null;
+  const carrier = order?.carrier ?? "evri";
+  const carrierName = carrierLabel(carrier);
+  const headerLabel = order?.service_label?.toUpperCase() ?? `${carrierName.toUpperCase()} DELIVERY`;
+  const eta = carrierEta[carrier] ?? carrierEta.evri;
+  const trackingDomain = carrierTrackingDomain[carrier] ?? carrierTrackingDomain.evri;
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -363,7 +397,7 @@ const OrderConfirmation = () => {
                 </div>
                 <h1 className="font-display font-bold text-3xl md:text-4xl tracking-tight">Order confirmed!</h1>
                 <p className="text-muted-foreground mt-1.5 max-w-sm mx-auto">
-                  Payment received. The seller has been notified and will ship your kicks via Evri.
+                  Payment received. The seller has been notified and will ship your kicks via {carrierName}.
                 </p>
               </div>
             )}
@@ -373,9 +407,9 @@ const OrderConfirmation = () => {
                 <div className="bg-foreground text-background px-6 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Package className="h-5 w-5" />
-                    <span className="font-display font-bold tracking-wide">EVRI STANDARD DELIVERY</span>
+                    <span className="font-display font-bold tracking-wide">{headerLabel}</span>
                   </div>
-                  <span className="text-xs font-mono opacity-70">2–4 working days</span>
+                  <span className="text-xs font-mono opacity-70">{eta}</span>
                 </div>
                 <div className="p-6 space-y-4">
                   <div>
@@ -393,7 +427,7 @@ const OrderConfirmation = () => {
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Tracking number</p>
                       <p className="font-mono font-bold text-lg mt-1 break-all">{trackingNumber}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Track at <a href={`https://www.evri.com/track-a-parcel#/${trackingNumber}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">evri.com</a>
+                        Track at <a href={carrierTrackingUrl(carrier, trackingNumber)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{trackingDomain}</a>
                       </p>
                     </div>
                   ) : (
@@ -525,7 +559,7 @@ const OrderConfirmation = () => {
               <h2 className="font-display font-bold text-lg mb-3">Order summary</h2>
               <div className="space-y-2 text-sm">
                 <Row label="Item" value={`£${(order.price_pence / 100).toFixed(2)}`} />
-                <Row label="Postage (Evri Standard)" value={`£${(order.postage_pence / 100).toFixed(2)}`} />
+                <Row label={`Postage (${order.service_label ?? carrierName})`} value={`£${(order.postage_pence / 100).toFixed(2)}`} />
                 <div className="border-t border-border pt-2 flex justify-between font-semibold">
                   <span>Total paid</span>
                   <span className="font-display text-lg">£{(order.total_pence / 100).toFixed(2)}</span>

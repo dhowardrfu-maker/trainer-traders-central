@@ -18,7 +18,7 @@ export const Hero = () => {
             <span className="text-primary">already broken in.</span>
           </h1>
           <p className="mt-4 text-base md:text-lg text-muted-foreground max-w-lg">
-            Thousands of second-hand trainers from real people. List in 60 seconds, ship with Evri, safe and tracked delivery every time.
+            Real second-hand trainers from real people. List in 60 seconds, ship with Evri or InPost, safe and tracked delivery every time.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Button
@@ -44,7 +44,7 @@ export const Hero = () => {
               <span className="text-primary font-bold text-sm">✓</span> Authentic only
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="text-primary font-bold text-sm">✓</span> Tracked Evri shipping
+              <span className="text-primary font-bold text-sm">✓</span> Tracked Evri & InPost shipping
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span className="text-primary font-bold text-sm">✓</span> Buyer protected
