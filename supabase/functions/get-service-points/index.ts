@@ -31,11 +31,17 @@ Deno.serve(async (req) => {
     const secretKey = Deno.env.get("SENDCLOUD_SECRET_KEY")!;
     const credentials = btoa(`${publicKey}:${secretKey}`);
 
-    const url = `https://panel.sendcloud.sc/api/v2/service-points/?country=GB&carrier=inpost&address=${encodeURIComponent(postcode)}&radius=10`;
+    // Correct host is servicepoints.sendcloud.sc (not panel.sendcloud.sc).
+    // radius is in METRES, not km — 5000 = 5km search radius.
+    const url = `https://servicepoints.sendcloud.sc/api/v2/service-points?country=GB&carrier=inpost&address=${encodeURIComponent(postcode)}&radius=5000`;
+
+    console.log("Request URL:", url);
 
     const res = await fetch(url, {
       headers: { "Authorization": `Basic ${credentials}` },
     });
+
+    console.log("Sendcloud response status:", res.status);
 
     if (!res.ok) {
       const err = await res.text();
@@ -45,7 +51,6 @@ Deno.serve(async (req) => {
 
     const data = await res.json();
     console.log("Sendcloud raw response:", JSON.stringify(data).slice(0, 1000));
-    console.log("Request URL was:", url);
 
     // Sendcloud may wrap results in a key rather than returning a raw array
     const rawList = Array.isArray(data) ? data : (data?.service_points ?? data?.results ?? []);
