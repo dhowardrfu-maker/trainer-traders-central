@@ -44,9 +44,15 @@ Deno.serve(async (req) => {
     }
 
     const data = await res.json();
+    console.log("Sendcloud raw response:", JSON.stringify(data).slice(0, 1000));
+    console.log("Request URL was:", url);
+
+    // Sendcloud may wrap results in a key rather than returning a raw array
+    const rawList = Array.isArray(data) ? data : (data?.service_points ?? data?.results ?? []);
+    console.log("Resolved list length:", rawList.length);
 
     // Return a simplified list — only what the UI needs
-    const lockers = (Array.isArray(data) ? data : []).slice(0, 20).map((sp: Record<string, unknown>) => ({
+    const lockers = rawList.slice(0, 20).map((sp: Record<string, unknown>) => ({
       id: String(sp.id),
       name: sp.name,
       address: `${sp.street} ${sp.house_number}, ${sp.city}`,
