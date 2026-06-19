@@ -33,7 +33,9 @@ Deno.serve(async (req) => {
 
     // Correct host is servicepoints.sendcloud.sc (not panel.sendcloud.sc).
     // radius is in METRES, not km — 5000 = 5km search radius.
-    const url = `https://servicepoints.sendcloud.sc/api/v2/service-points?country=GB&carrier=inpost&address=${encodeURIComponent(postcode)}&radius=5000`;
+    // Carrier code is "inpost_gb", matching the shipping_option_code prefix
+    // used elsewhere (inpost_gb:l2l/...) — plain "inpost" is rejected.
+    const url = `https://servicepoints.sendcloud.sc/api/v2/service-points?country=GB&carrier=inpost_gb&address=${encodeURIComponent(postcode)}&radius=5000`;
 
     console.log("Request URL:", url);
 
