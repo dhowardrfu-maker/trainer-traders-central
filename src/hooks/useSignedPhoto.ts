@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { resolvePhotoUrl, resolvePhotoUrls } from "@/lib/photo";
 
-export function useSignedPhoto(pathOrUrl: string | undefined | null): string {
+export function useSignedPhoto(pathOrUrl: string | undefined | null, thumbnail = false): string {
   const [url, setUrl] = useState<string>(pathOrUrl && /^(https?:|data:|blob:|\/)/.test(pathOrUrl) ? pathOrUrl : "");
   useEffect(() => {
     let cancelled = false;
-    resolvePhotoUrl(pathOrUrl).then((u) => { if (!cancelled) setUrl(u); });
+    resolvePhotoUrl(pathOrUrl, thumbnail).then((u) => { if (!cancelled) setUrl(u); });
     return () => { cancelled = true; };
-  }, [pathOrUrl]);
+  }, [pathOrUrl, thumbnail]);
   return url;
 }
 

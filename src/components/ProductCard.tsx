@@ -78,6 +78,7 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
               src={image}
               alt={`${listing.brand} ${listing.title}`}
               loading="lazy"
+              thumbnail
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = "none";
