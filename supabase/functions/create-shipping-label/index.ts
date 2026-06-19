@@ -8,6 +8,9 @@ const corsHeaders = {
 
 const SENDCLOUD_API = "https://panel.sendcloud.sc/api/v3";
 
+// Confirmed working codes via Sendcloud's v3 compat endpoint — no weight
+// band suffix. Previous version included kg= weight bands which Sendcloud
+// rejects with "ShippingOptionCode ... does not exist."
 const SENDCLOUD_CODES: Record<string, Record<string, string>> = {
   evri: {
     small: "hermes_c2c_gb:s2a/dropoff",
@@ -16,13 +19,13 @@ const SENDCLOUD_CODES: Record<string, Record<string, string>> = {
     extra_large: "hermes_c2c_gb:s2a/dropoff",
   },
   royal_mail: {
-    small: "royal_mailv2:tracked_48/kg=0-2,size=s,labelless",
-    medium: "royal_mailv2:tracked_48/kg=0-2,size=m,labelless",
+    small: "royal_mailv2:tracked_48/size=s,labelless",
+    medium: "royal_mailv2:tracked_48/size=m,labelless",
   },
   inpost: {
-    small: "inpost_gb:l2l/kg=0-15,size=s",
-    medium: "inpost_gb:l2l/kg=0-15,size=m",
-    large: "inpost_gb:l2l/kg=0-15,size=l",
+    small: "inpost_gb:l2l/size=s",
+    medium: "inpost_gb:l2l/size=m",
+    large: "inpost_gb:l2l/size=l",
   },
 };
 
