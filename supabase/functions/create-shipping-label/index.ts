@@ -8,9 +8,6 @@ const corsHeaders = {
 
 const SENDCLOUD_API = "https://panel.sendcloud.sc/api/v3";
 
-// Confirmed working codes via Sendcloud's v3 compat endpoint — no weight
-// band suffix. Previous version included kg= weight bands which Sendcloud
-// rejected with "ShippingOptionCode ... does not exist."
 const SENDCLOUD_CODES: Record<string, Record<string, string>> = {
   evri: {
     small: "hermes_c2c_gb:s2a/dropoff",
@@ -81,6 +78,11 @@ Deno.serve(async (req) => {
       return json({ error: "InPost locker ID is missing on this order. Please contact support." }, 400);
     }
 
+    // InPost requires a valid receiver phone number for SMS pickup codes.
+    if (order.carrier === "inpost" && !order.ship_to_phone) {
+      return json({ error: "A phone number is required for InPost orders. Please contact support." }, 400);
+    }
+
     const { data: listingRow } = await supabase
       .from("listings")
       .select("size_category")
@@ -114,7 +116,7 @@ Deno.serve(async (req) => {
         postal_code: order.ship_to_postcode,
         country_code: "GB",
         email: "",
-        phone_number: "",
+        phone_number: order.ship_to_phone ?? "",
       },
       from_address: {
         name: sellerProfile.full_name,
@@ -170,7 +172,16 @@ Deno.serve(async (req) => {
     const shipment = scData?.data;
     console.log("Shipment keys:", Object.keys(shipment ?? {}).join(", "));
     console.log("Shipment errors field:", JSON.stringify(shipment?.errors));
-    console.log("Shipment label_details field:", JSON.stringify(shipment?.label_details));
+
+    // If Sendcloud accepted the shipment (201) but flagged internal errors
+    // (e.g. invalid phone), surface that clearly instead of silently
+    // returning an empty label.
+    if (Array.isArray(shipment?.errors) && shipment.errors.length > 0) {
+      const firstError = shipment.errors[0];
+      console.error("Shipment has internal errors:", JSON.stringify(shipment.errors));
+      return json({ error: firstError?.detail ?? "Carrier rejected the shipment details" }, 500);
+    }
+
     const shipmentId = shipment?.id ?? null;
     const trackingNumber = shipment?.parcels?.[0]?.tracking_number ?? shipment?.tracking_number ?? null;
     const sendcloudParcelId = shipment?.parcels?.[0]?.id ?? shipmentId ?? null;
