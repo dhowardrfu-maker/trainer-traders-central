@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Img } from "@/components/Img";
 import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { z } from "zod";
-import { ArrowLeft, Loader2, ShieldCheck, Info, X } from "lucide-react";
+import { ArrowLeft, Loader2, ShieldCheck, Info, X, MapPin, Search } from "lucide-react";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,13 @@ interface AddressState {
   ship_to_line2: string;
   ship_to_city: string;
   ship_to_postcode: string;
+}
+
+interface ServicePoint {
+  id: string;
+  name: string;
+  address: string;
+  postcode: string;
 }
 
 const ADDRESS_KEY = "plk_checkout_address";
@@ -155,10 +162,109 @@ const CarrierPicker = ({ sizeCategory, carrierId, onChange }: CarrierPickerProps
   );
 };
 
+// InPost locker picker — only shown when carrierId === "inpost".
+// Lets the buyer search by postcode and pick a specific locker, which is
+// required by Sendcloud for InPost Locker to Locker shipments.
+interface LockerPickerProps {
+  postcode: string;
+  selectedLocker: ServicePoint | null;
+  onSelect: (locker: ServicePoint) => void;
+}
+
+const LockerPicker = ({ postcode, selectedLocker, onSelect }: LockerPickerProps) => {
+  const [search, setSearch] = useState(postcode || "");
+  const [lockers, setLockers] = useState<ServicePoint[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+
+  const handleSearch = async () => {
+    if (!search.trim()) {
+      toast.error("Enter a postcode to search");
+      return;
+    }
+    setSearching(true);
+    setSearched(false);
+
+    const { data, error } = await supabase.functions.invoke("get-service-points", {
+      body: { postcode: search.trim() },
+    });
+
+    setSearching(false);
+    setSearched(true);
+
+    if (error || !data?.lockers) {
+      toast.error(error?.message ?? "Could not find lockers — try a different postcode");
+      setLockers([]);
+      return;
+    }
+
+    setLockers(data.lockers);
+    if (data.lockers.length === 0) {
+      toast.error("No InPost lockers found near that postcode");
+    }
+  };
+
+  return (
+    <section className="rounded-2xl border border-border p-5">
+      <h2 className="font-display font-bold text-lg mb-1">Choose your InPost locker</h2>
+      <p className="text-xs text-muted-foreground mb-4">Search by postcode to find a nearby locker.</p>
+
+      <div className="flex gap-2 mb-4">
+        <Input
+          placeholder="Enter postcode"
+          value={search}
+          onChange={(e) => setSearch(e.target.value.toUpperCase())}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearch(); } }}
+        />
+        <Button type="button" onClick={handleSearch} disabled={searching} className="shrink-0">
+          {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      {selectedLocker && (
+        <div className="rounded-xl border border-primary bg-primary/5 p-3 mb-3">
+          <p className="text-xs font-semibold text-primary mb-1">Selected locker</p>
+          <p className="text-sm font-semibold">{selectedLocker.name}</p>
+          <p className="text-xs text-muted-foreground">{selectedLocker.address}</p>
+        </div>
+      )}
+
+      {lockers.length > 0 && (
+        <div className="space-y-2 max-h-72 overflow-y-auto">
+          {lockers.map((locker) => {
+            const isSelected = selectedLocker?.id === locker.id;
+            return (
+              <button
+                key={locker.id}
+                type="button"
+                onClick={() => onSelect(locker)}
+                className={`w-full flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+                  isSelected ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                }`}
+              >
+                <MapPin className={`h-4 w-4 mt-0.5 shrink-0 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{locker.name}</p>
+                  <p className="text-xs text-muted-foreground">{locker.address}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {searched && lockers.length === 0 && !searching && (
+        <p className="text-sm text-muted-foreground">No lockers found — try a different postcode.</p>
+      )}
+    </section>
+  );
+};
+
 interface PayFormProps {
   listing: Listing;
   carrierId: CarrierId;
   address: AddressState;
+  servicePointId: string | null;
   acceptedOfferPence: number | null;
   clientSecret: string;
   itemPence: number;
@@ -173,6 +279,7 @@ function StripePayForm({
   listing,
   carrierId,
   address,
+  servicePointId,
   acceptedOfferPence,
   clientSecret,
   itemPence,
@@ -187,6 +294,8 @@ function StripePayForm({
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
 
+  const needsLocker = carrierId === "inpost" && !servicePointId;
+
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements || !user) return;
@@ -194,6 +303,11 @@ function StripePayForm({
     const parsed = addressSchema.safeParse(address);
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
+      return;
+    }
+
+    if (needsLocker) {
+      toast.error("Please choose an InPost locker before paying");
       return;
     }
 
@@ -243,6 +357,7 @@ function StripePayForm({
       _ship_to_postcode: parsed.data.ship_to_postcode.toUpperCase(),
       _offer_id: offerId ?? null,
       _stripe_payment_intent_id: paymentIntent.id,
+      _service_point_id: servicePointId ?? null,
     });
 
     if (error || !data) {
@@ -269,10 +384,12 @@ function StripePayForm({
         type="submit"
         size="lg"
         className="w-full rounded-full font-semibold"
-        disabled={busy || !stripe || !elements}
+        disabled={busy || !stripe || !elements || needsLocker}
       >
         {busy ? (
           <Loader2 className="h-4 w-4 animate-spin" />
+        ) : needsLocker ? (
+          "Choose a locker above first"
         ) : (
           `Pay £${(totalPence / 100).toFixed(2)} securely`
         )}
@@ -298,6 +415,7 @@ const Checkout = () => {
   const [carrierId, setCarrierId] = useState<CarrierId>("evri");
   const [acceptedOfferPence, setAcceptedOfferPence] = useState<number | null>(null);
   const [showProtectionModal, setShowProtectionModal] = useState(false);
+  const [selectedLocker, setSelectedLocker] = useState<ServicePoint | null>(null);
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [itemPence, setItemPence] = useState(0);
@@ -370,6 +488,12 @@ const Checkout = () => {
     })();
     return () => { cancelled = true; };
   }, [offerId, user, id]);
+
+  // Clear the selected locker whenever the buyer switches away from InPost,
+  // so a stale locker ID can never be sent for a different carrier.
+  useEffect(() => {
+    if (carrierId !== "inpost") setSelectedLocker(null);
+  }, [carrierId]);
 
   const isSample = listing?.isSample === true;
   const isOwn = !!(user && listing?.seller.id && user.id === listing.seller.id);
@@ -474,6 +598,14 @@ const Checkout = () => {
                 onChange={setCarrierId}
               />
 
+              {carrierId === "inpost" && (
+                <LockerPicker
+                  postcode={address.ship_to_postcode}
+                  selectedLocker={selectedLocker}
+                  onSelect={setSelectedLocker}
+                />
+              )}
+
               <section className="rounded-2xl border border-border p-5">
                 <h2 className="font-display font-bold text-lg mb-4">Payment</h2>
                 {isSample ? (
@@ -492,6 +624,7 @@ const Checkout = () => {
                       listing={listing}
                       carrierId={carrierId}
                       address={address}
+                      servicePointId={selectedLocker?.id ?? null}
                       acceptedOfferPence={acceptedOfferPence}
                       clientSecret={clientSecret}
                       itemPence={itemPence}
