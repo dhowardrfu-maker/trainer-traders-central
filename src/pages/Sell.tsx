@@ -25,6 +25,16 @@ const COMPRESSION_OPTIONS = {
   fileType: "image/webp" as const,
 };
 
+// Thumbnail target: small enough for grid/card views (homepage, search,
+// category browse) where loading the full-size image and shrinking it with
+// CSS wastes bandwidth on every page view.
+const THUMBNAIL_COMPRESSION_OPTIONS = {
+  maxSizeMB: 0.05,
+  maxWidthOrHeight: 400,
+  useWebWorker: true,
+  fileType: "image/webp" as const,
+};
+
 const SIZE_OPTIONS = [
   { value: "small", label: "Small parcel — up to 2kg" },
   { value: "medium", label: "Medium parcel — up to 5kg" },
@@ -119,7 +129,10 @@ const Sell = () => {
     const paths: string[] = [];
     for (const file of photos) {
       const ext = (file.name.split(".").pop() || "webp").toLowerCase();
-      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const id = crypto.randomUUID();
+      const path = `${user.id}/${id}.${ext}`;
+      const thumbPath = `${user.id}/${id}-thumb.${ext}`;
+
       const { error: upErr } = await supabase.storage
         .from("listing-photos")
         .upload(path, file, {
@@ -131,6 +144,23 @@ const Sell = () => {
         console.error("[Sell] upload error", upErr);
         throw new Error(`Photo upload failed: ${upErr.message}`);
       }
+
+      // Generate and upload a small thumbnail for grid/card views.
+      // Best-effort: if this fails, the listing still works fine — grid
+      // views simply fall back to the full-size image for this one photo.
+      try {
+        const thumbFile = await imageCompression(file, THUMBNAIL_COMPRESSION_OPTIONS);
+        await supabase.storage
+          .from("listing-photos")
+          .upload(thumbPath, thumbFile, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: "image/webp",
+          });
+      } catch (thumbErr) {
+        console.warn("[Sell] thumbnail generation/upload failed, grid will fall back to full image", thumbErr);
+      }
+
       const { data: signed } = await supabase.storage
         .from("listing-photos")
         .createSignedUrl(path, 300);
@@ -140,7 +170,7 @@ const Sell = () => {
             body: { imageUrl: signed.signedUrl },
           });
           if (mod && mod.allowed === false) {
-            await supabase.storage.from("listing-photos").remove([path]);
+            await supabase.storage.from("listing-photos").remove([path, thumbPath]);
             throw new Error(
               `Photo rejected by moderation${mod.reason ? `: ${mod.reason}` : ""}`
             );
