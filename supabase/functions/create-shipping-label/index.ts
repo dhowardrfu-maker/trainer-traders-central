@@ -10,7 +10,7 @@ const SENDCLOUD_API = "https://panel.sendcloud.sc/api/v3";
 
 // Confirmed working codes via Sendcloud's v3 compat endpoint — no weight
 // band suffix. Previous version included kg= weight bands which Sendcloud
-// rejects with "ShippingOptionCode ... does not exist."
+// rejected with "ShippingOptionCode ... does not exist."
 const SENDCLOUD_CODES: Record<string, Record<string, string>> = {
   evri: {
     small: "hermes_c2c_gb:s2a/dropoff",
@@ -169,6 +169,8 @@ Deno.serve(async (req) => {
 
     const shipment = scData?.data;
     console.log("Shipment keys:", Object.keys(shipment ?? {}).join(", "));
+    console.log("Shipment errors field:", JSON.stringify(shipment?.errors));
+    console.log("Shipment label_details field:", JSON.stringify(shipment?.label_details));
     const shipmentId = shipment?.id ?? null;
     const trackingNumber = shipment?.parcels?.[0]?.tracking_number ?? shipment?.tracking_number ?? null;
     const sendcloudParcelId = shipment?.parcels?.[0]?.id ?? shipmentId ?? null;
