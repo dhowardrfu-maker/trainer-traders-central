@@ -36,6 +36,7 @@ const addressSchema = z.object({
     .min(5, "Enter a valid UK postcode")
     .max(8)
     .regex(/^[A-Z0-9 ]+$/i, "Letters, numbers and spaces only"),
+  ship_to_phone: z.string().max(20).optional(),
 });
 
 interface AddressState {
@@ -44,6 +45,7 @@ interface AddressState {
   ship_to_line2: string;
   ship_to_city: string;
   ship_to_postcode: string;
+  ship_to_phone: string;
 }
 
 interface ServicePoint {
@@ -61,6 +63,7 @@ const defaultAddress: AddressState = {
   ship_to_line2: "",
   ship_to_city: "",
   ship_to_postcode: "",
+  ship_to_phone: "",
 };
 
 // Listings created before size_category existed have no value — default to medium
@@ -163,8 +166,6 @@ const CarrierPicker = ({ sizeCategory, carrierId, onChange }: CarrierPickerProps
 };
 
 // InPost locker picker — only shown when carrierId === "inpost".
-// Lets the buyer search by postcode and pick a specific locker, which is
-// required by Sendcloud for InPost Locker to Locker shipments.
 interface LockerPickerProps {
   postcode: string;
   selectedLocker: ServicePoint | null;
@@ -295,6 +296,7 @@ function StripePayForm({
   const [busy, setBusy] = useState(false);
 
   const needsLocker = carrierId === "inpost" && !servicePointId;
+  const needsPhone = carrierId === "inpost" && !address.ship_to_phone.trim();
 
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -308,6 +310,11 @@ function StripePayForm({
 
     if (needsLocker) {
       toast.error("Please choose an InPost locker before paying");
+      return;
+    }
+
+    if (needsPhone) {
+      toast.error("Please enter a phone number for InPost delivery");
       return;
     }
 
@@ -358,6 +365,7 @@ function StripePayForm({
       _offer_id: offerId ?? null,
       _stripe_payment_intent_id: paymentIntent.id,
       _service_point_id: servicePointId ?? null,
+      _ship_to_phone: parsed.data.ship_to_phone?.trim() || null,
     });
 
     if (error || !data) {
@@ -384,12 +392,14 @@ function StripePayForm({
         type="submit"
         size="lg"
         className="w-full rounded-full font-semibold"
-        disabled={busy || !stripe || !elements || needsLocker}
+        disabled={busy || !stripe || !elements || needsLocker || needsPhone}
       >
         {busy ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : needsLocker ? (
           "Choose a locker above first"
+        ) : needsPhone ? (
+          "Enter a phone number above first"
         ) : (
           `Pay £${(totalPence / 100).toFixed(2)} securely`
         )}
@@ -588,6 +598,24 @@ const Checkout = () => {
                   <div className="space-y-1.5">
                     <Label htmlFor="ship_to_postcode">Postcode</Label>
                     <Input id="ship_to_postcode" required placeholder="SK13 8AB" value={address.ship_to_postcode} onChange={(e) => setAddress({ ...address, ship_to_postcode: e.target.value.toUpperCase() })} />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label htmlFor="ship_to_phone">
+                      Phone number
+                      {carrierId === "inpost" ? (
+                        <span className="text-muted-foreground font-normal"> (required for InPost — used for SMS pickup alerts)</span>
+                      ) : (
+                        <span className="text-muted-foreground font-normal"> (optional)</span>
+                      )}
+                    </Label>
+                    <Input
+                      id="ship_to_phone"
+                      type="tel"
+                      placeholder="07700 900000"
+                      required={carrierId === "inpost"}
+                      value={address.ship_to_phone}
+                      onChange={(e) => setAddress({ ...address, ship_to_phone: e.target.value })}
+                    />
                   </div>
                 </div>
               </section>
