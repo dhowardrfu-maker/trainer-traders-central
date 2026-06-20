@@ -10,7 +10,9 @@
  *   1. Reads every listing from the `listings` table (all sellers, all
  *      statuses — uses the service role key to bypass RLS).
  *   2. For each photo path, generates a small webp thumbnail using the same
- *      target size the app's own upload flow uses (Sell.tsx).
+ *      target size the app's own upload flow uses (Sell.tsx). Applies the
+ *      photo's EXIF orientation first, so rotated phone photos display
+ *      the right way up.
  *   3. Uploads the thumbnail as a NEW object, named by inserting "-thumb"
  *      before the file extension — e.g. "userId/abc123.webp" becomes
  *      "userId/abc123-thumb.webp". This matches exactly what the app's
@@ -93,6 +95,7 @@ async function processPhoto(path) {
   let outputBuffer;
   try {
     outputBuffer = await sharp(inputBuffer)
+      .rotate() // applies the photo's EXIF orientation before resizing, so rotated phone photos display correctly
       .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
       .webp({ quality: THUMB_WEBP_QUALITY })
       .toBuffer();
