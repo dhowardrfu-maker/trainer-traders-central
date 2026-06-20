@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { ArrowLeft, Camera, Loader2, X } from "lucide-react";
@@ -65,6 +65,7 @@ const Sell = () => {
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [compressing, setCompressing] = useState(false);
+  const dragIndex = useRef<number | null>(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -123,6 +124,24 @@ const Sell = () => {
 
   const removePhoto = (idx: number) =>
     setPhotos((prev) => prev.filter((_, i) => i !== idx));
+
+  // Drag-to-reorder, same pattern used on the Edit listing page — dragging a
+  // photo over another swaps its position in the `photos` array; `previews`
+  // re-derives automatically from `photos` via the effect above.
+  const onDragStart = (i: number) => { dragIndex.current = i; };
+  const onDragOver = (e: React.DragEvent, i: number) => {
+    e.preventDefault();
+    const from = dragIndex.current;
+    if (from === null || from === i) return;
+    setPhotos((prev) => {
+      const arr = [...prev];
+      const [item] = arr.splice(from, 1);
+      arr.splice(i, 0, item);
+      return arr;
+    });
+    dragIndex.current = i;
+  };
+  const onDragEnd = () => { dragIndex.current = null; };
 
   const uploadPhotos = async (): Promise<string[]> => {
     if (!user) throw new Error("Not signed in");
@@ -260,10 +279,25 @@ const Sell = () => {
       <form onSubmit={handleSubmit} className="container max-w-2xl py-6 space-y-6">
 
         {/* PHOTOS */}
+        {previews.length > 1 && (
+          <p className="text-xs text-muted-foreground">Drag to reorder · First photo is the cover</p>
+        )}
         <div className="grid grid-cols-3 gap-3">
           {previews.map((src, i) => (
-            <div key={i} className="relative aspect-square">
-              <img src={src} className="w-full h-full object-cover rounded-xl" />
+            <div
+              key={i}
+              draggable
+              onDragStart={() => onDragStart(i)}
+              onDragOver={(e) => onDragOver(e, i)}
+              onDragEnd={onDragEnd}
+              className="relative aspect-square cursor-grab active:cursor-grabbing select-none"
+            >
+              <img src={src} className="w-full h-full object-cover rounded-xl pointer-events-none" />
+              {i === 0 && (
+                <span className="absolute bottom-1 left-1 text-[9px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full font-semibold">
+                  Cover
+                </span>
+              )}
               <button type="button" onClick={() => removePhoto(i)}>
                 <X />
               </button>
