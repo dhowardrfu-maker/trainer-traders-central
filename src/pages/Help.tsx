@@ -82,7 +82,7 @@ const sections: Section[] = [
       },
       {
         q: "How long does delivery take?",
-        a: "Most items are shipped via Evri Standard which takes 2–4 working days. The seller has a few days to ship after your order you'll receive tracking details once they've sent the label.",
+        a: "Most items are shipped via Evri or InPost, depending on what the seller and buyer select at checkout. Delivery typically takes 2–4 working days. The seller has a few days to ship after your order you'll receive tracking details once they've sent the label.",
       },
       {
         q: "What if my item doesn't arrive?",
@@ -109,7 +109,7 @@ const sections: Section[] = [
       },
       {
         q: "How do I ship an order?",
-        a: "Once a buyer pays, go to your Orders tab and tap Ship this order. We'll generate an Evri shipping label automatically just print it, pack the trainers securely and drop them off at your nearest Evri ParcelShop.",
+        a: "Once a buyer pays, go to your Orders tab and tap Ship this order. We'll generate a shipping label for the carrier selected at checkout — Evri or InPost. Print the label, pack the trainers securely, and drop the parcel off at your nearest Evri ParcelShop or InPost locker, whichever applies to that order.",
       },
       {
         q: "Do I need to set up payouts before selling?",
@@ -159,7 +159,7 @@ const sections: Section[] = [
     items: [
       {
         q: "How does shipping work?",
-        a: "All orders are shipped via Evri. When a buyer purchases, the seller generates a pre-paid label from their Orders tab and drops the parcel at an Evri ParcelShop. Buyers can track their order with the provided tracking number.",
+        a: "Orders are shipped via Evri or InPost, depending on what's available and selected at checkout. When a buyer purchases, the seller generates a pre-paid label from their Orders tab and drops the parcel off with the relevant carrier — an Evri ParcelShop or an InPost locker. Buyers can track their order with the provided tracking number.",
       },
       {
         q: "Who pays for postage?",
@@ -167,7 +167,7 @@ const sections: Section[] = [
       },
       {
         q: "How do I track my order?",
-        a: "Once the seller ships, a tracking number appears on your order page. You can track the parcel directly at evri.com. You'll also be able to see the status on your PrelovedKicks order page.",
+        a: "Once the seller ships, a tracking number appears on your order page. You can track the parcel directly with the relevant carrier — Evri or InPost. You'll also be able to see the status on your PrelovedKicks order page.",
       },
       {
         q: "What if the seller doesn't ship?",
