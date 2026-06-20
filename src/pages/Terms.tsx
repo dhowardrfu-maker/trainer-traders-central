@@ -73,7 +73,7 @@ const Terms = () => {
             <h3 className="font-semibold mt-3 mb-1">6.2 Buyer Protection Fee</h3>
             <p>A buyer protection fee of 4% of the item price (excluding postage) is added to every purchase. This fee helps fund platform operations and dispute resolution, is non-refundable except where a refund is granted due to an item not as described, and is displayed clearly at checkout before payment is taken.</p>
             <h3 className="font-semibold mt-3 mb-1">6.3 Postage</h3>
-            <p>Postage costs are paid by the buyer and are displayed at checkout. All items are shipped via Evri. Postage fees are non-refundable once an item has been dispatched.</p>
+            <p>Postage costs are paid by the buyer and are displayed at checkout. Items are shipped via one of our delivery partners, including Evri and InPost, depending on the option selected at checkout. Postage fees are non-refundable once an item has been dispatched.</p>
           </div>
 
           <div>
@@ -104,7 +104,7 @@ const Terms = () => {
               <li><strong>I have an issue</strong>, where you must describe the problem and may upload photos as evidence.</li>
             </ul>
             <h3 className="font-semibold mt-3 mb-1">9.2 Raising a Dispute</h3>
-            <p>If you have an issue with your order, you must raise it within 48 hours of Evri confirming delivery. If no action is taken within 48 hours of confirmed delivery, the seller will be paid out automatically.</p>
+            <p>If you have an issue with your order, you must raise it within 48 hours of the carrier confirming delivery. If no action is taken within 48 hours of confirmed delivery, the seller will be paid out automatically.</p>
             <p className="mt-2">When a dispute is raised, the seller will be notified and may choose to:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li><strong>Issue a full refund</strong>, where the buyer receives a full refund with no return required.</li>
