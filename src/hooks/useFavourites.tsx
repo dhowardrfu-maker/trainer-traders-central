@@ -30,7 +30,7 @@ export const FavouritesProvider = ({ children }: { children: ReactNode }) => {
         .eq("user_id", user.id);
       if (cancelled) return;
       if (!error && data) {
-        setIds(new Set(data.map((r) => r.listing_id)));
+        setIds(new Set(data.map((r) => String(r.listing_id))));
       }
       setLoading(false);
     })();
@@ -56,7 +56,7 @@ export const FavouritesProvider = ({ children }: { children: ReactNode }) => {
           .from("favourites")
           .delete()
           .eq("user_id", user.id)
-          .eq("listing_id", listingId);
+          .eq("listing_id", Number(listingId));
         if (error) {
           // Revert
           setIds((prev) => new Set(prev).add(listingId));
@@ -66,7 +66,7 @@ export const FavouritesProvider = ({ children }: { children: ReactNode }) => {
       } else {
         const { error } = await supabase
           .from("favourites")
-          .insert({ user_id: user.id, listing_id: listingId });
+          .insert({ user_id: user.id, listing_id: Number(listingId) });
         if (error) {
           setIds((prev) => {
             const next = new Set(prev);

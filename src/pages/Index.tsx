@@ -23,7 +23,7 @@ const Index = () => {
     const load = async () => {
       const { data: rows, error } = await supabase
         .from("listings")
-        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, photos, created_at, seller_id")
+        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, photos, created_at, seller_id")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(60);

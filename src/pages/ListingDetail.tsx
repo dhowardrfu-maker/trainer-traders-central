@@ -7,7 +7,7 @@ import { MobileTabBar } from "@/components/MobileTabBar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
+import { SAMPLE_LISTINGS, mapDbListing, formatPrice, type Listing } from "@/data/listings";
 import { ukToEu } from "@/data/listing-options";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
@@ -238,7 +238,19 @@ const ListingDetail = () => {
               </div>
 
               <div>
-                <p className="font-display font-bold text-3xl">£{listing.price}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {listing.promotionPercent ? (
+                    <span className="text-lg text-muted-foreground line-through">
+                      {formatPrice(listing.originalPrice ?? listing.price)}
+                    </span>
+                  ) : null}
+                  <p className="font-display font-bold text-3xl">{formatPrice(listing.price)}</p>
+                  {listing.promotionPercent ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 text-destructive text-xs font-semibold px-2 py-1">
+                      <Tag className="h-3 w-3" /> -{listing.promotionPercent}%
+                    </span>
+                  ) : null}
+                </div>
                 <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
                   <Truck className="h-3.5 w-3.5" />
                   <span>{postagePence > 0 ? `+ £${(postagePence / 100).toFixed(2)} postage` : "Free postage"}</span>

@@ -53,6 +53,8 @@ interface MyListing {
   title: string;
   brand: string;
   price_pence: number;
+  promotion_active?: boolean | null;
+  promotion_percent?: number | null;
   status: string;
   photos: string[];
   created_at: string;
@@ -213,7 +215,7 @@ const Profile = () => {
     (async () => {
       const { data, error } = await supabase
         .from("listings")
-        .select("id, title, brand, price_pence, status, photos, created_at")
+        .select("id, title, brand, price_pence, promotion_active, promotion_percent, status, photos, created_at")
         .eq("seller_id", user.id)
         .order("created_at", { ascending: false });
       if (cancelled) return;
@@ -304,7 +306,7 @@ const Profile = () => {
       }
       const { data: rows } = await supabase
         .from("listings")
-        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, photos, created_at, seller_id")
+        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, photos, created_at, seller_id")
         .in("id", idArr.map(Number));
       if (cancelled) return;
       if (!rows) { setSavedListings([]); setSavedLoading(false); return; }
@@ -716,7 +718,15 @@ const Profile = () => {
                         <Link to={`/listing/${l.id}`} className="font-semibold truncate hover:underline">{l.title}</Link>
                         <Badge variant={l.status === "active" ? "default" : "secondary"} className="rounded-full text-[10px] uppercase tracking-wide">{l.status}</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">{l.brand} · {formatGbp(l.price_pence)}</p>
+                      <p className="text-sm text-muted-foreground truncate flex items-center gap-1.5">
+                        {l.brand} · {formatGbp(l.price_pence)}
+                        {l.promotion_active && l.promotion_percent ? (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-destructive/10 text-destructive font-semibold px-1.5 py-0.5 text-[10px] shrink-0">
+                            <Tag className="h-2.5 w-2.5" />
+                            -{l.promotion_percent}%
+                          </span>
+                        ) : null}
+                      </p>
                     </div>
                     {l.status === "active" && (
                       <>

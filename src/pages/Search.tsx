@@ -42,7 +42,7 @@ const SearchPage = () => {
     const load = async () => {
       const { data: rows } = await supabase
         .from("listings")
-        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, photos, created_at, seller_id")
+        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, photos, created_at, seller_id")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(200);
@@ -66,7 +66,7 @@ const SearchPage = () => {
         }
       }
 
-      setDbListings(rows.map((r) => mapDbListing({ ...r, profile: profiles[r.seller_id] ?? null })));
+      setDbListings(rows.map((r) => mapDbListing({ ...r, id: String(r.id), profile: profiles[r.seller_id] ?? null })));
       setLoading(false);
     };
     void load();

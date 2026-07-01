@@ -460,7 +460,7 @@ const Checkout = () => {
 
       const { data: row, error } = await supabase
         .from("listings")
-        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, postage_pence, size_category, photos, created_at, seller_id")
+        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, postage_pence, size_category, photos, created_at, seller_id")
         .eq("id", Number(id))
         .maybeSingle();
 

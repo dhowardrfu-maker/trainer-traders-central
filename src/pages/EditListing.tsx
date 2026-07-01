@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ImagePlus, Loader2, X } from "lucide-react";
+import { ArrowLeft, ImagePlus, Loader2, Tag, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useSEO } from "@/hooks/useSEO";
@@ -40,6 +41,9 @@ const EditListing = () => {
     color: "",
     status: "active" as "active" | "draft" | "sold" | "removed",
   });
+  const [promotionActive, setPromotionActive] = useState(false);
+  const [promotionPercent, setPromotionPercent] = useState("");
+  const [promotionError, setPromotionError] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth", { replace: true });
@@ -71,6 +75,8 @@ const EditListing = () => {
         color: data.color ?? "",
         status: (data.status ?? "active") as "active" | "draft" | "sold" | "removed",
       });
+      setPromotionActive(Boolean(data.promotion_active));
+      setPromotionPercent(data.promotion_percent != null ? String(data.promotion_percent) : "");
       const rawPhotos = data.photos;
       const parsedPhotos: string[] = Array.isArray(rawPhotos)
         ? rawPhotos
@@ -135,6 +141,19 @@ const EditListing = () => {
       toast.error("Title and price are required");
       return;
     }
+    const parsedPromotionPercent = promotionPercent.trim() === "" ? null : Number(promotionPercent);
+    const promotionInvalid =
+      promotionActive &&
+      (parsedPromotionPercent === null ||
+        !Number.isFinite(parsedPromotionPercent) ||
+        parsedPromotionPercent < 1 ||
+        parsedPromotionPercent > 90);
+    if (promotionInvalid) {
+      setPromotionError(true);
+      toast.error("Enter a percentage to apply the promotion");
+      return;
+    }
+    setPromotionError(false);
     setSaving(true);
     const { error } = await supabase
       .from("listings")
@@ -146,6 +165,8 @@ const EditListing = () => {
         color: form.color.trim() || null,
         status: form.status,
         photos: JSON.stringify(photos),
+        promotion_active: promotionActive,
+        promotion_percent: promotionActive ? parsedPromotionPercent : null,
       })
       .eq("id", Number(id));
     setSaving(false);
@@ -246,6 +267,48 @@ const EditListing = () => {
           <Input id="postage" type="number" min={0} step="0.01" value={form.postage}
             onChange={(e) => setForm({ ...form, postage: e.target.value === "" ? "" : Number(e.target.value) })} />
         </div>
+
+        <div className="space-y-3 rounded-2xl border border-border p-4">
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <Checkbox
+              checked={promotionActive}
+              onCheckedChange={(checked) => {
+                setPromotionActive(checked === true);
+                setPromotionError(false);
+              }}
+            />
+            <Tag className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold">Promotion</span>
+          </label>
+
+          {promotionActive && (
+            <div className="space-y-1.5 pl-[26px]">
+              <Label htmlFor="promotionPercent" className="text-xs text-muted-foreground font-normal">
+                Percentage off
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="promotionPercent"
+                  type="number"
+                  min={1}
+                  max={90}
+                  step="1"
+                  className="w-24"
+                  value={promotionPercent}
+                  onChange={(e) => {
+                    setPromotionPercent(e.target.value);
+                    setPromotionError(false);
+                  }}
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+              {promotionError && (
+                <p className="text-xs text-destructive">Enter a percentage to apply the promotion</p>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="color">Colour</Label>
           <Input id="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />

@@ -48,7 +48,7 @@ export const OfferPanel = ({ listingId, sellerId, userId, askingPrice }: Props) 
     const { data } = await supabase
       .from("offers")
       .select("id, amount_pence, status, buyer_id, seller_id, message, created_at, parent_offer_id")
-      .eq("listing_id", listingId)
+      .eq("listing_id", Number(listingId))
       .order("created_at", { ascending: false });
     setOffers((data ?? []) as Offer[]);
     setLoading(false);
@@ -73,7 +73,7 @@ export const OfferPanel = ({ listingId, sellerId, userId, askingPrice }: Props) 
     await supabase.from("offers").update({ status: "countered" }).eq("id", parent.id);
     // insert seller-driven counter as new offer (buyer = original buyer)
     const { error } = await supabase.from("offers").insert({
-      listing_id: listingId,
+      listing_id: Number(listingId),
       buyer_id: parent.buyer_id,
       seller_id: sellerId,
       amount_pence: Math.round(num * 100),

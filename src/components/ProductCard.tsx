@@ -1,8 +1,8 @@
-import { Heart, Star } from "lucide-react";
+import { Heart, Star, Tag } from "lucide-react";
 import { Img } from "@/components/Img";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import type { Listing } from "@/data/listings";
+import { formatPrice, type Listing } from "@/data/listings";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
@@ -121,15 +121,31 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
               </h3>
             </div>
 
-            <p className="font-display font-bold text-base shrink-0">
-              £{listing.price}
-            </p>
+            <div className="min-w-0 shrink-0 text-right">
+              {listing.promotionPercent ? (
+                <div className="flex items-baseline gap-1.5 justify-end">
+                  <span className="text-xs text-muted-foreground line-through">
+                    {formatPrice(listing.originalPrice ?? listing.price)}
+                  </span>
+                  <p className="font-display font-bold text-base">{formatPrice(listing.price)}</p>
+                </div>
+              ) : (
+                <p className="font-display font-bold text-base">{formatPrice(listing.price)}</p>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{listing.condition}</span>
 
-            <span className="flex items-center gap-1">
+            {listing.promotionPercent && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-destructive/10 text-destructive font-semibold px-1.5 py-0.5 text-[10px]">
+                <Tag className="h-2.5 w-2.5" />
+                -{listing.promotionPercent}%
+              </span>
+            )}
+
+            <span className="flex items-center gap-1 ml-auto shrink-0">
               <Star className="h-3 w-3 fill-foreground stroke-foreground" />
               {listing.seller.rating.toFixed(1)} · {listing.seller.name}
             </span>

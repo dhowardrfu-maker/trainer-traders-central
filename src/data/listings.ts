@@ -19,6 +19,8 @@ export interface Listing {
   color?: string | null;
   description?: string | null;
   price: number;
+  originalPrice?: number;
+  promotionPercent?: number | null;
 
   image: string;
   images?: string[];
@@ -28,6 +30,11 @@ export interface Listing {
   createdAt?: string;
   isSample?: boolean;
 }
+
+// £ price for display. Whole-pound prices render without decimals (matches
+// existing listings); discounted prices render to the penny (e.g. £7.50).
+export const formatPrice = (amount: number): string =>
+  Number.isInteger(amount) ? `£${amount}` : `£${amount.toFixed(2)}`;
 
 export const SAMPLE_LISTINGS: Listing[] = [];
 
@@ -82,6 +89,8 @@ interface DbListingRow {
   color?: string | null;
   description?: string | null;
   price_pence: number;
+  promotion_active?: boolean | null;
+  promotion_percent?: number | null;
   photos: string[] | string | null;
   created_at: string;
   seller_id?: string;
@@ -114,6 +123,13 @@ export const mapDbListing = (row: DbListingRow): Listing => {
   const photos = normalisePhotos(row.photos);
   const fallback = "/placeholder.svg";
 
+  const originalPrice = Math.round(row.price_pence / 100);
+  const hasPromotion = Boolean(row.promotion_active && row.promotion_percent);
+  const promotionPercent = hasPromotion ? (row.promotion_percent as number) : null;
+  const price = hasPromotion
+    ? Math.round(row.price_pence * (100 - (promotionPercent as number)) / 100) / 100
+    : originalPrice;
+
   return {
     id: row.id,
     title: row.title,
@@ -125,7 +141,9 @@ export const mapDbListing = (row: DbListingRow): Listing => {
     gender: (row.gender as Gender) ?? "unisex",
     color: row.color ?? null,
     description: row.description ?? null,
-    price: Math.round(row.price_pence / 100),
+    price,
+    originalPrice: hasPromotion ? originalPrice : undefined,
+    promotionPercent,
 
     image: photos[0] || fallback,
     images: photos.length ? photos : [fallback],
