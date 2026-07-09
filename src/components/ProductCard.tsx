@@ -33,6 +33,11 @@ const extractImages = (input: unknown): string[] => {
     .filter((url) => typeof url === "string" && url.length > 10);
 };
 
+// "Just Listed" window — anything newer than this shows the badge.
+const JUST_LISTED_HOURS = 24;
+// "Great Deal" threshold — promo badge upgrades to a stronger callout above this %.
+const GREAT_DEAL_THRESHOLD = 20;
+
 export const ProductCard = ({ listing }: { listing: Listing }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -44,6 +49,11 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
   const image =
     images[0] ||
     (typeof listing.image === "string" ? listing.image : "");
+
+  const isGreatDeal = (listing.promotionPercent ?? 0) >= GREAT_DEAL_THRESHOLD;
+  const isJustListed =
+    !!listing.createdAt &&
+    Date.now() - new Date(listing.createdAt).getTime() < JUST_LISTED_HOURS * 60 * 60 * 1000;
 
   const handleHeart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -103,6 +113,20 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
               )}
             />
           </button>
+
+          {/* Top-left status badge — Great Deal takes priority over Just Listed if both apply */}
+          {(isGreatDeal || isJustListed) && (
+            <span
+              className={cn(
+                "absolute top-2.5 left-2.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide backdrop-blur",
+                isGreatDeal
+                  ? "bg-destructive text-destructive-foreground"
+                  : "bg-primary text-primary-foreground"
+              )}
+            >
+              {isGreatDeal ? "Great deal" : "Just listed"}
+            </span>
+          )}
 
           <span className="absolute bottom-2.5 left-2.5 rounded-full bg-background/90 backdrop-blur px-2.5 py-1 text-xs font-semibold">
             UK {listing.sizeUk}

@@ -3,6 +3,10 @@ import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { CategoryChips } from "@/components/CategoryChips";
 import { ProductCard } from "@/components/ProductCard";
+import { ListingRail } from "@/components/ListingRail";
+import { PopularBrands } from "@/components/PopularBrands";
+import { HowItWorksPreview } from "@/components/HowItWorksPreview";
+import { ReviewsShowcase } from "@/components/ReviewsShowcase";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import Footer from "@/components/Footer";
 import { FilterBar, DEFAULT_FILTERS, type Filters, type SortKey } from "@/components/FilterBar";
@@ -136,19 +140,51 @@ const Index = () => {
     return sorted;
   }, [all, activeCategory, filters, sort]);
 
+  // Both rails below are derived client-side from `all`, the single list
+  // already fetched on mount — no additional Supabase queries.
+  const bestDeals = useMemo(
+    () =>
+      all
+        .filter((l) => (l.promotionPercent ?? 0) > 0)
+        .sort((a, b) => (b.promotionPercent ?? 0) - (a.promotionPercent ?? 0))
+        .slice(0, 8),
+    [all]
+  );
+
+  const under50 = useMemo(
+    () => all.filter((l) => l.price <= 50).slice(0, 8),
+    [all]
+  );
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Header />
 
       <main>
         <Hero />
+
+        {!loading && (
+          <>
+            <ListingRail
+              title="Today's best deals"
+              subtitle="Biggest markdowns vs. original price, right now."
+              listings={bestDeals}
+            />
+            <ListingRail
+              title="Under £50"
+              subtitle="Solid pairs, small budget."
+              listings={under50}
+            />
+          </>
+        )}
+
         <CategoryChips active={activeCategory} onChange={setActiveCategory} />
 
         <section className="container py-6 md:py-10">
           <div className="flex items-end justify-between mb-4 gap-4">
             <div>
               <h2 className="font-display font-bold text-2xl md:text-3xl tracking-tight">
-                {activeCategory === "All" ? "Newly listed" : activeCategory}
+                {activeCategory === "All" ? "Recently listed" : activeCategory}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
                 {loading
@@ -183,6 +219,10 @@ const Index = () => {
             </div>
           )}
         </section>
+
+        <PopularBrands />
+        <HowItWorksPreview />
+        <ReviewsShowcase />
       </main>
 
       <Footer />
