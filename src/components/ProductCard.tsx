@@ -33,6 +33,11 @@ const extractImages = (input: unknown): string[] => {
     .filter((url) => typeof url === "string" && url.length > 10);
 };
 
+// "Just Listed" window — anything newer than this shows the badge.
+const JUST_LISTED_HOURS = 24;
+// "Great Deal" threshold — promo badge upgrades to a stronger callout above this %.
+const GREAT_DEAL_THRESHOLD = 20;
+
 export const ProductCard = ({ listing }: { listing: Listing }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -44,6 +49,14 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
   const image =
     images[0] ||
     (typeof listing.image === "string" ? listing.image : "");
+
+  const isGreatDeal = (listing.promotionPercent ?? 0) >= GREAT_DEAL_THRESHOLD;
+  const isJustListed =
+    !!listing.createdAt &&
+    Date.now() - new Date(listing.createdAt).getTime() < JUST_LISTED_HOURS * 60 * 60 * 1000;
+  const percentBelowRetail = listing.retailPricePence
+    ? Math.round(((listing.retailPricePence - Math.round(listing.price * 100)) / listing.retailPricePence) * 100)
+    : null;
 
   const handleHeart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -104,6 +117,20 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
             />
           </button>
 
+          {/* Top-left status badge — Great Deal takes priority over Just Listed if both apply */}
+          {(isGreatDeal || isJustListed) && (
+            <span
+              className={cn(
+                "absolute top-2.5 left-2.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide backdrop-blur",
+                isGreatDeal
+                  ? "bg-destructive text-destructive-foreground"
+                  : "bg-primary text-primary-foreground"
+              )}
+            >
+              {isGreatDeal ? "Great deal" : "Just listed"}
+            </span>
+          )}
+
           <span className="absolute bottom-2.5 left-2.5 rounded-full bg-background/90 backdrop-blur px-2.5 py-1 text-xs font-semibold">
             UK {listing.sizeUk}
           </span>
@@ -138,12 +165,17 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{listing.condition}</span>
 
-            {listing.promotionPercent && (
+            {listing.promotionPercent ? (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-destructive/10 text-destructive font-semibold px-1.5 py-0.5 text-[10px]">
                 <Tag className="h-2.5 w-2.5" />
                 -{listing.promotionPercent}%
               </span>
-            )}
+            ) : percentBelowRetail != null && percentBelowRetail > 0 ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 text-primary font-semibold px-1.5 py-0.5 text-[10px]">
+                <Tag className="h-2.5 w-2.5" />
+                -{percentBelowRetail}% vs retail
+              </span>
+            ) : null}
 
             <span className="flex items-center gap-1 ml-auto shrink-0">
               <Star className="h-3 w-3 fill-foreground stroke-foreground" />
