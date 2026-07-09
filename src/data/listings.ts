@@ -11,6 +11,7 @@ export interface Listing {
   id: string;
   title: string;
   brand: string;
+  model?: string | null;
   sizeUk: number;
   sizeEu?: number;
   condition: Condition;
@@ -21,6 +22,7 @@ export interface Listing {
   price: number;
   originalPrice?: number;
   promotionPercent?: number | null;
+  retailPricePence?: number | null;
 
   image: string;
   images?: string[];
@@ -82,6 +84,7 @@ interface DbListingRow {
   id: string;
   title: string;
   brand: string;
+  model?: string | null;
   size_uk: number | string;
   size_eu?: number | string | null;
   condition: string;
@@ -91,6 +94,7 @@ interface DbListingRow {
   price_pence: number;
   promotion_active?: boolean | null;
   promotion_percent?: number | null;
+  retail_price_pence?: number | null;
   photos: string[] | string | null;
   created_at: string;
   seller_id?: string;
@@ -134,6 +138,7 @@ export const mapDbListing = (row: DbListingRow): Listing => {
     id: row.id,
     title: row.title,
     brand: row.brand,
+    model: row.model ?? null,
     sizeUk: Number(row.size_uk),
     sizeEu: row.size_eu != null ? Number(row.size_eu) : undefined,
     condition: conditionMap[row.condition] ?? "Good",
@@ -144,6 +149,7 @@ export const mapDbListing = (row: DbListingRow): Listing => {
     price,
     originalPrice: hasPromotion ? originalPrice : undefined,
     promotionPercent,
+    retailPricePence: row.retail_price_pence ?? null,
 
     image: photos[0] || fallback,
     images: photos.length ? photos : [fallback],
