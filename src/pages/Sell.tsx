@@ -51,6 +51,7 @@ const schema = z.object({
   gender: z.enum(["mens", "womens", "unisex", "kids"]),
   color: z.string().optional(),
   price: z.number().min(1, "Price required"),
+  retail_price: z.number().min(1).optional(),
   size_category: z.enum(["small", "medium", "large", "extra_large"], {
     errorMap: () => ({ message: "Parcel size required" }),
   }),
@@ -76,6 +77,7 @@ const Sell = () => {
     gender: "unisex",
     color: "",
     price: "" as number | "",
+    retail_price: "" as number | "",
     size_category: "",
     description: "",
   });
@@ -222,6 +224,7 @@ const Sell = () => {
       gender: form.gender,
       color: form.color.trim() || undefined,
       price: typeof form.price === "number" ? Number(form.price) : undefined,
+      retail_price: typeof form.retail_price === "number" ? Number(form.retail_price) : undefined,
       size_category: form.size_category,
       description: form.description.trim() || undefined,
     };
@@ -238,6 +241,7 @@ const Sell = () => {
       const sizeUk = Number(d.size_uk);
       const sizeEu = Number(ukToEu(sizeUk));
       const pricePence = Math.round(Number(d.price) * 100);
+      const retailPricePence = d.retail_price ? Math.round(Number(d.retail_price) * 100) : null;
       const { error } = await supabase.from("listings").insert({
         seller_id: user.id,
         title: d.title,
@@ -249,13 +253,14 @@ const Sell = () => {
         gender: d.gender,
         color: d.color || null,
         price_pence: pricePence,
+        retail_price_pence: retailPricePence,
         size_category: d.size_category,
         description: d.description || null,
         photos: photoUrls as unknown as string,
         status: "active",
       });
       if (error) throw error;
-      toast.success("Listing posted ✨");
+      toast.success("Listing posted");
       navigate("/");
     } catch (err) {
       console.error(err);
@@ -410,6 +415,19 @@ const Sell = () => {
           value={form.price}
           onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
         />
+
+        {/* RETAIL PRICE (optional, powers Deal Score) */}
+        <div>
+          <Input
+            type="number"
+            placeholder="Original retail price (£, optional)"
+            value={form.retail_price}
+            onChange={(e) => setForm({ ...form, retail_price: Number(e.target.value) })}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Adds a Deal Score to your listing showing buyers how much they're saving vs. retail.
+          </p>
+        </div>
 
         {/* PARCEL SIZE */}
         <Select

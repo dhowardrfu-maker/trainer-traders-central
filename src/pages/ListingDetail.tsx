@@ -18,6 +18,8 @@ import { ImageLightbox } from "@/components/ImageLightbox";
 import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { computeDealScore, type DealScore } from "@/lib/dealScore";
+import { DealScorePanel } from "@/components/DealScorePanel";
 
 const isDbId = (id: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ||
@@ -38,6 +40,7 @@ const ListingDetail = () => {
 
   const [listing, setListing] = useState<Listing | null>(null);
   const [postagePence, setPostagePence] = useState<number>(0);
+  const [dealScore, setDealScore] = useState<DealScore | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -90,8 +93,34 @@ const ListingDetail = () => {
         .maybeSingle();
 
       setPostagePence(row.postage_pence ?? 0);
-      setListing(mapDbListing({ ...row, id: String(row.id), profile: p ?? null }));
+      const mapped = mapDbListing({ ...row, id: String(row.id), profile: p ?? null });
+      setListing(mapped);
       setLoading(false);
+
+      // Deal Score comparables: only fetch when the listing actually has a
+      // retail price set (otherwise there's nothing to score). Text-only
+      // query (id, price) — no photos, negligible egress.
+      if (mapped.retailPricePence) {
+        const { data: comparableRows } = await supabase
+          .from("listings")
+          .select("id, price_pence")
+          .eq("status", "active")
+          .eq("brand", mapped.brand)
+          .eq(mapped.model ? "model" : "title", mapped.model ?? mapped.title)
+          .neq("id", Number(mapped.id))
+          .limit(30);
+
+        if (!cancelled && comparableRows) {
+          const pool = comparableRows.map((r) => ({
+            id: String(r.id),
+            brand: mapped.brand,
+            model: mapped.model,
+            title: mapped.title,
+            price: r.price_pence / 100,
+          }));
+          setDealScore(computeDealScore(mapped, pool));
+        }
+      }
     };
 
     void load();
@@ -256,6 +285,8 @@ const ListingDetail = () => {
                   <span>{postagePence > 0 ? `+ £${(postagePence / 100).toFixed(2)} postage` : "Free postage"}</span>
                 </div>
               </div>
+
+              <DealScorePanel score={dealScore} />
 
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="bg-muted rounded-xl p-3">

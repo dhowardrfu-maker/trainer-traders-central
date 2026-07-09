@@ -37,6 +37,7 @@ const EditListing = () => {
     title: "",
     description: "",
     price: "" as number | "",
+    retail_price: "" as number | "",
     postage: "" as number | "",
     color: "",
     status: "active" as "active" | "draft" | "sold" | "removed",
@@ -71,6 +72,7 @@ const EditListing = () => {
         title: data.title,
         description: data.description ?? "",
         price: data.price_pence / 100,
+        retail_price: data.retail_price_pence != null ? data.retail_price_pence / 100 : "",
         postage: data.postage_pence / 100,
         color: data.color ?? "",
         status: (data.status ?? "active") as "active" | "draft" | "sold" | "removed",
@@ -161,6 +163,7 @@ const EditListing = () => {
         title: form.title.trim(),
         description: form.description.trim() || null,
         price_pence: Math.round(Number(form.price) * 100),
+        retail_price_pence: form.retail_price ? Math.round(Number(form.retail_price) * 100) : null,
         postage_pence: Math.round(Number(form.postage) * 100),
         color: form.color.trim() || null,
         status: form.status,
@@ -261,6 +264,14 @@ const EditListing = () => {
           <Label htmlFor="price">Price (£)</Label>
           <Input id="price" type="number" min={1} step="0.01" value={form.price}
             onChange={(e) => setForm({ ...form, price: e.target.value === "" ? "" : Number(e.target.value) })} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="retail_price">Original retail price (£, optional)</Label>
+          <Input id="retail_price" type="number" min={1} step="0.01" value={form.retail_price}
+            onChange={(e) => setForm({ ...form, retail_price: e.target.value === "" ? "" : Number(e.target.value) })} />
+          <p className="text-xs text-muted-foreground">
+            Powers the Deal Score shown to buyers on your listing.
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="postage">Postage cost (£)</Label>

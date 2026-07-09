@@ -31,9 +31,9 @@ const SearchPage = () => {
   const [loading, setLoading] = useState(true);
 
   useSEO({
-    title: query ? `“${query}” — PrelovedKicks search` : "Search trainers — PrelovedKicks",
+    title: query ? `"${query}" — PrelovedKicks search` : "Search trainers — PrelovedKicks",
     description: query
-      ? `Search results for “${query}” on PrelovedKicks — second-hand trainers from real UK sellers.`
+      ? `Search results for "${query}" on PrelovedKicks — second-hand trainers from real UK sellers.`
       : "Search thousands of pre-loved trainers from UK sellers on PrelovedKicks.",
   });
 
@@ -42,7 +42,7 @@ const SearchPage = () => {
     const load = async () => {
       const { data: rows } = await supabase
         .from("listings")
-        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, photos, created_at, seller_id")
+        .select("id, title, brand, model, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, retail_price_pence, photos, created_at, seller_id")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(200);
@@ -115,7 +115,7 @@ const SearchPage = () => {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Try ‘Jordan 1’, ‘Samba black’, ‘size 9’…"
+            placeholder="Try 'Jordan 1', 'Samba black', 'size 9'…"
             className="pl-10 pr-10 h-12 rounded-full bg-muted border-transparent focus-visible:bg-background"
           />
           {query && (
@@ -156,7 +156,7 @@ const SearchPage = () => {
             <p className="text-sm text-muted-foreground mb-4">
               {loading
                 ? "Searching…"
-                : `${results.length} result${results.length === 1 ? "" : "s"} for “${query}”`}
+                : `${results.length} result${results.length === 1 ? "" : "s"} for "${query}"`}
             </p>
 
             {loading ? (
