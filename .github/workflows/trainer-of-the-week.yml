@@ -1,0 +1,19 @@
+name: Trainer of the Week
+
+on:
+  schedule:
+    # Every Monday at 9am UTC — lands as 9am UK time in winter (GMT),
+    # 10am UK time in summer (BST). Accepted tradeoff for simplicity,
+    # since this only affects when a cosmetic homepage feature refreshes.
+    - cron: '0 9 * * 1'
+  workflow_dispatch: {}  # manual "Run workflow" button in the Actions tab
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call pick-trainer-of-the-week edge function
+        run: |
+          curl --fail --show-error \
+            -X POST "https://jwvybofahjxtldjjjdpo.supabase.co/functions/v1/pick-trainer-of-the-week" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
