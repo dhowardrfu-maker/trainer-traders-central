@@ -5,6 +5,8 @@ interface Props {
   title: string;
   subtitle?: string;
   listings: Listing[];
+  /** Pass true when every listing in this rail is sold (e.g. "Recently Sold") */
+  sold?: boolean;
 }
 
 /**
@@ -12,7 +14,7 @@ interface Props {
  * sections like "Today's Best Deals" simply don't appear until there's
  * real data to show (no empty-state placeholders on a live site).
  */
-export const ListingRail = ({ title, subtitle, listings }: Props) => {
+export const ListingRail = ({ title, subtitle, listings, sold = false }: Props) => {
   if (listings.length === 0) return null;
 
   return (
@@ -28,7 +30,7 @@ export const ListingRail = ({ title, subtitle, listings }: Props) => {
       <div className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-none -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory">
         {listings.map((l) => (
           <div key={l.id} className="w-[46%] sm:w-[30%] md:w-[22%] shrink-0 snap-start">
-            <ProductCard listing={l} />
+            <ProductCard listing={l} sold={sold} />
           </div>
         ))}
       </div>
