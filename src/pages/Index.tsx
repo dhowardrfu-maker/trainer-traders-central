@@ -4,6 +4,7 @@ import { Hero } from "@/components/Hero";
 import { CategoryChips } from "@/components/CategoryChips";
 import { ProductCard } from "@/components/ProductCard";
 import { ListingRail } from "@/components/ListingRail";
+import { TrainerOfTheWeek } from "@/components/TrainerOfTheWeek";
 import { PopularBrands } from "@/components/PopularBrands";
 import { HowItWorksPreview } from "@/components/HowItWorksPreview";
 import { ReviewsShowcase } from "@/components/ReviewsShowcase";
@@ -200,6 +201,8 @@ const Index = () => {
             />
           </>
         )}
+
+        <TrainerOfTheWeek />
 
         <CategoryChips active={activeCategory} onChange={setActiveCategory} />
 
