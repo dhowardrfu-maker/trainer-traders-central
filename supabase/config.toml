@@ -2,3 +2,6 @@ project_id = "jumfmslotazujothxxgw"
 
 [functions.moderate-image]
 verify_jwt = true
+
+[functions.pick-trainer-of-the-week]
+verify_jwt = false
