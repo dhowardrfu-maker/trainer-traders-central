@@ -39,38 +39,47 @@ export const SellerReviews = ({ sellerId }: { sellerId: string }) => {
     return () => { cancelled = true; };
   }, [sellerId]);
 
-  if (loading || reviews.length === 0) return null;
+  if (loading) return null;
 
-  const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+  const avg = reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
 
   return (
     <Card className="p-4 rounded-2xl mt-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-display font-bold">Seller reviews</h3>
         <p className="text-sm text-muted-foreground flex items-center gap-1">
-          <Star className="h-3.5 w-3.5 fill-foreground stroke-foreground" />
-          <span className="font-semibold text-foreground">{avg.toFixed(1)}</span> · {reviews.length}
+          {reviews.length > 0 && (
+            <>
+              <Star className="h-3.5 w-3.5 fill-foreground stroke-foreground" />
+              <span className="font-semibold text-foreground">{avg.toFixed(1)}</span> ·{" "}
+            </>
+          )}
+          {reviews.length} review{reviews.length === 1 ? "" : "s"}
         </p>
       </div>
-      <ul className="space-y-3">
-        {reviews.map((r) => (
-          <li key={r.id} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="font-semibold">{r.buyer_name}</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="flex items-center gap-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-foreground stroke-foreground" : "stroke-muted-foreground"}`} />
-                ))}
-              </span>
-              <span className="text-muted-foreground ml-auto">
-                {new Date(r.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-              </span>
-            </div>
-            {r.comment && <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{r.comment}</p>}
-          </li>
-        ))}
-      </ul>
+      {reviews.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No reviews yet.</p>
+      ) : (
+        <ul className="space-y-3">
+          {reviews.map((r) => (
+            <li key={r.id} className="border-t border-border pt-3 first:border-t-0 first:pt-0">
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="font-semibold">{r.buyer_name}</span>
+                <span className="text-muted-foreground">·</span>
+                <span className="flex items-center gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-foreground stroke-foreground" : "stroke-muted-foreground"}`} />
+                  ))}
+                </span>
+                <span className="text-muted-foreground ml-auto">
+                  {new Date(r.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                </span>
+              </div>
+              {r.comment && <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{r.comment}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
     </Card>
   );
 };
