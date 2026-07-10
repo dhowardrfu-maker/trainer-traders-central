@@ -14,12 +14,63 @@ import { mapDbListing, type Listing } from "@/data/listings";
 import { supabase } from "@/integrations/supabase/client";
 import { useSEO } from "@/hooks/useSEO";
 
+const LISTING_COLUMNS =
+  "id, title, brand, model, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, retail_price_pence, photos, created_at, seller_id";
+
 const Index = () => {
   const [activeCategory, setActiveCategory] = useState("All");
   const [dbListings, setDbListings] = useState<Listing[]>([]);
+  const [soldListings, setSoldListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<SortKey>("newest");
+
+  // Shared helper: resolves seller profiles for a batch of rows and maps
+  // them into Listing objects. Used by both the active-listings load and
+  // the sold-listings load below, so the two queries stay consistent.
+  const mapRowsWithProfiles = async (rows: any[]): Promise<Listing[]> => {
+    const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id)));
+    let profiles: Record<string, { username: string | null; display_name: string | null }> = {};
+
+    if (sellerIds.length > 0) {
+      const { data: profileRows } = await supabase
+        .from("profiles")
+        .select("user_id, username, display_name")
+        .in("user_id", sellerIds);
+
+      if (profileRows) {
+        profiles = Object.fromEntries(
+          profileRows.map((p) => [
+            p.user_id,
+            { username: p.username, display_name: p.display_name },
+          ])
+        );
+      }
+    }
+
+    return rows.map((r) => {
+      const photos =
+        Array.isArray(r.photos)
+          ? r.photos
+          : typeof r.photos === "string"
+            ? [r.photos]
+            : [];
+
+      const cleanPhotos = photos.filter(Boolean);
+
+      const listing = mapDbListing({
+        ...r,
+        id: String(r.id),
+        photos: cleanPhotos.length ? cleanPhotos : ["/placeholder.svg"],
+        profile: profiles[r.seller_id] ?? null,
+      });
+
+      return {
+        ...listing,
+        image: listing.image || "/placeholder.svg",
+      };
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -27,7 +78,7 @@ const Index = () => {
     const load = async () => {
       const { data: rows, error } = await supabase
         .from("listings")
-        .select("id, title, brand, model, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, retail_price_pence, photos, created_at, seller_id")
+        .select(LISTING_COLUMNS)
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(60);
@@ -40,51 +91,23 @@ const Index = () => {
         return;
       }
 
-      const sellerIds = Array.from(new Set(rows.map((r) => r.seller_id)));
-
-      let profiles: Record<string, { username: string | null; display_name: string | null }> = {};
-
-      if (sellerIds.length > 0) {
-        const { data: profileRows } = await supabase
-          .from("profiles")
-          .select("user_id, username, display_name")
-          .in("user_id", sellerIds);
-
-        if (profileRows) {
-          profiles = Object.fromEntries(
-            profileRows.map((p) => [
-              p.user_id,
-              { username: p.username, display_name: p.display_name },
-            ])
-          );
-        }
-      }
-
-      const mapped = rows.map((r) => {
-        const photos =
-          Array.isArray(r.photos)
-            ? r.photos
-            : typeof r.photos === "string"
-              ? [r.photos]
-              : [];
-
-        const cleanPhotos = photos.filter(Boolean);
-
-        const listing = mapDbListing({
-          ...r,
-          id: String(r.id),
-          photos: cleanPhotos.length ? cleanPhotos : ["/placeholder.svg"],
-          profile: profiles[r.seller_id] ?? null,
-        });
-
-        return {
-          ...listing,
-          image: listing.image || "/placeholder.svg",
-        };
-      });
-
-      setDbListings(mapped);
+      setDbListings(await mapRowsWithProfiles(rows));
       setLoading(false);
+
+      // Recently Sold: separate, small, capped query — only fetched once
+      // the main load succeeds, so it never blocks the primary homepage
+      // render. Sorted by updated_at, which the DB already keeps in sync
+      // via trigger whenever create_order() flips status to 'sold'.
+      const { data: soldRows } = await supabase
+        .from("listings")
+        .select(LISTING_COLUMNS)
+        .eq("status", "sold")
+        .order("updated_at", { ascending: false })
+        .limit(8);
+
+      if (!cancelled && soldRows && soldRows.length > 0) {
+        setSoldListings(await mapRowsWithProfiles(soldRows));
+      }
     };
 
     void load();
@@ -219,6 +242,13 @@ const Index = () => {
             </div>
           )}
         </section>
+
+        <ListingRail
+          title="Recently sold"
+          subtitle="Yes, people actually buy here."
+          listings={soldListings}
+          sold
+        />
 
         <PopularBrands />
         <HowItWorksPreview />
