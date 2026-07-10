@@ -1,0 +1,17 @@
+name: Trainer of the Week
+
+on:
+  schedule:
+    # Every Monday at 9:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: {}  # allows manually triggering a run from the Actions tab, for testing
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call pick-trainer-of-the-week edge function
+        run: |
+          curl --fail --show-error \
+            -X POST "https://jwvybofahjxtldjjjdpo.supabase.co/functions/v1/pick-trainer-of-the-week" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"
