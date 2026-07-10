@@ -16,6 +16,7 @@ import ListingDetail from "./pages/ListingDetail.tsx";
 import Checkout from "./pages/Checkout.tsx";
 import OrderConfirmation from "./pages/OrderConfirmation.tsx";
 import Profile from "./pages/Profile.tsx";
+import SellerProfile from "./pages/SellerProfile.tsx";
 import Search from "./pages/Search.tsx";
 import Messages from "./pages/Messages.tsx";
 import MessageThread from "./pages/MessageThread.tsx";
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/order/:id" element={<OrderConfirmation />} />
                 <Route path="/shipping/:id" element={<ShippingLabel />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/seller/:id" element={<SellerProfile />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/messages/:id" element={<MessageThread />} />

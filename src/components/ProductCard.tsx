@@ -87,6 +87,13 @@ export const ProductCard = ({ listing, sold = false }: ProductCardProps) => {
     }
   };
 
+  const handleSellerClick = (e: React.MouseEvent) => {
+    if (!listing.seller.id) return;
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/seller/${listing.seller.id}`);
+  };
+
   return (
     <Link to={`/listing/${listing.id}`} className="block">
       <article className={cn("product-card group cursor-pointer animate-fade-in", sold && "opacity-90")}>
@@ -197,7 +204,13 @@ export const ProductCard = ({ listing, sold = false }: ProductCardProps) => {
               </span>
             ) : null}
 
-            <span className="flex items-center gap-1 ml-auto shrink-0">
+            <span
+              onClick={handleSellerClick}
+              className={cn(
+                "flex items-center gap-1 ml-auto shrink-0",
+                listing.seller.id && "hover:underline hover:text-foreground"
+              )}
+            >
               <Star className="h-3 w-3 fill-foreground stroke-foreground" />
               {listing.seller.rating.toFixed(1)} · {listing.seller.name}
             </span>
