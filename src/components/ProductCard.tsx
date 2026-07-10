@@ -38,7 +38,14 @@ const JUST_LISTED_HOURS = 24;
 // "Great Deal" threshold — promo badge upgrades to a stronger callout above this %.
 const GREAT_DEAL_THRESHOLD = 20;
 
-export const ProductCard = ({ listing }: { listing: Listing }) => {
+interface ProductCardProps {
+  listing: Listing;
+  /** Set true for cards in a "Recently Sold" context — dims the image,
+   * shows a SOLD badge, and hides badges/actions that no longer apply. */
+  sold?: boolean;
+}
+
+export const ProductCard = ({ listing, sold = false }: ProductCardProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { isFavourited, toggle } = useFavourites();
@@ -82,7 +89,7 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
 
   return (
     <Link to={`/listing/${listing.id}`} className="block">
-      <article className="product-card group cursor-pointer animate-fade-in">
+      <article className={cn("product-card group cursor-pointer animate-fade-in", sold && "opacity-90")}>
 
         <div className="relative aspect-square bg-muted overflow-hidden">
 
@@ -92,7 +99,10 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
               alt={`${listing.brand} ${listing.title}`}
               loading="lazy"
               thumbnail
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className={cn(
+                "h-full w-full object-cover transition-transform duration-500",
+                sold ? "grayscale" : "group-hover:scale-105"
+              )}
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = "none";
               }}
@@ -103,22 +113,32 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
             </div>
           )}
 
-          <button
-            onClick={handleHeart}
-            className="absolute top-2.5 right-2.5 h-9 w-9 rounded-full bg-background/85 backdrop-blur flex items-center justify-center hover:bg-background transition-colors"
-          >
-            <Heart
-              className={cn(
-                "h-[18px] w-[18px] transition-all",
-                liked
-                  ? "fill-accent stroke-accent animate-heart-pop"
-                  : "stroke-foreground"
-              )}
-            />
-          </button>
+          {sold && (
+            <div className="absolute inset-0 bg-background/40 flex items-center justify-center">
+              <span className="rounded-full bg-foreground text-background px-4 py-1.5 text-xs font-bold uppercase tracking-wide">
+                Sold
+              </span>
+            </div>
+          )}
+
+          {!sold && (
+            <button
+              onClick={handleHeart}
+              className="absolute top-2.5 right-2.5 h-9 w-9 rounded-full bg-background/85 backdrop-blur flex items-center justify-center hover:bg-background transition-colors"
+            >
+              <Heart
+                className={cn(
+                  "h-[18px] w-[18px] transition-all",
+                  liked
+                    ? "fill-accent stroke-accent animate-heart-pop"
+                    : "stroke-foreground"
+                )}
+              />
+            </button>
+          )}
 
           {/* Top-left status badge — Great Deal takes priority over Just Listed if both apply */}
-          {(isGreatDeal || isJustListed) && (
+          {!sold && (isGreatDeal || isJustListed) && (
             <span
               className={cn(
                 "absolute top-2.5 left-2.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide backdrop-blur",
@@ -165,12 +185,12 @@ export const ProductCard = ({ listing }: { listing: Listing }) => {
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{listing.condition}</span>
 
-            {listing.promotionPercent ? (
+            {!sold && listing.promotionPercent ? (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-destructive/10 text-destructive font-semibold px-1.5 py-0.5 text-[10px]">
                 <Tag className="h-2.5 w-2.5" />
                 -{listing.promotionPercent}%
               </span>
-            ) : percentBelowRetail != null && percentBelowRetail > 0 ? (
+            ) : !sold && percentBelowRetail != null && percentBelowRetail > 0 ? (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 text-primary font-semibold px-1.5 py-0.5 text-[10px]">
                 <Tag className="h-2.5 w-2.5" />
                 -{percentBelowRetail}% vs retail
