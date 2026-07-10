@@ -358,7 +358,13 @@ const ListingDetail = () => {
               {listing.seller?.name && (
                 <div className="border-t border-border pt-4">
                   <p className="text-xs text-muted-foreground mb-1">Sold by</p>
-                  <p className="text-sm font-semibold">{listing.seller.name}</p>
+                  {listing.seller.id ? (
+                    <Link to={`/seller/${listing.seller.id}`} className="text-sm font-semibold hover:underline">
+                      {listing.seller.name}
+                    </Link>
+                  ) : (
+                    <p className="text-sm font-semibold">{listing.seller.name}</p>
+                  )}
                 </div>
               )}
             </div>
