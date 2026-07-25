@@ -22,6 +22,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AlertTriangle, Camera, CheckCircle2, CreditCard, Heart, Loader2, Package, Pencil, Plus, Settings, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -147,7 +155,7 @@ const Profile = () => {
   const [offerRows, setOfferRows] = useState<Array<{
     id: string; amount_pence: number; status: string; buyer_id: string; seller_id: string;
     listing_id: string; created_at: string; listing_title?: string; listing_photo?: string | null;
-    listing_brand?: string; parent_offer_id?: string | null;
+    listing_brand?: string; parent_offer_id?: string | null; listing_price_pence?: number | null;
   }>>([]);
   const [offersLoading, setOffersLoading] = useState(true);
   const [offerBusy, setOfferBusy] = useState<string | null>(null);
@@ -271,9 +279,9 @@ const Profile = () => {
         .order("created_at", { ascending: false });
       if (cancelled || !rows) { setOffersLoading(false); return; }
       const listingIds = Array.from(new Set(rows.map((r) => r.listing_id)));
-      let listingMap: Record<string, { title: string; brand: string; photos: string[] }> = {};
+      let listingMap: Record<string, { title: string; brand: string; photos: string[]; price_pence: number | null }> = {};
       if (listingIds.length) {
-        const { data: ls } = await supabase.from("listings").select("id, title, brand, photos").in("id", listingIds);
+        const { data: ls } = await supabase.from("listings").select("id, title, brand, photos, price_pence").in("id", listingIds);
         listingMap = Object.fromEntries((ls ?? []).map((l) => {
           const raw = l.photos;
           let photos: string[] = [];
@@ -281,7 +289,7 @@ const Profile = () => {
           else if (typeof raw === "string") {
             try { photos = JSON.parse(raw); } catch { photos = []; }
           }
-          return [String(l.id), { title: l.title as string, brand: l.brand as string, photos }];
+          return [String(l.id), { title: l.title as string, brand: l.brand as string, photos, price_pence: l.price_pence }];
         }));
       }
       setOfferRows(rows.map((r) => ({
@@ -291,6 +299,7 @@ const Profile = () => {
         listing_title: listingMap[String(r.listing_id)]?.title,
         listing_brand: listingMap[String(r.listing_id)]?.brand,
         listing_photo: listingMap[String(r.listing_id)]?.photos?.[0] ?? null,
+        listing_price_pence: listingMap[String(r.listing_id)]?.price_pence ?? null,
       })));
       setOffersLoading(false);
     })();
@@ -913,23 +922,65 @@ const Profile = () => {
                           </Button>
                         </div>
                       )}
-
-                      {counterFor === o.id && (
-                        <div className="w-full flex gap-2 items-center mt-1">
-                          <Input type="number" min={1} placeholder="£" value={counterAmount}
-                            onChange={(e) => setCounterAmount(e.target.value)} className="w-28" />
-                          <Button size="sm" className="rounded-full" disabled={offerBusy === o.id}
-                            onClick={() => sendCounter(o)}>
-                            Send counter
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setCounterFor(null)}>Cancel</Button>
-                        </div>
-                      )}
                     </Card>
                   );
                 })}
               </div>
             )}
+
+            <Dialog
+              open={!!counterFor}
+              onOpenChange={(open) => { if (!open) { setCounterFor(null); setCounterAmount(""); } }}
+            >
+              <DialogContent className="rounded-2xl">
+                {(() => {
+                  const counterOffer = offerRows.find((o) => o.id === counterFor);
+                  if (!counterOffer) return null;
+                  return (
+                    <>
+                      <DialogHeader>
+                        <DialogTitle>Counter offer</DialogTitle>
+                        <DialogDescription>Send a new price back to the buyer.</DialogDescription>
+                      </DialogHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted shrink-0">
+                          {counterOffer.listing_photo ? <Img src={counterOffer.listing_photo} alt="" className="h-full w-full object-cover" /> : null}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold truncate">{counterOffer.listing_title ?? "Listing"}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Listed at £{((counterOffer.listing_price_pence ?? 0) / 100).toFixed(2)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Buyer offered £{(counterOffer.amount_pence / 100).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="counter-amount">Your counter (£)</Label>
+                        <Input
+                          id="counter-amount"
+                          type="number"
+                          min={1}
+                          placeholder="£"
+                          value={counterAmount}
+                          onChange={(e) => setCounterAmount(e.target.value)}
+                        />
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          className="rounded-full font-semibold"
+                          disabled={offerBusy === counterOffer.id}
+                          onClick={() => sendCounter(counterOffer)}
+                        >
+                          {offerBusy === counterOffer.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Send counter
+                        </Button>
+                      </DialogFooter>
+                    </>
+                  );
+                })()}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* SAVED */}
