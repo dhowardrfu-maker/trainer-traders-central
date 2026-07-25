@@ -155,6 +155,14 @@ export const Header = () => {
                 <DropdownMenuItem onClick={() => navigate("/profile?tab=listings")}>
                   <ShoppingBag className="h-4 w-4 mr-2" /> My listings
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/messages")} className="relative">
+                  <MessageCircle className="h-4 w-4 mr-2" /> Messages
+                  {unreadMessages > 0 && (
+                    <span className="ml-auto min-w-[18px] h-[18px] rounded-full bg-[#2d9b6f] text-white text-[10px] font-bold flex items-center justify-center px-1 leading-none">
+                      {unreadMessages > 99 ? "99+" : unreadMessages}
+                    </span>
+                  )}
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/profile?tab=orders")}>
                   <Heart className="h-4 w-4 mr-2" /> Orders
                 </DropdownMenuItem>
