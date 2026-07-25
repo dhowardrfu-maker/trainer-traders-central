@@ -147,10 +147,13 @@ const Profile = () => {
   const [offerRows, setOfferRows] = useState<Array<{
     id: string; amount_pence: number; status: string; buyer_id: string; seller_id: string;
     listing_id: string; created_at: string; listing_title?: string; listing_photo?: string | null;
-    listing_brand?: string;
+    listing_brand?: string; parent_offer_id?: string | null;
   }>>([]);
   const [offersLoading, setOffersLoading] = useState(true);
   const [offerBusy, setOfferBusy] = useState<string | null>(null);
+  const [counterFor, setCounterFor] = useState<string | null>(null);
+  const [counterAmount, setCounterAmount] = useState("");
+  const [messageBusy, setMessageBusy] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth", { replace: true });
@@ -263,7 +266,7 @@ const Profile = () => {
     (async () => {
       const { data: rows } = await supabase
         .from("offers")
-        .select("id, amount_pence, status, buyer_id, seller_id, listing_id, created_at")
+        .select("id, amount_pence, status, buyer_id, seller_id, listing_id, created_at, parent_offer_id")
         .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
         .order("created_at", { ascending: false });
       if (cancelled || !rows) { setOffersLoading(false); return; }
@@ -469,6 +472,89 @@ const Profile = () => {
     setOfferBusy(null);
     toast.success("Offer declined");
     setOfferRows((prev) => prev.map((o) => o.id === offerId ? { ...o, status: "rejected" } : o));
+  };
+
+  // COUNTER OFFER
+  const sendCounter = async (parent: { id: string; listing_id: string; buyer_id: string; amount_pence: number }) => {
+    if (!user) return;
+    const num = Number(counterAmount);
+    if (!Number.isFinite(num) || num <= 0) { toast.error("Enter a valid counter"); return; }
+    setOfferBusy(parent.id);
+    await supabase.from("offers").update({ status: "countered" }).eq("id", parent.id);
+    const { error } = await supabase.from("offers").insert({
+      listing_id: Number(parent.listing_id),
+      buyer_id: parent.buyer_id,
+      seller_id: user.id,
+      amount_pence: Math.round(num * 100),
+      parent_offer_id: parent.id,
+      message: `Counter to £${(parent.amount_pence / 100).toFixed(2)}`,
+    });
+    setOfferBusy(null);
+    setCounterFor(null);
+    setCounterAmount("");
+    if (error) { toast.error(error.message); return; }
+    toast.success("Counter sent");
+    setOfferRows((prev) => prev.map((o) => o.id === parent.id ? { ...o, status: "countered" } : o));
+  };
+
+  // ACCEPT / DECLINE A SELLER'S COUNTER (buyer's side)
+  const handleAcceptCounter = async (offerId: string, sellerId: string, listingTitle: string, amountPence: number) => {
+    setOfferBusy(offerId);
+    const { error } = await supabase.from("offers").update({ status: "accepted" }).eq("id", offerId);
+    if (error) { setOfferBusy(null); toast.error("Couldn't accept counter"); return; }
+    await notify(
+      sellerId,
+      "counter_accepted",
+      "Your counter offer was accepted",
+      `The buyer accepted your counter of £${(amountPence / 100).toFixed(2)} on ${listingTitle ?? "your listing"}.`,
+      null
+    );
+    setOfferBusy(null);
+    toast.success("Counter accepted — you can now buy at this price");
+    setOfferRows((prev) => prev.map((o) => o.id === offerId ? { ...o, status: "accepted" } : o));
+  };
+
+  const handleDeclineCounter = async (offerId: string, sellerId: string, listingTitle: string, amountPence: number) => {
+    setOfferBusy(offerId);
+    const { error } = await supabase.from("offers").update({ status: "rejected" }).eq("id", offerId);
+    if (error) { setOfferBusy(null); toast.error("Couldn't decline counter"); return; }
+    await notify(
+      sellerId,
+      "counter_declined",
+      "Your counter offer was declined",
+      `The buyer declined your counter of £${(amountPence / 100).toFixed(2)} on ${listingTitle ?? "your listing"}.`,
+      null
+    );
+    setOfferBusy(null);
+    toast.success("Counter declined");
+    setOfferRows((prev) => prev.map((o) => o.id === offerId ? { ...o, status: "rejected" } : o));
+  };
+
+  // MESSAGE BUYER (from the Offers tab — seller reaching out about their own offer)
+  const handleMessageBuyer = async (offerId: string, buyerId: string, listingId: string) => {
+    if (!user) return;
+    setMessageBusy(offerId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (supabase as any)
+      .from("threads")
+      .select("id")
+      .eq("listing_id", Number(listingId))
+      .eq("buyer_id", buyerId)
+      .eq("seller_id", user.id)
+      .maybeSingle();
+
+    if (existing) { setMessageBusy(null); navigate(`/messages/${existing.id}`); return; }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: created, error } = await (supabase as any)
+      .from("threads")
+      .insert({ listing_id: Number(listingId), buyer_id: buyerId, seller_id: user.id })
+      .select("id")
+      .single();
+
+    setMessageBusy(null);
+    if (error || !created) { toast.error("Couldn't start chat"); return; }
+    navigate(`/messages/${created.id}`);
   };
 
   const handleAgreeCancel = async (orderId: string, listingId: string, requestedBy: string) => {
@@ -773,6 +859,7 @@ const Profile = () => {
                 {offerRows.map((o) => {
                   const isSeller = o.seller_id === user.id;
                   const role = isSeller ? "Received" : "Sent";
+                  const buyerCanAcceptCounter = !isSeller && o.status === "pending" && o.buyer_id === user.id && !!o.parent_offer_id;
                   return (
                     <Card key={o.id} className="p-3 rounded-2xl flex items-center gap-3">
                       <Link to={`/listing/${o.listing_id}`} className="shrink-0">
@@ -794,7 +881,7 @@ const Profile = () => {
                         <Button size="sm" className="rounded-full" onClick={() => navigate(`/checkout/${o.listing_id}?offer=${o.id}`)}>Buy</Button>
                       )}
                       {isSeller && o.status === "pending" && (
-                        <div className="flex gap-2 shrink-0">
+                        <div className="flex flex-wrap gap-2 shrink-0 items-center">
                           <Button size="sm" className="rounded-full font-semibold" disabled={offerBusy === o.id}
                             onClick={() => handleAcceptOffer(o.id, o.buyer_id, o.listing_id, o.listing_title ?? "a listing", o.listing_brand ?? "", o.amount_pence)}>
                             {offerBusy === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Accept"}
@@ -803,6 +890,39 @@ const Profile = () => {
                             onClick={() => handleDeclineOffer(o.id, o.buyer_id, o.listing_title ?? "a listing", o.amount_pence)}>
                             Decline
                           </Button>
+                          <Button size="sm" variant="ghost" className="rounded-full font-semibold" disabled={offerBusy === o.id}
+                            onClick={() => { setCounterFor(o.id); setCounterAmount(""); }}>
+                            Counter
+                          </Button>
+                          <Button size="sm" variant="ghost" className="rounded-full" disabled={messageBusy === o.id}
+                            onClick={() => handleMessageBuyer(o.id, o.buyer_id, o.listing_id)}>
+                            {messageBusy === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Message"}
+                          </Button>
+                        </div>
+                      )}
+
+                      {buyerCanAcceptCounter && (
+                        <div className="flex gap-2 shrink-0">
+                          <Button size="sm" className="rounded-full font-semibold" disabled={offerBusy === o.id}
+                            onClick={() => handleAcceptCounter(o.id, o.seller_id, o.listing_title ?? "a listing", o.amount_pence)}>
+                            {offerBusy === o.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Accept counter"}
+                          </Button>
+                          <Button size="sm" variant="outline" className="rounded-full font-semibold" disabled={offerBusy === o.id}
+                            onClick={() => handleDeclineCounter(o.id, o.seller_id, o.listing_title ?? "a listing", o.amount_pence)}>
+                            Decline
+                          </Button>
+                        </div>
+                      )}
+
+                      {counterFor === o.id && (
+                        <div className="w-full flex gap-2 items-center mt-1">
+                          <Input type="number" min={1} placeholder="£" value={counterAmount}
+                            onChange={(e) => setCounterAmount(e.target.value)} className="w-28" />
+                          <Button size="sm" className="rounded-full" disabled={offerBusy === o.id}
+                            onClick={() => sendCounter(o)}>
+                            Send counter
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setCounterFor(null)}>Cancel</Button>
                         </div>
                       )}
                     </Card>
