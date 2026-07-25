@@ -64,6 +64,7 @@ const MessageThread = () => {
       if (cancelled || !t) { setLoading(false); return; }
 
       const otherId = t.buyer_id === user.id ? t.seller_id : t.buyer_id;
+      const otherRole = t.buyer_id === user.id ? "Seller" : "Buyer";
       const [pRes, lRes, mRes] = await Promise.all([
         supabase.from("profiles").select("display_name, username").eq("user_id", otherId).maybeSingle(),
         supabase.from("listings").select("title, photos").eq("id", t.listing_id).maybeSingle(),
@@ -76,7 +77,7 @@ const MessageThread = () => {
       setInfo({
         ...t,
         listing_id: String(t.listing_id),
-        other_name: pRes.data?.display_name || pRes.data?.username || "User",
+        other_name: pRes.data?.display_name || pRes.data?.username || otherRole,
         listing_title: lRes.data?.title ?? null,
         listing_photo: photos[0] ?? null,
       });

@@ -79,13 +79,14 @@ const Messages = () => {
 
     const display: DisplayThread[] = rows.map((r) => {
       const otherId = r.buyer_id === userId ? r.seller_id : r.buyer_id;
+      const otherRole = r.buyer_id === userId ? "Seller" : "Buyer";
       const p = profileMap[otherId];
       const l = listingMap[String(r.listing_id)];
       const last = lastByThread[r.id];
       return {
         ...r,
         listing_id: String(r.listing_id),
-        other_name: p?.display_name || p?.username || "User",
+        other_name: p?.display_name || p?.username || otherRole,
         listing_title: l?.title ?? null,
         listing_photo: l?.photos?.[0] ?? null,
         last_body: last?.body ?? null,
@@ -158,32 +159,45 @@ const Messages = () => {
         ) : (
           <div className="grid gap-2">
             {threads.map((t) => (
-              <Link key={t.id} to={`/messages/${t.id}`}>
-                <Card className={`p-3 rounded-2xl flex items-center gap-3 hover:bg-muted/40 transition-colors ${t.unread ? "border-[#2d9b6f]/40 bg-[#2d9b6f]/5" : ""}`}>
-                  <Avatar className="h-12 w-12 shrink-0">
-                    <AvatarFallback className="bg-primary-soft text-primary font-semibold">
-                      {t.other_name[0]?.toUpperCase() ?? "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={`truncate ${t.unread ? "font-bold" : "font-semibold"}`}>{t.other_name}</p>
-                      <span className="text-[10px] text-muted-foreground shrink-0">
-                        {new Date(t.last_message_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                      </span>
-                    </div>
-                    {t.listing_title && (
-                      <p className="text-xs text-muted-foreground truncate">re: {t.listing_title}</p>
-                    )}
-                    <p className={`text-sm truncate mt-0.5 ${t.unread ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                      {t.last_body ?? "Tap to open conversation"}
-                    </p>
+              <Card
+                key={t.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/messages/${t.id}`)}
+                onKeyDown={(e) => { if (e.key === "Enter") navigate(`/messages/${t.id}`); }}
+                className={`p-3 rounded-2xl flex items-center gap-3 hover:bg-muted/40 transition-colors cursor-pointer ${t.unread ? "border-[#2d9b6f]/40 bg-[#2d9b6f]/5" : ""}`}
+              >
+                <Avatar className="h-12 w-12 shrink-0">
+                  <AvatarFallback className="bg-primary-soft text-primary font-semibold">
+                    {t.other_name[0]?.toUpperCase() ?? "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className={`truncate ${t.unread ? "font-bold" : "font-semibold"}`}>{t.other_name}</p>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {new Date(t.last_message_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </span>
                   </div>
-                  {t.listing_photo && (
-                    <Img src={t.listing_photo} alt="" className="h-12 w-12 rounded-lg object-cover bg-muted shrink-0" />
+                  {t.listing_title && (
+                    <Link
+                      to={`/listing/${t.listing_id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs text-muted-foreground truncate hover:underline block w-fit"
+                    >
+                      re: {t.listing_title}
+                    </Link>
                   )}
-                </Card>
-              </Link>
+                  <p className={`text-sm truncate mt-0.5 ${t.unread ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                    {t.last_body ?? "Tap to open conversation"}
+                  </p>
+                </div>
+                {t.listing_photo && (
+                  <Link to={`/listing/${t.listing_id}`} onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <Img src={t.listing_photo} alt="" className="h-12 w-12 rounded-lg object-cover bg-muted" />
+                  </Link>
+                )}
+              </Card>
             ))}
           </div>
         )}
