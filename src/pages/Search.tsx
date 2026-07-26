@@ -7,13 +7,10 @@ import { ProductCard } from "@/components/ProductCard";
 import { CategoryChips } from "@/components/CategoryChips";
 import { FilterBar, DEFAULT_FILTERS, type Filters, type SortKey } from "@/components/FilterBar";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
 import { useSEO } from "@/hooks/useSEO";
-
-const POPULAR = ["Nike", "Jordan", "adidas", "Dunk", "Air Max", "Samba", "New Balance", "Yeezy"];
 
 const matches = (l: Listing, q: string) => {
   const hay = `${l.brand} ${l.title} ${l.color ?? ""} ${l.description ?? ""}`.toLowerCase();
@@ -172,27 +169,6 @@ const SearchPage = () => {
             </button>
           )}
         </div>
-
-        {!hasQuery && (
-          <div className="mb-6">
-            <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">
-              Popular searches
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {POPULAR.map((term) => (
-                <Button
-                  key={term}
-                  variant="secondary"
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => setQuery(term)}
-                >
-                  {term}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="-mx-5 mb-5">
           <CategoryChips active={activeCategory} onChange={setActiveCategory} showClear />
