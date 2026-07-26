@@ -1,4 +1,4 @@
-// Reads a sneaker's inside tag photo via OpenAI's vision API to
+// Reads a sneaker's inside tag photo via Claude's vision API to
 // extract the style code, factory-code suffix, and stated country of origin,
 // then checks the style code against a curated set of trusted retailer sites
 // via Google Custom Search — this is the universal, brand-agnostic layer
@@ -78,30 +78,42 @@ interface ReadResult {
   confidence?: string;
 }
 
-async function readTag(imageUrl: string): Promise<ReadResult> {
-  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-  if (!OPENAI_API_KEY) return { readable: false, error: "ai_not_configured" };
+const READ_TAG_SCHEMA = {
+  type: "object",
+  properties: {
+    readable: { type: "boolean" },
+    styleCode: { type: ["string", "null"] },
+    factoryCode: { type: ["string", "null"] },
+    statedCountry: { type: ["string", "null"] },
+    confidence: { type: "string", enum: ["low", "medium", "high"] },
+  },
+  required: ["readable", "styleCode", "factoryCode", "statedCountry", "confidence"],
+  additionalProperties: false,
+};
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+async function readTag(imageUrl: string): Promise<ReadResult> {
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) return { readable: false, error: "ai_not_configured" };
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
-      response_format: { type: "json_object" },
+      model: "claude-haiku-4-5",
+      max_tokens: 1024,
+      system:
+        "You read sneaker tag labels for a resale marketplace (PrelovedKicks). Locate the inside tag/label in the photo. Find the style/article code line (e.g. \"FN7808-001\") and, if present on that same line, a short 2-4 letter factory-code suffix (e.g. \"VY\"). Also find any \"MADE IN ___\" text on the tag. If the tag is not clearly legible, or you cannot confidently read a field, set it to null and set readable to false rather than guessing.",
+      output_config: { format: { type: "json_schema", schema: READ_TAG_SCHEMA } },
       messages: [
-        {
-          role: "system",
-          content:
-            "You read sneaker tag labels for a resale marketplace (PrelovedKicks). Locate the inside tag/label in the photo. Find the style/article code line (e.g. \"FN7808-001\") and, if present on that same line, a short 2-4 letter factory-code suffix (e.g. \"VY\"). Also find any \"MADE IN ___\" text on the tag. If the tag is not clearly legible, or you cannot confidently read a field, set it to null and set readable to false rather than guessing. Respond ONLY with strict JSON in this exact shape: {\"readable\": boolean, \"styleCode\": string|null, \"factoryCode\": string|null, \"statedCountry\": string|null, \"confidence\": \"low\"|\"medium\"|\"high\"}.",
-        },
         {
           role: "user",
           content: [
             { type: "text", text: "Read this sneaker tag." },
-            { type: "image_url", image_url: { url: imageUrl } },
+            { type: "image", source: { type: "url", url: imageUrl } },
           ],
         },
       ],
@@ -110,13 +122,17 @@ async function readTag(imageUrl: string): Promise<ReadResult> {
 
   if (!res.ok) {
     const t = await res.text();
-    console.error("OpenAI error", res.status, t);
+    console.error("Anthropic error", res.status, t);
     return { readable: false, error: "read_failed" };
   }
 
   const data = await res.json();
-  const raw = data?.choices?.[0]?.message?.content ?? "";
-  const cleaned = String(raw).replace(/```json|```/g, "").trim();
+
+  if (data?.stop_reason === "refusal") {
+    return { readable: false, error: "read_failed" };
+  }
+
+  const raw = data?.content?.[0]?.text ?? "";
 
   let parsed: {
     readable?: boolean;
@@ -126,7 +142,7 @@ async function readTag(imageUrl: string): Promise<ReadResult> {
     confidence?: string;
   } = {};
   try {
-    parsed = JSON.parse(cleaned);
+    parsed = JSON.parse(raw);
   } catch {
     return { readable: false, error: "read_failed" };
   }

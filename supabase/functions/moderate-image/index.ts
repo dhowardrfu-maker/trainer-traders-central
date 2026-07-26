@@ -1,4 +1,4 @@
-// OpenAI vision image moderation. Returns { allowed: boolean, reason?: string }.
+// Claude vision image moderation. Returns { allowed: boolean, reason?: string }.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -10,7 +10,7 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Require an authenticated caller — prevents anonymous abuse of OPENAI_API_KEY
+  // Require an authenticated caller — prevents anonymous abuse of ANTHROPIC_API_KEY
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return json({ error: "Unauthorized" }, 401);
@@ -42,29 +42,41 @@ Deno.serve(async (req) => {
       return json({ error: "URL not permitted" }, 400);
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) return json({ error: "AI not configured" }, 500);
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) return json({ error: "AI not configured" }, 500);
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an image moderator for a sneaker resale marketplace (PrelovedKicks). Reject only images that are NSFW, violent, hateful, contain personal IDs, or are clearly unrelated to footwear/clothing. Sneakers, trainers, shoeboxes, feet wearing trainers, and apparel are ALL allowed. Respond ONLY with strict JSON: {\"allowed\": boolean, \"reason\": string}.",
+        model: "claude-haiku-4-5",
+        max_tokens: 256,
+        system:
+          "You are an image moderator for a sneaker resale marketplace (PrelovedKicks). Reject only images that are NSFW, violent, hateful, contain personal IDs, or are clearly unrelated to footwear/clothing. Sneakers, trainers, shoeboxes, feet wearing trainers, and apparel are ALL allowed.",
+        output_config: {
+          format: {
+            type: "json_schema",
+            schema: {
+              type: "object",
+              properties: {
+                allowed: { type: "boolean" },
+                reason: { type: "string" },
+              },
+              required: ["allowed", "reason"],
+              additionalProperties: false,
+            },
           },
+        },
+        messages: [
           {
             role: "user",
             content: [
               { type: "text", text: "Is this image acceptable for a sneaker listing?" },
-              { type: "image_url", image_url: { url: imageUrl } },
+              { type: "image", source: { type: "url", url: imageUrl } },
             ],
           },
         ],
@@ -73,18 +85,22 @@ Deno.serve(async (req) => {
 
     if (!res.ok) {
       const t = await res.text();
-      console.error("OpenAI error", res.status, t);
+      console.error("Anthropic error", res.status, t);
       // Fail-open so uploads are not blocked by moderation outages.
       return json({ allowed: true, reason: "moderation_unavailable" });
     }
 
     const data = await res.json();
-    const raw = data?.choices?.[0]?.message?.content ?? "{}";
-    const cleaned = String(raw).replace(/```json|```/g, "").trim();
+
+    if (data?.stop_reason === "refusal") {
+      return json({ allowed: true, reason: "moderation_unavailable" });
+    }
+
+    const raw = data?.content?.[0]?.text ?? "{}";
 
     let parsed: { allowed?: boolean; reason?: string } = {};
     try {
-      parsed = JSON.parse(cleaned);
+      parsed = JSON.parse(raw);
     } catch {
       parsed = { allowed: true };
     }
