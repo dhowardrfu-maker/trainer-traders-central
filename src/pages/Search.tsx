@@ -4,6 +4,8 @@ import { Search as SearchIcon, X, ArrowLeft } from "lucide-react";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { ProductCard } from "@/components/ProductCard";
+import { CategoryChips } from "@/components/CategoryChips";
+import { FilterBar, DEFAULT_FILTERS, type Filters, type SortKey } from "@/components/FilterBar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +31,9 @@ const SearchPage = () => {
   const [query, setQuery] = useState(initialQ);
   const [dbListings, setDbListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [sort, setSort] = useState<SortKey>("relevance");
 
   useSEO({
     title: query ? `"${query}" — PrelovedKicks search` : "Search trainers — PrelovedKicks",
@@ -83,13 +88,51 @@ const SearchPage = () => {
 
   const all = useMemo<Listing[]>(() => [...dbListings, ...SAMPLE_LISTINGS], [dbListings]);
 
-  const results = useMemo(() => {
-    const q = query.trim();
-    if (!q) return [];
-    return all.filter((l) => matches(l, q));
-  }, [all, query]);
-
   const hasQuery = query.trim().length > 0;
+
+  const results = useMemo(() => {
+    let list = all;
+
+    const q = query.trim();
+    if (q) list = list.filter((l) => matches(l, q));
+
+    if (activeCategory !== "All") {
+      list = list.filter((l) => l.brand.toLowerCase() === activeCategory.toLowerCase());
+    }
+
+    if (filters.sizes.length > 0) {
+      list = list.filter((l) => filters.sizes.includes(l.sizeUk));
+    }
+
+    if (filters.conditions.length > 0) {
+      list = list.filter((l) =>
+        l.conditionRaw
+          ? filters.conditions.includes(l.conditionRaw)
+          : filters.conditions.includes(l.condition.toLowerCase().replace(/ /g, "_"))
+      );
+    }
+
+    if (filters.genders.length > 0) {
+      list = list.filter((l) => l.gender && filters.genders.includes(l.gender));
+    }
+
+    if (filters.priceMax < DEFAULT_FILTERS.priceMax) {
+      list = list.filter((l) => l.price <= filters.priceMax);
+    }
+
+    const sorted = [...list];
+    if (sort === "price_asc") sorted.sort((a, b) => a.price - b.price);
+    else if (sort === "price_desc") sorted.sort((a, b) => b.price - a.price);
+    else if (sort === "newest") sorted.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+    else if (sort === "relevance" && !q) {
+      // No search text to rank by relevance, so fall back to alphabetical —
+      // the default "browse everything" order for the All category.
+      sorted.sort((a, b) => `${a.brand} ${a.title}`.localeCompare(`${b.brand} ${b.title}`));
+    }
+    // relevance with a query: keep the existing token-match order as-is.
+
+    return sorted;
+  }, [all, query, activeCategory, filters, sort]);
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
@@ -131,7 +174,7 @@ const SearchPage = () => {
         </div>
 
         {!hasQuery && (
-          <div>
+          <div className="mb-6">
             <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground mb-2">
               Popular searches
             </p>
@@ -151,35 +194,39 @@ const SearchPage = () => {
           </div>
         )}
 
-        {hasQuery && (
-          <>
-            <p className="text-sm text-muted-foreground mb-4">
-              {loading
-                ? "Searching…"
-                : `${results.length} result${results.length === 1 ? "" : "s"} for "${query}"`}
-            </p>
+        <div className="-mx-5 mb-5">
+          <CategoryChips active={activeCategory} onChange={setActiveCategory} showClear />
+        </div>
 
-            {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <Skeleton key={i} className="aspect-square rounded-xl" />
-                ))}
-              </div>
-            ) : results.length === 0 ? (
-              <div className="py-16 text-center">
-                <p className="font-semibold">No matches</p>
-                <p className="text-muted-foreground text-sm mt-1">
-                  Try a different brand, model or spelling.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
-                {results.map((l) => (
-                  <ProductCard key={l.id} listing={l} />
-                ))}
-              </div>
-            )}
-          </>
+        <div className="mb-5">
+          <FilterBar filters={filters} onChange={setFilters} sort={sort} onSortChange={setSort} count={results.length} />
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-4">
+          {loading
+            ? "Loading…"
+            : `${results.length} result${results.length === 1 ? "" : "s"}${hasQuery ? ` for "${query}"` : ""}`}
+        </p>
+
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-square rounded-xl" />
+            ))}
+          </div>
+        ) : results.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="font-semibold">No matches</p>
+            <p className="text-muted-foreground text-sm mt-1">
+              Try a different brand, model or spelling.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
+            {results.map((l) => (
+              <ProductCard key={l.id} listing={l} />
+            ))}
+          </div>
         )}
       </main>
       <MobileTabBar />

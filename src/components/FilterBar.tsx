@@ -22,12 +22,13 @@ export const DEFAULT_FILTERS: Filters = {
   priceMax: 500,
 };
 
-export type SortKey = "newest" | "price_asc" | "price_desc";
+export type SortKey = "relevance" | "newest" | "price_asc" | "price_desc";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "relevance", label: "Relevance" },
   { value: "newest", label: "Newest" },
-  { value: "price_asc", label: "Price: low to high" },
-  { value: "price_desc", label: "Price: high to low" },
+  { value: "price_desc", label: "Highest Price" },
+  { value: "price_asc", label: "Lowest Price" },
 ];
 
 export const FilterBar = ({
