@@ -6,7 +6,7 @@ import { mapDbListing, formatPrice, type Listing } from "@/data/listings";
 import { Img } from "@/components/Img";
 
 const LISTING_COLUMNS =
-  "id, title, brand, model, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, retail_price_pence, photos, created_at, seller_id, status";
+  "id, title, brand, model, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, retail_price_pence, tag_verified, photos, created_at, seller_id, status";
 
 /**
  * Manually curated weekly pick, set by updating a row in `site_settings`

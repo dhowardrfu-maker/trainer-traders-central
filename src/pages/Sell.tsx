@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
-import { ArrowLeft, Camera, Loader2, X } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, X, ShieldCheck, ShieldQuestion } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ukToEu, BRANDS, CONDITIONS, GENDERS, UK_SIZES } from "@/data/listing-options";
+import { runTagCheck, type TagVerificationResult } from "@/lib/tagCheck";
 
 const MAX_PHOTOS = 6;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -58,10 +60,29 @@ const schema = z.object({
   description: z.string().optional(),
 });
 
+interface ScanResponse {
+  readable: boolean;
+  styleCode?: string | null;
+  factoryCode?: string | null;
+  statedCountry?: string | null;
+  confidence?: string;
+  productMatch?: { found: boolean; title: string | null; sourceUrl: string | null };
+  error?: string;
+}
+
 const Sell = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
+  // ---- Step 0: verify ----
+  const [step, setStep] = useState<0 | 1>(0);
+  const [tagPhoto, setTagPhoto] = useState<File | null>(null);
+  const [tagPreview, setTagPreview] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [checkResult, setCheckResult] = useState<TagVerificationResult | null>(null);
+  const [scanAttempted, setScanAttempted] = useState(false);
+
+  // ---- Step 1: existing listing form ----
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -91,6 +112,89 @@ const Sell = () => {
     setPreviews(urls);
     return () => urls.forEach(URL.revokeObjectURL);
   }, [photos]);
+
+  useEffect(() => {
+    if (!tagPhoto) { setTagPreview(null); return; }
+    const url = URL.createObjectURL(tagPhoto);
+    setTagPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [tagPhoto]);
+
+  const onPickTagPhoto = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+    setCheckResult(null);
+    setScanAttempted(false);
+    try {
+      const compressed = await imageCompression(file, COMPRESSION_OPTIONS);
+      setTagPhoto(new File([compressed], "tag.webp", { type: "image/webp" }));
+    } catch (err) {
+      console.error("[Sell] tag photo compression failed", err);
+      toast.error("Couldn't process that photo — try another");
+    }
+  };
+
+  // Clean a raw search-result title (often has " | RetailerName" appended)
+  // down to something usable as a model/title starting point.
+  const cleanProductTitle = (raw: string) => raw.split("|")[0].trim();
+
+  const runVerify = async () => {
+    if (!user || !tagPhoto) return;
+    if (!form.brand) { toast.error("Select a brand first"); return; }
+    setScanning(true);
+    setCheckResult(null);
+
+    const path = `${user.id}/${crypto.randomUUID()}.webp`;
+    try {
+      const { error: upErr } = await supabase.storage
+        .from("tag-scans")
+        .upload(path, tagPhoto, { cacheControl: "60", upsert: false, contentType: "image/webp" });
+      if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
+
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("tag-scans")
+        .createSignedUrl(path, 300);
+      if (signErr || !signed?.signedUrl) throw new Error("Couldn't prepare the photo for scanning");
+
+      const { data, error: fnErr } = await supabase.functions.invoke("scan-tag", {
+        body: { imageUrl: signed.signedUrl },
+      });
+      if (fnErr) throw new Error(fnErr.message);
+
+      const result = data as ScanResponse;
+      setScanAttempted(true);
+
+      if (result.readable) {
+        const check = runTagCheck({
+          brand: form.brand,
+          factoryCode: result.factoryCode ?? null,
+          statedCountry: result.statedCountry ?? null,
+          productMatch: result.productMatch ?? { found: false, title: null, sourceUrl: null },
+        });
+        setCheckResult(check);
+        if (check.productTitle) {
+          const cleaned = cleanProductTitle(check.productTitle);
+          setForm((f) => ({
+            ...f,
+            model: f.model || cleaned,
+            title: f.title || `${form.brand} ${cleaned}`.trim(),
+          }));
+        }
+      } else {
+        setCheckResult({ verified: false, productTitle: null, summary: "Couldn't read this tag clearly." });
+      }
+    } catch (err) {
+      console.error("[Sell] verify failed", err);
+      toast.error(err instanceof Error ? err.message : "Verification failed");
+      setScanAttempted(true);
+      setCheckResult({ verified: false, productTitle: null, summary: "Verification failed." });
+    } finally {
+      await supabase.storage.from("tag-scans").remove([path]);
+      setScanning(false);
+    }
+  };
+
+  const proceedToListing = () => setStep(1);
 
   // Compress each photo client-side before it's added to state, so large
   // camera photos (often 3-4.5MB) never reach Storage at full size.
@@ -258,6 +362,7 @@ const Sell = () => {
         description: d.description || null,
         photos: photoUrls as unknown as string,
         status: "active",
+        tag_verified: checkResult?.verified ?? false,
       });
       if (error) throw error;
       toast.success("Listing posted");
@@ -270,11 +375,88 @@ const Sell = () => {
     }
   };
 
+  if (step === 0) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <header className="sticky top-0 z-30 bg-background/90 backdrop-blur border-b">
+          <div className="container h-16 flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft />
+            </Button>
+            <h1 className="font-bold text-xl">List your trainers</h1>
+          </div>
+        </header>
+
+        <div className="container max-w-2xl py-6 space-y-6">
+          <div>
+            <p className="font-semibold">Step 1 of 2 — Verify the tag</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Photograph the inside tag and we'll check the style code against trusted retailers,
+              pre-fill some listing details, and add a "Tag Verified" badge to your listing if it
+              checks out. Entirely optional — you can skip this and list normally.
+            </p>
+          </div>
+
+          <Select value={form.brand} onValueChange={(v) => setForm({ ...form, brand: v })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Brand" />
+            </SelectTrigger>
+            <SelectContent>
+              {BRANDS.map((b) => (
+                <SelectItem key={b} value={b}>{b}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {tagPreview ? (
+            <div className="relative aspect-square max-w-xs mx-auto rounded-xl overflow-hidden border">
+              <img src={tagPreview} alt="Tag to verify" className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <label className="border rounded-xl flex flex-col items-center justify-center gap-2 aspect-square max-w-xs mx-auto cursor-pointer text-muted-foreground">
+              <Camera />
+              <span className="text-xs">Add a photo of the tag</span>
+              <input type="file" hidden accept="image/*" onChange={(e) => onPickTagPhoto(e.target.files)} />
+            </label>
+          )}
+
+          {scanAttempted && checkResult && (
+            <Card className="p-4 rounded-2xl flex items-start gap-3">
+              {checkResult.verified ? (
+                <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              ) : (
+                <ShieldQuestion className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+              )}
+              <div>
+                <p className="font-semibold">{checkResult.verified ? "Tag Verified" : "Not verified"}</p>
+                <p className="text-sm text-muted-foreground mt-1">{checkResult.summary}</p>
+              </div>
+            </Card>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              className="flex-1"
+              variant="outline"
+              disabled={!tagPhoto || !form.brand || scanning}
+              onClick={runVerify}
+            >
+              {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify tag"}
+            </Button>
+            <Button className="flex-1" onClick={proceedToListing}>
+              {scanAttempted ? "Continue" : "Skip, list without verifying"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur border-b">
         <div className="container h-16 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => setStep(0)}>
             <ArrowLeft />
           </Button>
           <h1 className="font-bold text-xl">List your trainers</h1>
@@ -282,6 +464,13 @@ const Sell = () => {
       </header>
 
       <form onSubmit={handleSubmit} className="container max-w-2xl py-6 space-y-6">
+        <p className="text-xs text-muted-foreground -mt-2">Step 2 of 2 — Listing details</p>
+
+        {checkResult?.verified && (
+          <p className="text-xs inline-flex items-center gap-1 text-primary font-semibold">
+            <ShieldCheck className="h-3.5 w-3.5" /> Tag Verified — this listing will show the badge
+          </p>
+        )}
 
         {/* PHOTOS */}
         {previews.length > 1 && (

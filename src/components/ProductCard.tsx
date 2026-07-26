@@ -1,4 +1,4 @@
-import { Heart, Star, Tag } from "lucide-react";
+import { Heart, Star, Tag, ShieldCheck } from "lucide-react";
 import { Img } from "@/components/Img";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -203,6 +203,13 @@ export const ProductCard = ({ listing, sold = false }: ProductCardProps) => {
                 -{percentBelowRetail}% vs retail
               </span>
             ) : null}
+
+            {listing.tagVerified && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-teal-600/10 text-teal-700 font-semibold px-1.5 py-0.5 text-[10px]">
+                <ShieldCheck className="h-2.5 w-2.5" />
+                Tag Verified
+              </span>
+            )}
 
             <span
               onClick={handleSellerClick}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Smartphone, ShoppingBag, Tag, CreditCard, Truck, AlertTriangle, User } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { useSEO } from "@/hooks/useSEO";
@@ -102,6 +103,17 @@ const sections: Section[] = [
       {
         q: "How many photos can I add?",
         a: "You can add up to 8 photos per listing. We recommend including shots of both shoes, the soles, the box if you have it, and any wear or marks so buyers know exactly what they're getting.",
+      },
+      {
+        q: "How can I check a pair looks genuine before I list or buy?",
+        a: (
+          <>
+            Use our <Link to="/scan" className="underline underline-offset-2">tag scanner</Link> to
+            photograph the inside tag — for Nike it reads the style code and factory code and checks
+            them against the "Made in" country printed on the tag. It's one useful signal, not proof
+            of authenticity on its own.
+          </>
+        ),
       },
       {
         q: "How do I price my trainers?",

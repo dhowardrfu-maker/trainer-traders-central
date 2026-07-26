@@ -318,7 +318,7 @@ const Profile = () => {
       }
       const { data: rows } = await supabase
         .from("listings")
-        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, photos, created_at, seller_id")
+        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, tag_verified, photos, created_at, seller_id")
         .in("id", idArr.map(Number));
       if (cancelled) return;
       if (!rows) { setSavedListings([]); setSavedLoading(false); return; }

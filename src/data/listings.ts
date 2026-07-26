@@ -23,6 +23,7 @@ export interface Listing {
   originalPrice?: number;
   promotionPercent?: number | null;
   retailPricePence?: number | null;
+  tagVerified?: boolean;
 
   image: string;
   images?: string[];
@@ -95,6 +96,7 @@ interface DbListingRow {
   promotion_active?: boolean | null;
   promotion_percent?: number | null;
   retail_price_pence?: number | null;
+  tag_verified?: boolean | null;
   photos: string[] | string | null;
   created_at: string;
   seller_id?: string;
@@ -150,6 +152,7 @@ export const mapDbListing = (row: DbListingRow): Listing => {
     originalPrice: hasPromotion ? originalPrice : undefined,
     promotionPercent,
     retailPricePence: row.retail_price_pence ?? null,
+    tagVerified: row.tag_verified ?? false,
 
     image: photos[0] || fallback,
     images: photos.length ? photos : [fallback],

@@ -42,7 +42,7 @@ const SearchPage = () => {
     const load = async () => {
       const { data: rows } = await supabase
         .from("listings")
-        .select("id, title, brand, model, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, retail_price_pence, photos, created_at, seller_id")
+        .select("id, title, brand, model, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, retail_price_pence, tag_verified, photos, created_at, seller_id")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(200);

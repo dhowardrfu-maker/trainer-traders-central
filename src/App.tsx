@@ -12,6 +12,7 @@ import Auth from "./pages/Auth.tsx";
 import Admin from "./pages/Admin.tsx";
 import CompleteProfile from "./pages/CompleteProfile.tsx";
 import Sell from "./pages/Sell.tsx";
+import ScanTag from "./pages/ScanTag.tsx";
 import ListingDetail from "./pages/ListingDetail.tsx";
 import Checkout from "./pages/Checkout.tsx";
 import OrderConfirmation from "./pages/OrderConfirmation.tsx";
@@ -46,6 +47,7 @@ const App = () => (
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/complete-profile" element={<CompleteProfile />} />
                 <Route path="/sell" element={<Sell />} />
+                <Route path="/scan" element={<ScanTag />} />
                 <Route path="/listing/:id" element={<ListingDetail />} />
                 <Route path="/checkout/:id" element={<Checkout />} />
                 <Route path="/order/:id" element={<OrderConfirmation />} />

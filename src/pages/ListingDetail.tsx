@@ -286,7 +286,7 @@ const ListingDetail = () => {
                 </div>
               </div>
 
-              <DealScorePanel score={dealScore} />
+              <DealScorePanel score={dealScore} tagVerified={listing.tagVerified} />
 
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="bg-muted rounded-xl p-3">

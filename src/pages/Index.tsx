@@ -16,7 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSEO } from "@/hooks/useSEO";
 
 const LISTING_COLUMNS =
-  "id, title, brand, model, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, retail_price_pence, photos, created_at, seller_id";
+  "id, title, brand, model, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, retail_price_pence, tag_verified, photos, created_at, seller_id";
 
 const Index = () => {
   const [activeCategory, setActiveCategory] = useState("All");
