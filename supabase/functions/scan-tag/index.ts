@@ -1,10 +1,11 @@
 // Reads a sneaker's inside tag photo via Claude's vision API to
 // extract the style code, factory-code suffix, and stated country of origin,
-// then checks the style code against a curated set of trusted retailer sites
-// via Google Custom Search — this is the universal, brand-agnostic layer
-// (works for any brand, not just Nike/Converse where a factory-code table
-// exists). Fails CLOSED throughout — any read or search failure means
-// "couldn't verify", never a fabricated result.
+// then checks the style code against the open web via Claude's own web
+// search tool — this is the universal, brand-agnostic layer (works for any
+// brand, and for discontinued/vintage items on resale marketplaces and
+// archives, not just current-stock retailers). Fails CLOSED throughout —
+// any read or search failure means "couldn't verify", never a fabricated
+// result.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -164,37 +165,59 @@ interface ProductMatch {
   sourceUrl: string | null;
 }
 
-// Normalises a style code for loose comparison — retailers format the same
-// code inconsistently (dashes, spaces, case).
-function normaliseCode(s: string): string {
-  return s.toUpperCase().replace(/[\s-]/g, "");
-}
-
 async function searchStyleCode(styleCode: string): Promise<ProductMatch> {
-  const API_KEY = Deno.env.get("GOOGLE_SEARCH_API_KEY");
-  const ENGINE_ID = Deno.env.get("GOOGLE_SEARCH_ENGINE_ID");
-  if (!API_KEY || !ENGINE_ID) return { found: false, title: null, sourceUrl: null };
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) return { found: false, title: null, sourceUrl: null };
 
   try {
-    const url = `https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${ENGINE_ID}&q=${encodeURIComponent(styleCode)}&num=5`;
-    const res = await fetch(url);
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5",
+        max_tokens: 1024,
+        tools: [
+          { type: "web_search_20260209", name: "web_search", max_uses: 3, allowed_callers: ["direct"] },
+        ],
+        system:
+          "You verify sneaker style/article codes for a resale marketplace (PrelovedKicks). Search the web — any source: current retailers, resale marketplaces (eBay, Grailed, StockX, GOAT), sneaker databases, forums, or archives, not just big-name current retailers, since some items are discontinued or vintage — to check whether the given style code corresponds to a real, identifiable sneaker product. If a first search doesn't turn up an exact match, try a more specific follow-up search before giving up. Respond with ONLY a single JSON object as your final message, no other text, no markdown fences: {\"found\": boolean, \"title\": string|null, \"sourceUrl\": string|null}. Set found to true only if you found genuine, specific evidence — not a guess.",
+        messages: [
+          { role: "user", content: `Style/article code: "${styleCode}". Is this a genuine, identifiable sneaker product?` },
+        ],
+      }),
+    });
+
     if (!res.ok) {
-      console.error("Custom Search error", res.status, await res.text());
+      console.error("Anthropic web search error", res.status, await res.text());
       return { found: false, title: null, sourceUrl: null };
     }
-    const data = await res.json();
-    const items: Array<{ title?: string; link?: string; snippet?: string }> = data?.items ?? [];
-    const target = normaliseCode(styleCode);
 
-    for (const item of items) {
-      const haystack = normaliseCode(`${item.title ?? ""} ${item.snippet ?? ""}`);
-      if (haystack.includes(target)) {
-        return { found: true, title: item.title ?? null, sourceUrl: item.link ?? null };
-      }
+    const data = await res.json();
+    if (data?.stop_reason === "refusal") return { found: false, title: null, sourceUrl: null };
+
+    const textBlocks: Array<{ type: string; text?: string }> = data?.content ?? [];
+    const lastText = [...textBlocks].reverse().find((b) => b.type === "text")?.text ?? "";
+    const match = lastText.match(/\{[\s\S]*\}/);
+    if (!match) return { found: false, title: null, sourceUrl: null };
+
+    let parsed: { found?: boolean; title?: string | null; sourceUrl?: string | null } = {};
+    try {
+      parsed = JSON.parse(match[0]);
+    } catch {
+      return { found: false, title: null, sourceUrl: null };
     }
-    return { found: false, title: null, sourceUrl: null };
+
+    return {
+      found: parsed.found === true,
+      title: parsed.title ?? null,
+      sourceUrl: parsed.sourceUrl ?? null,
+    };
   } catch (e) {
-    console.error("Custom Search request failed", e);
+    console.error("Claude web search request failed", e);
     return { found: false, title: null, sourceUrl: null };
   }
 }
