@@ -81,6 +81,7 @@ const Sell = () => {
   const [scanning, setScanning] = useState(false);
   const [checkResult, setCheckResult] = useState<TagVerificationResult | null>(null);
   const [scanAttempted, setScanAttempted] = useState(false);
+  const [scanningEnabled, setScanningEnabled] = useState<boolean | null>(null);
 
   // ---- Step 1: existing listing form ----
   const [photos, setPhotos] = useState<File[]>([]);
@@ -119,6 +120,14 @@ const Sell = () => {
     setTagPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [tagPhoto]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    supabase.from("profiles").select("scanning_enabled").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setScanningEnabled(data?.scanning_enabled === true); });
+    return () => { cancelled = true; };
+  }, [user]);
 
   const onPickTagPhoto = async (files: FileList | null) => {
     const file = files?.[0];
@@ -388,65 +397,88 @@ const Sell = () => {
         </header>
 
         <div className="container max-w-2xl py-6 space-y-6">
-          <div>
-            <p className="font-semibold">Step 1 of 2 — Verify the tag</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Photograph the inside tag and we'll check the style code against trusted retailers,
-              pre-fill some listing details, and add a "Tag Verified" badge to your listing if it
-              checks out. Entirely optional — you can skip this and list normally.
-            </p>
-          </div>
-
-          <Select value={form.brand} onValueChange={(v) => setForm({ ...form, brand: v })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Brand" />
-            </SelectTrigger>
-            <SelectContent>
-              {BRANDS.map((b) => (
-                <SelectItem key={b} value={b}>{b}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {tagPreview ? (
-            <div className="relative aspect-square max-w-xs mx-auto rounded-xl overflow-hidden border">
-              <img src={tagPreview} alt="Tag to verify" className="w-full h-full object-cover" />
-            </div>
-          ) : (
-            <label className="border rounded-xl flex flex-col items-center justify-center gap-2 aspect-square max-w-xs mx-auto cursor-pointer text-muted-foreground">
-              <Camera />
-              <span className="text-xs">Add a photo of the tag</span>
-              <input type="file" hidden accept="image/*" onChange={(e) => onPickTagPhoto(e.target.files)} />
-            </label>
-          )}
-
-          {scanAttempted && checkResult && (
-            <Card className="p-4 rounded-2xl flex items-start gap-3">
-              {checkResult.verified ? (
-                <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              ) : (
-                <ShieldQuestion className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-              )}
+          {scanningEnabled ? (
+            <>
               <div>
-                <p className="font-semibold">{checkResult.verified ? "Tag Verified" : "Not verified"}</p>
-                <p className="text-sm text-muted-foreground mt-1">{checkResult.summary}</p>
+                <p className="font-semibold">Step 1 of 2 — Verify the tag</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Photograph the inside tag and we'll check the style code against trusted retailers,
+                  pre-fill some listing details, and add a "Tag Verified" badge to your listing if it
+                  checks out. Entirely optional — you can skip this and list normally.
+                </p>
               </div>
-            </Card>
-          )}
 
-          <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              variant="outline"
-              disabled={!tagPhoto || !form.brand || scanning}
-              onClick={runVerify}
-            >
-              {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify tag"}
-            </Button>
-            <Button className="flex-1" onClick={proceedToListing}>
-              {scanAttempted ? "Continue" : "Skip, list without verifying"}
-            </Button>
-          </div>
+              <Select value={form.brand} onValueChange={(v) => setForm({ ...form, brand: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BRANDS.map((b) => (
+                    <SelectItem key={b} value={b}>{b}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {tagPreview ? (
+                <div className="relative aspect-square max-w-xs mx-auto rounded-xl overflow-hidden border">
+                  <img src={tagPreview} alt="Tag to verify" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <label className="border rounded-xl flex flex-col items-center justify-center gap-2 aspect-square max-w-xs mx-auto cursor-pointer text-muted-foreground">
+                  <Camera />
+                  <span className="text-xs">Add a photo of the tag</span>
+                  <input type="file" hidden accept="image/*" onChange={(e) => onPickTagPhoto(e.target.files)} />
+                </label>
+              )}
+
+              {scanAttempted && checkResult && (
+                <Card className="p-4 rounded-2xl flex items-start gap-3">
+                  {checkResult.verified ? (
+                    <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                  ) : (
+                    <ShieldQuestion className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p className="font-semibold">{checkResult.verified ? "Tag Verified" : "Not verified"}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{checkResult.summary}</p>
+                  </div>
+                </Card>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  disabled={!tagPhoto || !form.brand || scanning}
+                  onClick={runVerify}
+                >
+                  {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify tag"}
+                </Button>
+                <Button className="flex-1" onClick={proceedToListing}>
+                  {scanAttempted ? "Continue" : "Skip, list without verifying"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <p className="font-semibold">Verify the tag</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Scanning isn't active on your account yet. Activate it once from your profile for a
+                  one-time £2.50 to check style codes against trusted retailers and add a Tag Verified
+                  badge to your listings — or just skip it and list normally, no charge either way.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button className="flex-1" variant="outline" onClick={() => navigate("/profile?tab=account")}>
+                  Activate scanning — £2.50
+                </Button>
+                <Button className="flex-1" onClick={proceedToListing}>
+                  Skip, list without verifying
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );

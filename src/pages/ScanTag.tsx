@@ -37,10 +37,24 @@ const ScanTag = () => {
   const [scanning, setScanning] = useState(false);
   const [scan, setScan] = useState<ScanResponse | null>(null);
   const [check, setCheck] = useState<TagCheckResult | null>(null);
+  const [scanningEnabled, setScanningEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth", { replace: true });
   }, [user, loading]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    supabase.from("profiles").select("scanning_enabled").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const enabled = data?.scanning_enabled === true;
+        setScanningEnabled(enabled);
+        if (!enabled) navigate("/profile?tab=account", { replace: true });
+      });
+    return () => { cancelled = true; };
+  }, [user]);
 
   useEffect(() => {
     if (!photo) { setPreview(null); return; }

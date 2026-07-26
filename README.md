@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# PrelovedKicks
 
-TODO: Document your project here
+A React + Vite + TypeScript + Supabase marketplace for buying and selling preloved trainers.

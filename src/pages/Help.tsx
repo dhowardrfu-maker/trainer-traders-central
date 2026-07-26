@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Smartphone, ShoppingBag, Tag, CreditCard, Truck, AlertTriangle, User } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { useSEO } from "@/hooks/useSEO";
@@ -105,15 +104,12 @@ const sections: Section[] = [
         a: "You can add up to 8 photos per listing. We recommend including shots of both shoes, the soles, the box if you have it, and any wear or marks so buyers know exactly what they're getting.",
       },
       {
-        q: "How can I check a pair looks genuine before I list or buy?",
-        a: (
-          <>
-            Use our <Link to="/scan" className="underline underline-offset-2">tag scanner</Link> to
-            photograph the inside tag — for Nike it reads the style code and factory code and checks
-            them against the "Made in" country printed on the tag. It's one useful signal, not proof
-            of authenticity on its own.
-          </>
-        ),
+        q: "What does the \"Tag Verified\" badge mean?",
+        a: "If you've activated scanning, you can photograph a trainer's inside tag as the first step when listing. We check the style code against trusted retailers, and for Nike and Converse also cross-check the factory code against the \"Made in\" country on the tag. If it checks out, your listing gets a Tag Verified badge. It's one useful signal, not proof of authenticity on its own — skipping it never blocks your listing.",
+      },
+      {
+        q: "What is scanning and how do I activate it?",
+        a: "Scanning is an optional add-on that powers the tag check above. It's a one-time payment of £2.50 from Profile → Account — no subscription, and it stays active on your account for good once purchased. It's entirely optional: you can list and sell without it, you just won't see the option to verify a tag or earn the Tag Verified badge.",
       },
       {
         q: "How do I price my trainers?",

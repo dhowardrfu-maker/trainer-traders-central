@@ -23,19 +23,26 @@ export const Header = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const [scanningEnabled, setScanningEnabled] = useState(false);
   const { unreadCount: unreadMessages } = useUnreadMessages();
 
   useEffect(() => {
-    if (!user) { setProfileAvatarUrl(null); return; }
+    if (!user) { setProfileAvatarUrl(null); setScanningEnabled(false); return; }
     supabase
       .from("profiles")
-      .select("avatar_url")
+      .select("avatar_url, scanning_enabled")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (data?.avatar_url) setProfileAvatarUrl(data.avatar_url);
+        setScanningEnabled(data?.scanning_enabled === true);
       });
   }, [user]);
+
+  const handleScan = () => {
+    if (!user) { navigate("/auth"); return; }
+    navigate(scanningEnabled ? "/scan" : "/profile?tab=account");
+  };
 
   const handleSell = async () => {
     if (!user) {
@@ -111,16 +118,17 @@ export const Header = () => {
           >
             <Heart className="h-5 w-5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full hidden sm:inline-flex"
-            aria-label="Scan a tag"
-            onClick={() => (user ? navigate("/scan") : navigate("/auth"))}
-          >
-            <ScanLine className="h-5 w-5" />
-          </Button>
-
+          {user && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full hidden sm:inline-flex"
+              aria-label="Scan a tag"
+              onClick={handleScan}
+            >
+              <ScanLine className="h-5 w-5" />
+            </Button>
+          )}
           {user && (
             <Button
               variant="ghost"

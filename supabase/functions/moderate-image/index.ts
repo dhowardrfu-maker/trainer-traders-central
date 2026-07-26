@@ -1,4 +1,4 @@
-// Lovable AI image moderation. Returns { allowed: boolean, reason?: string }.
+// OpenAI vision image moderation. Returns { allowed: boolean, reason?: string }.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -10,7 +10,7 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // Require an authenticated caller — prevents anonymous abuse of LOVABLE_API_KEY
+  // Require an authenticated caller — prevents anonymous abuse of OPENAI_API_KEY
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return json({ error: "Unauthorized" }, 401);
@@ -42,17 +42,18 @@ Deno.serve(async (req) => {
       return json({ error: "URL not permitted" }, 400);
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) return json({ error: "AI not configured" }, 500);
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) return json({ error: "AI not configured" }, 500);
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gpt-4o-mini",
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
@@ -72,7 +73,7 @@ Deno.serve(async (req) => {
 
     if (!res.ok) {
       const t = await res.text();
-      console.error("AI gateway error", res.status, t);
+      console.error("OpenAI error", res.status, t);
       // Fail-open so uploads are not blocked by moderation outages.
       return json({ allowed: true, reason: "moderation_unavailable" });
     }

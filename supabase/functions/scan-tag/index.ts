@@ -1,4 +1,4 @@
-// Reads a sneaker's inside tag photo via the Lovable AI vision gateway to
+// Reads a sneaker's inside tag photo via OpenAI's vision API to
 // extract the style code, factory-code suffix, and stated country of origin,
 // then checks the style code against a curated set of trusted retailer sites
 // via Google Custom Search — this is the universal, brand-agnostic layer
@@ -79,17 +79,18 @@ interface ReadResult {
 }
 
 async function readTag(imageUrl: string): Promise<ReadResult> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return { readable: false, error: "ai_not_configured" };
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+  if (!OPENAI_API_KEY) return { readable: false, error: "ai_not_configured" };
 
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "gpt-4o-mini",
+      response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
@@ -109,7 +110,7 @@ async function readTag(imageUrl: string): Promise<ReadResult> {
 
   if (!res.ok) {
     const t = await res.text();
-    console.error("AI gateway error", res.status, t);
+    console.error("OpenAI error", res.status, t);
     return { readable: false, error: "read_failed" };
   }
 

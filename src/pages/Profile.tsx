@@ -30,7 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertTriangle, Camera, CheckCircle2, CreditCard, Heart, Loader2, Package, Pencil, Plus, Settings, ShoppingBag, Tag, Trash2, Truck, User as UserIcon } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, CreditCard, Heart, Loader2, Package, Pencil, Plus, ScanLine, Settings, ShieldCheck, ShoppingBag, Tag, Trash2, Truck, User as UserIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
@@ -38,6 +38,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { carrierLabel } from "@/data/carriers";
 import { ProductCard } from "@/components/ProductCard";
 import { mapDbListing, type Listing } from "@/data/listings";
+import { loadStripe } from "@stripe/stripe-js/pure";
+import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+
+let scanStripePromise: ReturnType<typeof loadStripe> | null = null;
+const getScanStripe = () => {
+  if (!scanStripePromise) {
+    scanStripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY!);
+  }
+  return scanStripePromise;
+};
 
 interface ProfileRow {
   user_id: string;
@@ -54,6 +64,7 @@ interface ProfileRow {
   phone: string | null;
   stripe_connect_id: string | null;
   stripe_connect_enabled: boolean | null;
+  scanning_enabled: boolean | null;
 }
 
 interface MyListing {
@@ -144,6 +155,10 @@ const Profile = () => {
   const [phone, setPhone] = useState("");
   const [connectLoading, setConnectLoading] = useState(false);
   const [connectEnabled, setConnectEnabled] = useState(false);
+  const [scanningEnabled, setScanningEnabled] = useState(false);
+  const [showScanningModal, setShowScanningModal] = useState(false);
+  const [scanningClientSecret, setScanningClientSecret] = useState<string | null>(null);
+  const [scanningIntentLoading, setScanningIntentLoading] = useState(false);
 
   const [listings, setListings] = useState<MyListing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(true);
@@ -196,13 +211,14 @@ const Profile = () => {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("user_id, username, display_name, bio, location, avatar_url, full_name, address_line1, address_line2, city, postcode, phone, stripe_connect_id, stripe_connect_enabled")
+        .select("user_id, username, display_name, bio, location, avatar_url, full_name, address_line1, address_line2, city, postcode, phone, stripe_connect_id, stripe_connect_enabled, scanning_enabled")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
       if (data) {
         setProfile(data);
         setConnectEnabled(data.stripe_connect_enabled === true);
+        setScanningEnabled(data.scanning_enabled === true);
         setDisplayName(data.display_name ?? "");
         setUsername(data.username ?? "");
         setBio(data.bio ?? "");
@@ -427,6 +443,26 @@ const Profile = () => {
     window.location.href = data.url;
   };
 
+  const startScanningActivation = async () => {
+    setScanningIntentLoading(true);
+    setScanningClientSecret(null);
+    const { data, error } = await supabase.functions.invoke("create-scan-payment-intent");
+    setScanningIntentLoading(false);
+    if (error || !data?.client_secret) {
+      toast.error(error?.message ?? "Couldn't start activation — please try again");
+      return;
+    }
+    setScanningClientSecret(data.client_secret);
+    setShowScanningModal(true);
+  };
+
+  const handleScanningActivated = () => {
+    setScanningEnabled(true);
+    setShowScanningModal(false);
+    setScanningClientSecret(null);
+    toast.success("Scanning activated — you can now verify tags when listing.");
+  };
+
   // ACCEPT OFFER
   const handleAcceptOffer = async (offerId: string, buyerId: string, listingId: string, listingTitle: string, listingBrand: string, amountPence: number) => {
     setOfferBusy(offerId);
@@ -619,6 +655,13 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Header />
+      {showScanningModal && scanningClientSecret && (
+        <ScanningActivationModal
+          clientSecret={scanningClientSecret}
+          onClose={() => { setShowScanningModal(false); setScanningClientSecret(null); }}
+          onSuccess={handleScanningActivated}
+        />
+      )}
       <main className="container py-6 md:py-10 max-w-3xl">
         <div className="flex items-center gap-4 mb-6">
           <Avatar className="h-16 w-16 border border-border">
@@ -1052,6 +1095,43 @@ const Profile = () => {
                   </Button>
                 </div>
               </Card>
+
+              <Card className="p-6 rounded-2xl space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <ScanLine className="h-4.5 w-4.5 text-primary" />
+                  </div>
+                  <h2 className="font-display font-bold text-lg">Scanning</h2>
+                  {scanningEnabled && (
+                    <span className="inline-flex items-center gap-1 text-xs text-green-600 font-semibold ml-auto">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Active
+                    </span>
+                  )}
+                </div>
+                {scanningEnabled ? (
+                  <p className="text-sm text-muted-foreground">
+                    Scanning is active on your account. When you list a pair, you can photograph the inside
+                    tag as the first step to get a Tag Verified badge.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      Photograph a trainer's inside tag when listing and we'll check the style code against
+                      trusted retailers — for Nike and Converse we also cross-check the factory code against
+                      the country printed on the tag. Verified listings get a Tag Verified badge buyers can see.
+                      One-time payment, no subscription — it stays active on your account for good.
+                    </p>
+                    <Button
+                      className="rounded-full font-semibold w-fit"
+                      onClick={startScanningActivation}
+                      disabled={scanningIntentLoading}
+                    >
+                      {scanningIntentLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Activate scanning — £2.50
+                    </Button>
+                  </>
+                )}
+              </Card>
             </div>
           </TabsContent>
 
@@ -1091,6 +1171,87 @@ const Profile = () => {
       </main>
       <MobileTabBar />
     </div>
+  );
+};
+
+const ScanningActivationModal = ({
+  clientSecret, onClose, onSuccess,
+}: { clientSecret: string; onClose: () => void; onSuccess: () => void }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <div className="relative bg-card rounded-3xl shadow-xl p-6 max-w-sm w-full space-y-4 z-10">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <ScanLine className="h-5 w-5 text-primary" />
+          </div>
+          <h2 className="font-display font-bold text-lg">Activate scanning</h2>
+        </div>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        One-time payment of £2.50. Scanning stays active on your account for good — no subscription.
+      </p>
+      <Elements stripe={getScanStripe()} options={{ clientSecret, appearance: { theme: "stripe" } }}>
+        <ScanningPayForm onSuccess={onSuccess} />
+      </Elements>
+    </div>
+  </div>
+);
+
+const ScanningPayForm = ({ onSuccess }: { onSuccess: () => void }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [busy, setBusy] = useState(false);
+
+  const handlePay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setBusy(true);
+
+    const { error: stripeErr, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+    });
+
+    if (stripeErr) {
+      toast.error(stripeErr.message ?? "Payment failed");
+      setBusy(false);
+      return;
+    }
+
+    if (paymentIntent?.status !== "succeeded") {
+      toast.error("Payment not completed");
+      setBusy(false);
+      return;
+    }
+
+    const { error } = await supabase.rpc("activate_scanning", {
+      _stripe_payment_intent_id: paymentIntent.id,
+    });
+
+    setBusy(false);
+    if (error) {
+      toast.error("Payment succeeded but activation failed — contact support@prelovedkicks.co.uk");
+      return;
+    }
+
+    onSuccess();
+  };
+
+  return (
+    <form onSubmit={handlePay} className="space-y-4">
+      <PaymentElement />
+      <Button type="submit" className="w-full rounded-full font-semibold" disabled={busy || !stripe || !elements}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pay £2.50 securely"}
+      </Button>
+      <p className="text-[11px] text-muted-foreground text-center flex items-center justify-center gap-1">
+        <ShieldCheck className="h-3 w-3" />
+        Secured by Stripe
+      </p>
+    </form>
   );
 };
 
