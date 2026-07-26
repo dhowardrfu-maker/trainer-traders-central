@@ -41,7 +41,7 @@ export const Header = () => {
 
   const handleScan = () => {
     if (!user) { navigate("/auth"); return; }
-    navigate(scanningEnabled ? "/scan" : "/profile?tab=account");
+    navigate(scanningEnabled ? "/scan" : "/profile?tab=scanning");
   };
 
   const handleSell = async () => {

@@ -109,7 +109,7 @@ const sections: Section[] = [
       },
       {
         q: "What is scanning and how do I activate it?",
-        a: "Scanning is an optional add-on that powers the tag check above. It's a one-time payment of £2.50 from Profile → Account, no subscription, and it stays active on your account for good once purchased. It's entirely optional: you can list and sell without it, you just won't see the option to verify a tag or earn the Tag Verified badge.",
+        a: "Scanning is an optional add-on that powers the tag check above. It's a one-time payment of £2.50 from Profile → Scanning, no subscription, and it stays active on your account for good once purchased. It's entirely optional: you can list and sell without it, you just won't see the option to verify a tag or earn the Tag Verified badge.",
       },
       {
         q: "How do I price my trainers?",

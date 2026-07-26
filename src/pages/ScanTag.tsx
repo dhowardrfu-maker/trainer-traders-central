@@ -51,7 +51,7 @@ const ScanTag = () => {
         if (cancelled) return;
         const enabled = data?.scanning_enabled === true;
         setScanningEnabled(enabled);
-        if (!enabled) navigate("/profile?tab=account", { replace: true });
+        if (!enabled) navigate("/profile?tab=scanning", { replace: true });
       });
     return () => { cancelled = true; };
   }, [user]);

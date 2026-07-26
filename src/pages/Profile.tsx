@@ -712,7 +712,7 @@ const Profile = () => {
         )}
 
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid grid-cols-7 w-full mb-6">
+          <TabsList className="grid grid-cols-8 w-full mb-6">
             <TabsTrigger value="profile" className="gap-1.5">
               <UserIcon className="h-4 w-4" /> <span className="hidden sm:inline">Profile</span>
             </TabsTrigger>
@@ -740,6 +740,9 @@ const Profile = () => {
             </TabsTrigger>
             <TabsTrigger value="account" className="gap-1.5">
               <Settings className="h-4 w-4" /> <span className="hidden sm:inline">Account</span>
+            </TabsTrigger>
+            <TabsTrigger value="scanning" className="gap-1.5">
+              <ScanLine className="h-4 w-4" /> <span className="hidden sm:inline">Scanning</span>
             </TabsTrigger>
             <TabsTrigger value="payments" className="gap-1.5">
               <CreditCard className="h-4 w-4" /> <span className="hidden sm:inline">Payments</span>
@@ -1095,44 +1098,47 @@ const Profile = () => {
                   </Button>
                 </div>
               </Card>
-
-              <Card className="p-6 rounded-2xl space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <ScanLine className="h-4.5 w-4.5 text-primary" />
-                  </div>
-                  <h2 className="font-display font-bold text-lg">Scanning</h2>
-                  {scanningEnabled && (
-                    <span className="inline-flex items-center gap-1 text-xs text-green-600 font-semibold ml-auto">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Active
-                    </span>
-                  )}
-                </div>
-                {scanningEnabled ? (
-                  <p className="text-sm text-muted-foreground">
-                    Scanning is active on your account. When you list a pair, you can photograph the inside
-                    tag as the first step to get a Tag Verified badge.
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-sm text-muted-foreground">
-                      Photograph a trainer's inside tag when listing and we'll check the style code against
-                      trusted retailers — for Nike and Converse we also cross-check the factory code against
-                      the country printed on the tag. Verified listings get a Tag Verified badge buyers can see.
-                      One-time payment, no subscription — it stays active on your account for good.
-                    </p>
-                    <Button
-                      className="rounded-full font-semibold w-fit"
-                      onClick={startScanningActivation}
-                      disabled={scanningIntentLoading}
-                    >
-                      {scanningIntentLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Activate scanning — £2.50
-                    </Button>
-                  </>
-                )}
-              </Card>
             </div>
+          </TabsContent>
+
+          {/* SCANNING */}
+          <TabsContent value="scanning">
+            <Card className="p-6 rounded-2xl space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <ScanLine className="h-4.5 w-4.5 text-primary" />
+                </div>
+                <h2 className="font-display font-bold text-lg">Scanning</h2>
+                {scanningEnabled && (
+                  <span className="inline-flex items-center gap-1 text-xs text-green-600 font-semibold ml-auto">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Active
+                  </span>
+                )}
+              </div>
+              {scanningEnabled ? (
+                <p className="text-sm text-muted-foreground">
+                  Scanning is active on your account. When you list a pair, you can photograph the inside
+                  tag as the first step to get a Tag Verified badge.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Photograph a trainer's inside tag when listing and we'll check the style code against
+                    trusted retailers — for Nike and Converse we also cross-check the factory code against
+                    the country printed on the tag. Verified listings get a Tag Verified badge buyers can see.
+                    One-time payment, no subscription — it stays active on your account for good.
+                  </p>
+                  <Button
+                    className="rounded-full font-semibold w-fit"
+                    onClick={startScanningActivation}
+                    disabled={scanningIntentLoading}
+                  >
+                    {scanningIntentLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Activate scanning — £2.50
+                  </Button>
+                </>
+              )}
+            </Card>
           </TabsContent>
 
           {/* PAYMENTS */}

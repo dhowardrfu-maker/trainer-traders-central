@@ -470,7 +470,7 @@ const Sell = () => {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Button className="flex-1" variant="outline" onClick={() => navigate("/profile?tab=account")}>
+                <Button className="flex-1" variant="outline" onClick={() => navigate("/profile?tab=scanning")}>
                   Activate scanning — £2.50
                 </Button>
                 <Button className="flex-1" onClick={proceedToListing}>
