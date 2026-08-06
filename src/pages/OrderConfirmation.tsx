@@ -229,7 +229,7 @@ const OrderConfirmation = () => {
     await notify(order.seller_id, "dispute_raised", "A buyer has raised an issue with their order", disputeDescription.trim(), `/order/${order.id}`);
 
     // Email notification to seller — fire and forget
-    const sellerProfile = await supabase.from("profiles").select("display_name, username").eq("user_id", order.seller_id).maybeSingle();
+    const sellerProfile = await supabase.from("profiles_public").select("display_name, username").eq("user_id", order.seller_id).maybeSingle();
     const sellerName = sellerProfile.data?.display_name ?? sellerProfile.data?.username ?? "there";
     sendEmailNotification(order.seller_id, {
       type: "dispute_raised",
@@ -264,7 +264,7 @@ const OrderConfirmation = () => {
     // Email notification to seller — fire and forget
     ;(async () => {
       try {
-        const sellerProfile = await supabase.from("profiles").select("display_name, username").eq("user_id", order.seller_id).maybeSingle();
+        const sellerProfile = await supabase.from("profiles_public").select("display_name, username").eq("user_id", order.seller_id).maybeSingle();
         const sellerName = sellerProfile.data?.display_name ?? sellerProfile.data?.username ?? "there";
         const postagePence = order.postage_pence ?? 0;
         const protectionPence = Math.round((order.total_pence - postagePence) / 1.04 * 0.04);

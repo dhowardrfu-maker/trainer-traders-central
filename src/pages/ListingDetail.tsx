@@ -87,7 +87,7 @@ const ListingDetail = () => {
       if (error || !row) { setLoading(false); return; }
 
       const { data: p } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("user_id, username, display_name")
         .eq("user_id", row.seller_id)
         .maybeSingle();

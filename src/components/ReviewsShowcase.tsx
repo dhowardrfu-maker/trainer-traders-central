@@ -39,7 +39,7 @@ export const ReviewsShowcase = () => {
       let nameMap: Record<string, string> = {};
       if (buyerIds.length) {
         const { data: profs } = await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("user_id, display_name, username")
           .in("user_id", buyerIds);
         nameMap = Object.fromEntries(

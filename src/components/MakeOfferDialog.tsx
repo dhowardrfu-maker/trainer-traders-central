@@ -71,13 +71,13 @@ export const MakeOfferDialog = ({ listingId, sellerId, buyerId, askingPrice, lis
     ;(async () => {
       try {
         const { data: sellerProfile } = await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("username, display_name")
           .eq("user_id", sellerId)
           .maybeSingle();
 
         const { data: buyerProfile } = await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("username, display_name")
           .eq("user_id", buyerId)
           .maybeSingle();

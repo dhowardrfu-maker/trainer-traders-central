@@ -342,7 +342,7 @@ const Profile = () => {
       let profiles: Record<string, { username: string | null; display_name: string | null }> = {};
       if (sellerIds.length > 0) {
         const { data: profileRows } = await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("user_id, username, display_name")
           .in("user_id", sellerIds);
         if (profileRows) {

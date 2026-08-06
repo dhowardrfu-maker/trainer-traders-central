@@ -54,7 +54,7 @@ export const TrainerOfTheWeek = () => {
 
       let profile: { username: string | null; display_name: string | null } | null = null;
       const { data: p } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("username, display_name")
         .eq("user_id", row.seller_id)
         .maybeSingle();

@@ -66,7 +66,7 @@ const MessageThread = () => {
       const otherId = t.buyer_id === user.id ? t.seller_id : t.buyer_id;
       const otherRole = t.buyer_id === user.id ? "Seller" : "Buyer";
       const [pRes, lRes, mRes] = await Promise.all([
-        supabase.from("profiles").select("display_name, username").eq("user_id", otherId).maybeSingle(),
+        supabase.from("profiles_public").select("display_name, username").eq("user_id", otherId).maybeSingle(),
         supabase.from("listings").select("title, photos").eq("id", t.listing_id).maybeSingle(),
         supabase.from("messages").select("id, thread_id, sender_id, body, created_at").eq("thread_id", id).order("created_at", { ascending: true }),
       ]);

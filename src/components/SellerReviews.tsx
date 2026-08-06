@@ -30,7 +30,7 @@ export const SellerReviews = ({ sellerId }: { sellerId: string }) => {
       let nameMap: Record<string, string> = {};
       if (buyerIds.length) {
         const { data: profs } = await supabase
-          .from("profiles").select("user_id, display_name, username").in("user_id", buyerIds);
+          .from("profiles_public").select("user_id, display_name, username").in("user_id", buyerIds);
         nameMap = Object.fromEntries((profs ?? []).map((p: any) => [p.user_id, p.display_name || p.username || "User"]));
       }
       setReviews(data.map((r) => ({ ...r, buyer_name: nameMap[r.buyer_id] ?? "User" })));

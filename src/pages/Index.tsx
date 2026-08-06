@@ -35,7 +35,7 @@ const Index = () => {
 
     if (sellerIds.length > 0) {
       const { data: profileRows } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("user_id, username, display_name")
         .in("user_id", sellerIds);
 

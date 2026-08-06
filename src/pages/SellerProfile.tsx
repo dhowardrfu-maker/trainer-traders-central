@@ -41,11 +41,8 @@ const SellerProfile = () => {
       if (!id) return;
       setLoading(true);
 
-      // Only ever select the safe, intentionally-public fields here —
-      // never full_name/address/phone/stripe_connect_* even though the
-      // current RLS policy technically permits reading them.
       const { data: prof } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("user_id, username, display_name, bio, location, avatar_url")
         .eq("user_id", id)
         .maybeSingle();

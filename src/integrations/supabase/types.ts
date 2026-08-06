@@ -410,6 +410,9 @@ export type Database = {
           location: string | null
           phone: string | null
           postcode: string | null
+          scanning_enabled: boolean
+          scanning_payment_intent_id: string | null
+          scanning_purchased_at: string | null
           stripe_connect_enabled: boolean | null
           stripe_connect_id: string | null
           updated_at: string | null
@@ -429,6 +432,9 @@ export type Database = {
           location?: string | null
           phone?: string | null
           postcode?: string | null
+          scanning_enabled?: boolean
+          scanning_payment_intent_id?: string | null
+          scanning_purchased_at?: string | null
           stripe_connect_enabled?: boolean | null
           stripe_connect_id?: string | null
           updated_at?: string | null
@@ -448,6 +454,9 @@ export type Database = {
           location?: string | null
           phone?: string | null
           postcode?: string | null
+          scanning_enabled?: boolean
+          scanning_payment_intent_id?: string | null
+          scanning_purchased_at?: string | null
           stripe_connect_enabled?: boolean | null
           stripe_connect_id?: string | null
           updated_at?: string | null
@@ -635,9 +644,26 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          display_name: string | null
+          location: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      activate_scanning: {
+        Args: {
+          _stripe_payment_intent_id: string
+        }
+        Returns: undefined
+      }
       create_order:
         | {
             Args: {
@@ -911,5 +937,3 @@ export const Constants = {
     },
   },
 } as const
-A new version of Supabase CLI is available: v2.109.1 (currently installed v2.101.0)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

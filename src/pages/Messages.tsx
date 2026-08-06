@@ -53,7 +53,7 @@ const Messages = () => {
 
     const [profilesRes, listingsRes] = await Promise.all([
       otherIds.length
-        ? supabase.from("profiles").select("user_id, display_name, username").in("user_id", otherIds)
+        ? supabase.from("profiles_public").select("user_id, display_name, username").in("user_id", otherIds)
         : Promise.resolve({ data: [] as any[] }),
       listingIds.length
         ? supabase.from("listings").select("id, title, photos").in("id", listingIds)
