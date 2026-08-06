@@ -14,8 +14,7 @@ const ZOHO_PORT = 465;
 const ZOHO_USER = "support@prelovedkicks.co.uk";
 const FROM_NAME = "PrelovedKicks";
 const BASE_URL = "https://www.prelovedkicks.co.uk";
-const HEADER_IMAGE_URL =
-  "https://jwvybofahjxtldjjjdpo.supabase.co/storage/v1/object/public/marketing-assets/post1_60seconds.png";
+const NOTIFICATION_IMAGE_URL = "https://www.prelovedkicks.co.uk/logo.png";
 
 async function sendEmail(to: string, subject: string, html: string, password: string) {
   const encoder = new TextEncoder();
@@ -124,7 +123,7 @@ Deno.serve(async (req) => {
         body: "Snap a photo, our AI checks it, set your price and post. See how fast you can list.",
         link: "/sell",
         read: false,
-        data: { image_url: HEADER_IMAGE_URL },
+        data: { image_url: NOTIFICATION_IMAGE_URL },
       });
       await sendEmail(testEmail, "You've got a new message on PrelovedKicks", newMessageAlertHtml(""), password);
       return json({ ok: true, sent: 1, mode: "test" });
@@ -155,7 +154,7 @@ Deno.serve(async (req) => {
           body: "Snap a photo, our AI checks it, set your price and post. See how fast you can list.",
           link: "/sell",
           read: false,
-          data: { image_url: HEADER_IMAGE_URL },
+          data: { image_url: NOTIFICATION_IMAGE_URL },
         });
 
         if (!u.email) continue;
