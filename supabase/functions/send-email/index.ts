@@ -14,9 +14,21 @@ async function sendEmail(to: string, subject: string, html: string, password: st
   const encoder = new TextEncoder();
   const conn = await Deno.connectTls({ hostname: ZOHO_HOST, port: ZOHO_PORT });
   const read = async () => {
-    const buf = new Uint8Array(4096);
-    const n = await conn.read(buf);
-    return new TextDecoder().decode(buf.subarray(0, n ?? 0));
+    let result = "";
+    while (true) {
+      const buf = new Uint8Array(4096);
+      const n = await conn.read(buf);
+      if (n === null) break;
+      result += new TextDecoder().decode(buf.subarray(0, n));
+      // SMTP multi-line replies use "250-" (hyphen) for continuation lines
+      // and "250 " (space) for the final line. A single read() can return
+      // only part of a multi-line EHLO response, desyncing every step after
+      // it, so keep reading until the last line isn't a continuation.
+      const lines = result.trim().split("\r\n");
+      if (/^\d{3}-/.test(lines[lines.length - 1])) continue;
+      break;
+    }
+    return result;
   };
   const write = async (s: string) => await conn.write(encoder.encode(s + "\r\n"));
   await read();
