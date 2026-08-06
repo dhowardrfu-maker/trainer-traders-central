@@ -604,10 +604,7 @@ const Profile = () => {
 
   const handleAgreeCancel = async (orderId: string, listingId: string, requestedBy: string) => {
     setCancelBusy(orderId);
-    const { error } = await supabase
-      .from("orders")
-      .update({ cancellation_agreed: true, status: "cancelled" } as never)
-      .eq("id", orderId);
+    const { error } = await supabase.rpc("agree_order_cancellation", { _order_id: orderId });
     if (error) { setCancelBusy(null); toast.error("Couldn't process cancellation"); return; }
     await supabase.from("listings").update({ status: "active" }).eq("id", Number(listingId));
     const { error: refundErr } = await supabase.functions.invoke("create-refund", { body: { order_id: orderId } });

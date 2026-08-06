@@ -158,10 +158,10 @@ const OrderConfirmation = () => {
     if (!cancelReason.trim()) { toast.error("Please provide a reason for cancellation"); return; }
     if (!user || !order) return;
     setBusy(true);
-    const { error } = await supabase
-      .from("orders")
-      .update({ cancellation_requested_by: user.id, cancellation_reason: cancelReason.trim() })
-      .eq("id", order.id);
+    const { error } = await supabase.rpc("request_order_cancellation", {
+      _order_id: order.id,
+      _reason: cancelReason.trim(),
+    });
     if (error) { setBusy(false); toast.error("Couldn't submit cancellation request"); return; }
 
     const otherPartyId = isBuyer ? order.seller_id : order.buyer_id;
@@ -178,10 +178,7 @@ const OrderConfirmation = () => {
   const handleAgreeCancel = async () => {
     if (!user || !order) return;
     setBusy(true);
-    const { error } = await supabase
-      .from("orders")
-      .update({ cancellation_agreed: true, status: "cancelled" })
-      .eq("id", order.id);
+    const { error } = await supabase.rpc("agree_order_cancellation", { _order_id: order.id });
     if (error) { setBusy(false); toast.error("Couldn't process cancellation"); return; }
     await supabase.from("listings").update({ status: "active" }).eq("id", Number(order.listing_id));
     const { error: refundErr } = await supabase.functions.invoke("create-refund", { body: { order_id: order.id } });
@@ -213,16 +210,11 @@ const OrderConfirmation = () => {
         .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
       if (!upErr) imagePaths.push(path);
     }
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        dispute_raised_at: new Date().toISOString(),
-        dispute_description: disputeDescription.trim(),
-        dispute_images: imagePaths.length ? imagePaths : null,
-        dispute_status: "open",
-        status: "disputed",
-      })
-      .eq("id", order.id);
+    const { error } = await supabase.rpc("raise_order_dispute", {
+      _order_id: order.id,
+      _description: disputeDescription.trim(),
+      _images: imagePaths.length ? imagePaths : null,
+    });
     if (error) { setBusy(false); toast.error("Couldn't raise dispute"); return; }
 
     // Bell notification to seller
@@ -248,10 +240,7 @@ const OrderConfirmation = () => {
   const handleConfirmReceipt = async () => {
     if (!user || !order) return;
     setBusy(true);
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: "delivered", evri_delivered_at: new Date().toISOString() } as never)
-      .eq("id", order.id);
+    const { error } = await supabase.rpc("confirm_order_receipt", { _order_id: order.id });
     if (error) { setBusy(false); toast.error("Couldn't confirm receipt"); return; }
     await supabase.functions.invoke("create-payout", { body: { order_id: order.id } });
 
@@ -293,7 +282,7 @@ const OrderConfirmation = () => {
     setBusy(true);
     const { error } = await supabase.functions.invoke("create-refund", { body: { order_id: order.id } });
     if (error) { setBusy(false); toast.error("Couldn't issue refund"); return; }
-    await supabase.from("orders").update({ dispute_status: "refunded", status: "cancelled" } as never).eq("id", order.id);
+    await supabase.rpc("seller_refund_dispute", { _order_id: order.id });
     await notify(order.buyer_id, "dispute_refunded", "Refund issued — dispute resolved", "The seller has issued a full refund. It may take a few days to reach your account.", `/order/${order.id}`);
     setBusy(false);
     toast.success("Full refund issued to the buyer");
@@ -304,7 +293,7 @@ const OrderConfirmation = () => {
   const handleSellerRequestReturn = async () => {
     if (!user || !order) return;
     setBusy(true);
-    await supabase.from("orders").update({ dispute_status: "return_requested" } as never).eq("id", order.id);
+    await supabase.rpc("seller_request_return", { _order_id: order.id });
     await notify(order.buyer_id, "return_requested", "The seller has requested a return", "A return label will be generated for you shortly.", `/order/${order.id}`);
     setBusy(false);
     toast.success("Return requested — a return label will be generated for the buyer");

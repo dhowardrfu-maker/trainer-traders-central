@@ -117,7 +117,7 @@ const Admin = () => {
     if (error) {
       toast.error("Refund failed — " + error.message);
     } else {
-      await supabase.from("orders").update({ status: "cancelled" } as never).eq("id", orderId);
+      await supabase.rpc("admin_update_order", { _order_id: orderId, _status: "cancelled" });
       setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: "cancelled" } : o));
       toast.success("Refund issued");
     }
@@ -126,7 +126,7 @@ const Admin = () => {
 
   const handleApproveCancellation = async (orderId: string, listingId?: string) => {
     setBusy(orderId);
-    await supabase.from("orders").update({ cancellation_agreed: true, status: "cancelled" } as never).eq("id", orderId);
+    await supabase.rpc("admin_update_order", { _order_id: orderId, _status: "cancelled", _cancellation_agreed: true });
     if (listingId) await supabase.from("listings").update({ status: "active" }).eq("id", Number(listingId));
     const { error } = await supabase.functions.invoke("create-refund", { body: { order_id: orderId } });
     setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, status: "cancelled", cancellation_agreed: true } : o));
@@ -138,12 +138,12 @@ const Admin = () => {
     setBusy(orderId + resolution);
     if (resolution === "refund") {
       const { error } = await supabase.functions.invoke("create-refund", { body: { order_id: orderId } });
-      await supabase.from("orders").update({ dispute_status: "refunded", status: "cancelled" } as never).eq("id", orderId);
+      await supabase.rpc("admin_update_order", { _order_id: orderId, _status: "cancelled", _dispute_status: "refunded" });
       setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, dispute_status: "refunded", status: "cancelled" } : o));
       toast.success(error ? "Status updated but refund failed" : "Dispute resolved — buyer refunded");
     } else {
       await supabase.functions.invoke("create-payout", { body: { order_id: orderId } });
-      await supabase.from("orders").update({ dispute_status: "resolved", status: "delivered" } as never).eq("id", orderId);
+      await supabase.rpc("admin_update_order", { _order_id: orderId, _status: "delivered", _dispute_status: "resolved" });
       setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, dispute_status: "resolved", status: "delivered" } : o));
       toast.success("Dispute resolved — seller paid out");
     }

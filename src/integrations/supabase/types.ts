@@ -664,6 +664,54 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_update_order: {
+        Args: {
+          _cancellation_agreed?: boolean
+          _dispute_status?: string
+          _order_id: string
+          _status?: Database["public"]["Enums"]["order_status"]
+        }
+        Returns: undefined
+      }
+      agree_order_cancellation: {
+        Args: {
+          _order_id: string
+        }
+        Returns: undefined
+      }
+      confirm_order_receipt: {
+        Args: {
+          _order_id: string
+        }
+        Returns: undefined
+      }
+      raise_order_dispute: {
+        Args: {
+          _description: string
+          _images?: string[]
+          _order_id: string
+        }
+        Returns: undefined
+      }
+      request_order_cancellation: {
+        Args: {
+          _order_id: string
+          _reason: string
+        }
+        Returns: undefined
+      }
+      seller_refund_dispute: {
+        Args: {
+          _order_id: string
+        }
+        Returns: undefined
+      }
+      seller_request_return: {
+        Args: {
+          _order_id: string
+        }
+        Returns: undefined
+      }
       create_order:
         | {
             Args: {
