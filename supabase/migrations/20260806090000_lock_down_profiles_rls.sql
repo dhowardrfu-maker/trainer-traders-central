@@ -17,6 +17,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS stripe_connect_enabled BOOL
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT false;
 
 DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 
 -- Users can read their own full row (address, phone, stripe fields included).
 CREATE POLICY "Users can view their own profile"
@@ -38,6 +39,7 @@ $$;
 
 REVOKE ALL ON FUNCTION public.is_profile_admin(UUID) FROM PUBLIC, anon, authenticated;
 
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles"
   ON public.profiles FOR SELECT
   USING (public.is_profile_admin(auth.uid()));
