@@ -22,11 +22,19 @@ Deno.serve(async (req) => {
   const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2024-06-20" });
 
   try {
+    // dispute_status has no default and is only ever set to a non-null value
+    // when a dispute is actually raised, so "no dispute" means IS NULL, not
+    // = 'none' (NULL = 'none' is never true in SQL -- this previously never
+    // matched a single order). Similarly, evri_delivered_at is only ever set
+    // by confirm_order_receipt, which sets status to 'delivered' in the same
+    // update, so status can never be 'shipped' once evri_delivered_at is
+    // set -- this is a safety net for orders already marked delivered whose
+    // payout somehow never got recorded, not a "shipped" case.
     const { data: orders, error } = await supabase
       .from("orders")
       .select("id, seller_id, buyer_id, total_pence, postage_pence, stripe_payment_intent_id, payout_sent")
-      .eq("status", "shipped")
-      .eq("dispute_status", "none")
+      .eq("status", "delivered")
+      .is("dispute_status", null)
       .eq("payout_sent", false)
       .not("evri_delivered_at", "is", null)
       .lt("evri_delivered_at", new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString());
