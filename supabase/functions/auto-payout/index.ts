@@ -11,12 +11,19 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  // This moves real money, so it needs to be more than "some Bearer token
+  // was present" -- the platform's own JWT check accepts any valid Supabase
+  // key, including the public anon key shipped in the site's JS bundle.
+  // The pg_cron job that calls this already sends the actual service role
+  // key as its Bearer token (pulled from Vault), so require exactly that,
+  // not just any authenticated caller.
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  if (authHeader !== `Bearer ${serviceRoleKey}`) return json({ error: "Unauthorized" }, 401);
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    serviceRoleKey
   );
 
   const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2024-06-20" });
