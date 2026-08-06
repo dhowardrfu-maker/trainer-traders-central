@@ -37,7 +37,12 @@ AS $$
   SELECT COALESCE((SELECT is_admin FROM public.profiles WHERE user_id = _user_id), false)
 $$;
 
-REVOKE ALL ON FUNCTION public.is_profile_admin(UUID) FROM PUBLIC, anon, authenticated;
+-- Must stay executable by anon/authenticated: it's called inside the SELECT
+-- policy below, and Postgres evaluates every permissive policy for every
+-- querying role, so revoking EXECUTE here breaks the query outright (a
+-- permission error) instead of the function just evaluating to false.
+REVOKE ALL ON FUNCTION public.is_profile_admin(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_profile_admin(UUID) TO anon, authenticated;
 
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles"
