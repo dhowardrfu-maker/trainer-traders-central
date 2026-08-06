@@ -62,6 +62,13 @@ export const NotificationsBell = () => {
                     if (n.link) navigate(n.link);
                   }}
                 >
+                  {typeof n.data?.image_url === "string" && (
+                    <img
+                      src={n.data.image_url}
+                      alt=""
+                      className="w-full rounded-lg mb-2 object-cover max-h-40"
+                    />
+                  )}
                   <div className="flex items-start gap-2">
                     {!n.read && (
                       <span className="mt-1.5 h-2 w-2 rounded-full bg-[#2d9b6f] shrink-0" />

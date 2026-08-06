@@ -62,23 +62,19 @@ async function sendEmail(to: string, subject: string, html: string, password: st
   conn.close();
 }
 
-function speedListingHtml(firstName: string) {
+// Short "you've got a new message" alert -- mirrors how Vinted/most apps do
+// it: the email is just a notice with a link, the actual content (with the
+// image) lives in the in-platform notification, not duplicated here.
+function newMessageAlertHtml(firstName: string) {
   const name = firstName || "there";
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px;"><tr><td align="center">
 <table width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;">
-<tr><td><img src="${HEADER_IMAGE_URL}" alt="I listed my trainers before this timer hit 60 seconds" width="560" style="display:block;width:100%;max-width:560px;height:auto;"></td></tr>
+<tr><td style="background:#18181b;padding:24px 32px;text-align:center;"><span style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">PrelovedKicks</span></td></tr>
 <tr><td style="padding:32px;">
 <p style="margin:0 0 16px;font-size:15px;color:#18181b;">Hey ${name},</p>
-<p style="margin:0 0 16px;font-size:15px;color:#18181b;line-height:1.6;">Quick one — I timed myself listing a pair of trainers on PrelovedKicks the other day. <strong>47 seconds.</strong> Photo to live listing.</p>
-<p style="margin:0 0 12px;font-size:15px;color:#18181b;">Here's the whole process:</p>
-<ol style="margin:0 0 16px;padding-left:20px;color:#18181b;font-size:15px;line-height:1.8;">
-<li>Snap a few photos</li>
-<li>Our AI checks them for you — no guesswork on condition or authenticity</li>
-<li>Set your price and post</li>
-</ol>
-<p style="margin:0 0 24px;font-size:15px;color:#18181b;line-height:1.6;">That's it. No forms, no faff. If you've got trainers sitting in a box doing nothing, they could be live in less time than it took to read this.</p>
-<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr><td align="center"><a href="${BASE_URL}/sell" style="display:inline-block;background:#18181b;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:100px;text-decoration:none;">Start selling &rarr;</a></td></tr></table>
+<p style="margin:0 0 24px;font-size:15px;color:#18181b;line-height:1.6;">You've got a new message waiting for you on PrelovedKicks.</p>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr><td align="center"><a href="${BASE_URL}/" style="display:inline-block;background:#18181b;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:100px;text-decoration:none;">View message &rarr;</a></td></tr></table>
 <p style="margin:0;font-size:13px;color:#71717a;text-align:center;">Questions? Just reply to this email.</p>
 </td></tr>
 <tr><td style="background:#f4f4f5;padding:20px 32px;text-align:center;"><p style="margin:0;font-size:12px;color:#a1a1aa;">&copy; ${new Date().getFullYear()} PrelovedKicks &middot; <a href="${BASE_URL}/terms" style="color:#a1a1aa;">Terms</a> &middot; <a href="${BASE_URL}/privacy" style="color:#a1a1aa;">Privacy</a></p></td></tr>
@@ -119,7 +115,18 @@ Deno.serve(async (req) => {
     const testEmail: string | undefined = body?.test_email;
 
     if (testEmail) {
-      await sendEmail(testEmail, "I listed my trainers before this email finished loading", speedListingHtml(""), password);
+      // Also drop a real in-app notification on the caller's own account so
+      // they can check how the image card renders in the bell dropdown.
+      await supabaseAdmin.from("notifications").insert({
+        user_id: user.id,
+        type: "campaign",
+        title: "I listed my trainers in 47 seconds",
+        body: "Snap a photo, our AI checks it, set your price and post. See how fast you can list.",
+        link: "/sell",
+        read: false,
+        data: { image_url: HEADER_IMAGE_URL },
+      });
+      await sendEmail(testEmail, "You've got a new message on PrelovedKicks", newMessageAlertHtml(""), password);
       return json({ ok: true, sent: 1, mode: "test" });
     }
 
@@ -148,12 +155,13 @@ Deno.serve(async (req) => {
           body: "Snap a photo, our AI checks it, set your price and post. See how fast you can list.",
           link: "/sell",
           read: false,
+          data: { image_url: HEADER_IMAGE_URL },
         });
 
         if (!u.email) continue;
         const firstName = (nameByUserId.get(u.id) || "").split(" ")[0];
         try {
-          await sendEmail(u.email, "I listed my trainers before this email finished loading", speedListingHtml(firstName), password);
+          await sendEmail(u.email, "You've got a new message on PrelovedKicks", newMessageAlertHtml(firstName), password);
           sent++;
         } catch (e) {
           failures.push({ email: u.email, error: String(e) });
