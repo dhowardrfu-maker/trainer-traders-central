@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
@@ -6,8 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Search, ShieldAlert, Package, Users, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Search, ShieldAlert, Package, Users, AlertTriangle, Mail, ImagePlus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -60,6 +72,16 @@ const Admin = () => {
   const [userSearch, setUserSearch] = useState("");
 
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Internal Emails
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [campaignTitle, setCampaignTitle] = useState("");
+  const [campaignMessage, setCampaignMessage] = useState("");
+  const [campaignImageFile, setCampaignImageFile] = useState<File | null>(null);
+  const [campaignImagePreview, setCampaignImagePreview] = useState<string | null>(null);
+  const [campaignSending, setCampaignSending] = useState(false);
+  const [campaignConfirmOpen, setCampaignConfirmOpen] = useState(false);
+  const [campaignResult, setCampaignResult] = useState<{ sent: number; failures: { email: string; error: string }[] } | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth", { replace: true });
@@ -150,6 +172,56 @@ const Admin = () => {
     setBusy(null);
   };
 
+  const handleCampaignImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCampaignImageFile(file);
+    setCampaignImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleRemoveCampaignImage = () => {
+    setCampaignImageFile(null);
+    setCampaignImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleSendCampaign = async () => {
+    if (!campaignTitle.trim() || !campaignMessage.trim()) {
+      toast.error("Add a title and a message first");
+      return;
+    }
+    setCampaignConfirmOpen(false);
+    setCampaignSending(true);
+    setCampaignResult(null);
+    try {
+      let imageUrl: string | null = null;
+      if (campaignImageFile) {
+        const ext = (campaignImageFile.name.split(".").pop() || "jpg").toLowerCase();
+        const path = `campaign-${Date.now()}-${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from("marketing-assets")
+          .upload(path, campaignImageFile, { cacheControl: "3600", upsert: false, contentType: campaignImageFile.type });
+        if (upErr) throw new Error("Image upload failed: " + upErr.message);
+        const { data: pub } = supabase.storage.from("marketing-assets").getPublicUrl(path);
+        imageUrl = pub.publicUrl;
+      }
+
+      const { data, error } = await supabase.functions.invoke("send-campaign-email", {
+        body: { title: campaignTitle.trim(), message: campaignMessage.trim(), image_url: imageUrl },
+      });
+      if (error) throw error;
+
+      setCampaignResult({ sent: data.sent ?? 0, failures: data.failures ?? [] });
+      toast.success(`Sent to ${data.sent ?? 0} users`);
+      setCampaignTitle("");
+      setCampaignMessage("");
+      handleRemoveCampaignImage();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send");
+    }
+    setCampaignSending(false);
+  };
+
   const filteredOrders = orders.filter((o) =>
     !orderSearch ||
     o.id.toLowerCase().includes(orderSearch.toLowerCase()) ||
@@ -226,6 +298,9 @@ const Admin = () => {
             </TabsTrigger>
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-4 w-4" /> Users
+            </TabsTrigger>
+            <TabsTrigger value="internal-emails" className="gap-2">
+              <Mail className="h-4 w-4" /> Internal Emails
             </TabsTrigger>
           </TabsList>
 
@@ -410,6 +485,110 @@ const Admin = () => {
                 )}
               </div>
             )}
+          </TabsContent>
+
+          {/* INTERNAL EMAILS */}
+          <TabsContent value="internal-emails">
+            <Card className="p-5 rounded-2xl max-w-xl">
+              <h2 className="font-semibold text-lg mb-1">Send a message to every user</h2>
+              <p className="text-sm text-muted-foreground mb-5">
+                This sends a short "you've got a new message" email to every signed-up user's inbox,
+                and the full message below (with image, if you add one) appears in their in-app Messages.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="campaign-title">Title</Label>
+                  <Input
+                    id="campaign-title"
+                    className="rounded-xl mt-1.5"
+                    placeholder="e.g. List your trainers in under a minute"
+                    value={campaignTitle}
+                    onChange={(e) => setCampaignTitle(e.target.value)}
+                    maxLength={120}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="campaign-message">Message</Label>
+                  <Textarea
+                    id="campaign-message"
+                    className="rounded-xl mt-1.5 min-h-[120px]"
+                    placeholder="Write the full message here..."
+                    value={campaignMessage}
+                    onChange={(e) => setCampaignMessage(e.target.value)}
+                    maxLength={2000}
+                  />
+                </div>
+
+                <div>
+                  <Label>Image (optional)</Label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleCampaignImageSelect}
+                  />
+                  {campaignImagePreview ? (
+                    <div className="relative mt-1.5 w-fit">
+                      <img src={campaignImagePreview} alt="" className="max-h-48 rounded-xl border border-border" />
+                      <button
+                        type="button"
+                        onClick={handleRemoveCampaignImage}
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-foreground text-background flex items-center justify-center"
+                        aria-label="Remove image"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-xl mt-1.5 gap-2"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <ImagePlus className="h-4 w-4" /> Upload image
+                    </Button>
+                  )}
+                </div>
+
+                <Button
+                  className="rounded-full w-full"
+                  disabled={campaignSending || !campaignTitle.trim() || !campaignMessage.trim()}
+                  onClick={() => setCampaignConfirmOpen(true)}
+                >
+                  {campaignSending ? <Loader2 className="h-4 w-4 animate-spin" /> : `Send to all ${users.length} users`}
+                </Button>
+
+                {campaignResult && (
+                  <div className="rounded-xl bg-muted/50 p-3 text-sm">
+                    <p className="font-medium">Sent to {campaignResult.sent} users.</p>
+                    {campaignResult.failures.length > 0 && (
+                      <p className="text-destructive mt-1">
+                        {campaignResult.failures.length} email(s) failed to send (in-app message still delivered to them).
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            <AlertDialog open={campaignConfirmOpen} onOpenChange={setCampaignConfirmOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Send to all {users.length} users?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will immediately email and message every signed-up user. This can't be undone or unsent.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleSendCampaign}>Send now</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
         </Tabs>
       </main>

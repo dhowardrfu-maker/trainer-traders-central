@@ -1,7 +1,7 @@
 // Supabase Edge Function: send-campaign-email
-// One-off admin broadcast to every signed-up user. Not exposed to the
-// public app — must be triggered manually by a logged-in admin (e.g. via
-// curl with an access token, or a temporary Admin dashboard button).
+// Admin-only broadcast to every signed-up user. Called from the "Internal
+// Emails" tab in /admin -- title, message, and an optional image are
+// supplied by the admin each time, not hardcoded here.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -14,7 +14,6 @@ const ZOHO_PORT = 465;
 const ZOHO_USER = "support@prelovedkicks.co.uk";
 const FROM_NAME = "PrelovedKicks";
 const BASE_URL = "https://www.prelovedkicks.co.uk";
-const NOTIFICATION_IMAGE_URL = "https://www.prelovedkicks.co.uk/logo.png";
 
 async function sendEmail(to: string, subject: string, html: string, password: string) {
   const encoder = new TextEncoder();
@@ -61,9 +60,9 @@ async function sendEmail(to: string, subject: string, html: string, password: st
   conn.close();
 }
 
-// Short "you've got a new message" alert -- mirrors how Vinted/most apps do
-// it: the email is just a notice with a link, the actual content (with the
-// image) lives in the in-platform notification, not duplicated here.
+// Short "you've got a new message" alert -- the email is just a notice with
+// a link, the actual content (title/body/image) lives in the in-platform
+// message, not duplicated here.
 function newMessageAlertHtml(firstName: string) {
   const name = firstName || "there";
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
@@ -73,7 +72,7 @@ function newMessageAlertHtml(firstName: string) {
 <tr><td style="padding:32px;">
 <p style="margin:0 0 16px;font-size:15px;color:#18181b;">Hey ${name},</p>
 <p style="margin:0 0 24px;font-size:15px;color:#18181b;line-height:1.6;">You've got a new message waiting for you on PrelovedKicks.</p>
-<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr><td align="center"><a href="${BASE_URL}/" style="display:inline-block;background:#18181b;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:100px;text-decoration:none;">View message &rarr;</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;"><tr><td align="center"><a href="${BASE_URL}/messages" style="display:inline-block;background:#18181b;color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:100px;text-decoration:none;">View message &rarr;</a></td></tr></table>
 <p style="margin:0;font-size:13px;color:#71717a;text-align:center;">Questions? Just reply to this email.</p>
 </td></tr>
 <tr><td style="background:#f4f4f5;padding:20px 32px;text-align:center;"><p style="margin:0;font-size:12px;color:#a1a1aa;">&copy; ${new Date().getFullYear()} PrelovedKicks &middot; <a href="${BASE_URL}/terms" style="color:#a1a1aa;">Terms</a> &middot; <a href="${BASE_URL}/privacy" style="color:#a1a1aa;">Privacy</a></p></td></tr>
@@ -111,30 +110,26 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
+    const title: string = (body?.title ?? "").trim();
+    const message: string = (body?.message ?? "").trim();
+    const imageUrl: string | null = body?.image_url || null;
     const testEmail: string | undefined = body?.test_email;
 
+    if (!title || !message) return json({ error: "title and message are required" }, 400);
+
     if (testEmail) {
-      // Also drop a real in-app notification on the caller's own account so
-      // they can check how the image card renders in the bell dropdown.
       await supabaseAdmin.from("notifications").insert({
         user_id: user.id,
         type: "campaign",
-        title: "I listed my trainers in 47 seconds",
-        body: "Snap a photo, our AI checks it, set your price and post. See how fast you can list.",
-        link: "/sell",
+        title,
+        body: message,
+        link: null,
         read: false,
-        data: { image_url: NOTIFICATION_IMAGE_URL },
+        data: imageUrl ? { image_url: imageUrl } : {},
       });
       await sendEmail(testEmail, "You've got a new message on PrelovedKicks", newMessageAlertHtml(""), password);
       return json({ ok: true, sent: 1, mode: "test" });
     }
-
-    // Real send: every signed-up user, using their profile display_name for a
-    // personal greeting where available.
-    const { data: profiles } = await supabaseAdmin
-      .from("profiles")
-      .select("user_id, display_name, username");
-    const nameByUserId = new Map((profiles ?? []).map((p) => [p.user_id, p.display_name || p.username || ""]));
 
     let page = 1;
     let sent = 0;
@@ -145,22 +140,21 @@ Deno.serve(async (req) => {
       if (!userPage.users.length) break;
 
       for (const u of userPage.users) {
-        // In-platform notification (bell icon) -- independent of the email
-        // send below, so it still lands even if that user's email bounces.
+        // In-platform message -- independent of the email send below, so it
+        // still lands even if that user's email bounces.
         await supabaseAdmin.from("notifications").insert({
           user_id: u.id,
           type: "campaign",
-          title: "I listed my trainers in 47 seconds",
-          body: "Snap a photo, our AI checks it, set your price and post. See how fast you can list.",
-          link: "/sell",
+          title,
+          body: message,
+          link: null,
           read: false,
-          data: { image_url: NOTIFICATION_IMAGE_URL },
+          data: imageUrl ? { image_url: imageUrl } : {},
         });
 
         if (!u.email) continue;
-        const firstName = (nameByUserId.get(u.id) || "").split(" ")[0];
         try {
-          await sendEmail(u.email, "You've got a new message on PrelovedKicks", newMessageAlertHtml(firstName), password);
+          await sendEmail(u.email, "You've got a new message on PrelovedKicks", newMessageAlertHtml(""), password);
           sent++;
         } catch (e) {
           failures.push({ email: u.email, error: String(e) });

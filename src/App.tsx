@@ -21,6 +21,7 @@ import SellerProfile from "./pages/SellerProfile.tsx";
 import Search from "./pages/Search.tsx";
 import Messages from "./pages/Messages.tsx";
 import MessageThread from "./pages/MessageThread.tsx";
+import SystemMessageDetail from "./pages/SystemMessageDetail.tsx";
 import EditListing from "./pages/EditListing.tsx";
 import About from "./pages/About.tsx";
 import HowItWorks from "./pages/HowItWorks.tsx";
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="/seller/:id" element={<SellerProfile />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/messages" element={<Messages />} />
+                <Route path="/messages/system/:id" element={<SystemMessageDetail />} />
                 <Route path="/messages/:id" element={<MessageThread />} />
                 <Route path="/listing/:id/edit" element={<EditListing />} />
                 <Route path="/about" element={<About />} />

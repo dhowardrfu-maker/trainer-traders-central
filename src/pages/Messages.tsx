@@ -5,9 +5,17 @@ import { Loader2, MessageCircle } from "lucide-react";
 import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+
+interface CampaignMessage {
+  id: string;
+  title: string;
+  body: string | null;
+  created_at: string;
+  read: boolean | null;
+}
 
 interface ThreadRow {
   id: string;
@@ -37,7 +45,18 @@ const Messages = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [threads, setThreads] = useState<DisplayThread[]>([]);
+  const [campaignMessages, setCampaignMessages] = useState<CampaignMessage[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const loadCampaignMessages = async (userId: string) => {
+    const { data } = await supabase
+      .from("notifications")
+      .select("id, title, body, created_at, read")
+      .eq("user_id", userId)
+      .eq("type", "campaign")
+      .order("created_at", { ascending: false });
+    setCampaignMessages((data ?? []) as CampaignMessage[]);
+  };
 
   const loadThreads = async (userId: string, cancelled: { value: boolean }) => {
     const { data: rows } = await supabase
@@ -108,6 +127,7 @@ const Messages = () => {
     if (!user) return;
     const cancelled = { value: false };
     loadThreads(user.id, cancelled);
+    void loadCampaignMessages(user.id);
     return () => { cancelled.value = true; };
   }, [user]);
 
@@ -132,7 +152,7 @@ const Messages = () => {
     return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  const totalUnread = threads.filter((t) => t.unread).length;
+  const totalUnread = threads.filter((t) => t.unread).length + campaignMessages.filter((m) => !m.read).length;
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
@@ -150,7 +170,7 @@ const Messages = () => {
 
         {loading ? (
           <div className="py-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-        ) : threads.length === 0 ? (
+        ) : threads.length === 0 && campaignMessages.length === 0 ? (
           <Card className="p-10 text-center rounded-2xl">
             <MessageCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
             <p className="font-semibold">No conversations yet</p>
@@ -158,6 +178,32 @@ const Messages = () => {
           </Card>
         ) : (
           <div className="grid gap-2">
+            {campaignMessages.map((m) => (
+              <Card
+                key={m.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/messages/system/${m.id}`)}
+                onKeyDown={(e) => { if (e.key === "Enter") navigate(`/messages/system/${m.id}`); }}
+                className={`p-3 rounded-2xl flex items-center gap-3 hover:bg-muted/40 transition-colors cursor-pointer ${!m.read ? "border-[#2d9b6f]/40 bg-[#2d9b6f]/5" : ""}`}
+              >
+                <Avatar className="h-12 w-12 shrink-0">
+                  <AvatarImage src="/logo.png" alt="PrelovedKicks" />
+                  <AvatarFallback className="bg-primary-soft text-primary font-semibold">P</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className={`truncate ${!m.read ? "font-bold" : "font-semibold"}`}>PrelovedKicks</p>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {new Date(m.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                  <p className={`text-sm truncate mt-0.5 ${!m.read ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                    {m.title}
+                  </p>
+                </div>
+              </Card>
+            ))}
             {threads.map((t) => (
               <Card
                 key={t.id}

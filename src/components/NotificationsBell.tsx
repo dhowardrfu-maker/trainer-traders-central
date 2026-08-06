@@ -59,24 +59,24 @@ export const NotificationsBell = () => {
                   )}
                   onClick={() => {
                     void markRead(n.id);
-                    if (n.link) navigate(n.link);
+                    if (n.type === "campaign") navigate("/messages");
+                    else if (n.link) navigate(n.link);
                   }}
                 >
-                  {typeof n.data?.image_url === "string" && (
-                    <img
-                      src={n.data.image_url}
-                      alt=""
-                      className="w-full rounded-lg mb-2 object-cover max-h-40"
-                    />
-                  )}
                   <div className="flex items-start gap-2">
                     {!n.read && (
                       <span className="mt-1.5 h-2 w-2 rounded-full bg-[#2d9b6f] shrink-0" />
                     )}
                     <div className={cn("flex-1 min-w-0", n.read && "pl-4")}>
-                      <p className="font-semibold text-sm leading-snug">{n.title}</p>
-                      {n.body && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.body}</p>
+                      {n.type === "campaign" ? (
+                        <p className="font-semibold text-sm leading-snug">You have 1 new message</p>
+                      ) : (
+                        <>
+                          <p className="font-semibold text-sm leading-snug">{n.title}</p>
+                          {n.body && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.body}</p>
+                          )}
+                        </>
                       )}
                       <p className="text-[10px] text-muted-foreground mt-1.5 uppercase tracking-wide">
                         {timeAgo(n.created_at)} ago
