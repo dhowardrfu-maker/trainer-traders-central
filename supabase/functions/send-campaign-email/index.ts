@@ -15,7 +15,7 @@ const ZOHO_USER = "support@prelovedkicks.co.uk";
 const FROM_NAME = "PrelovedKicks";
 const BASE_URL = "https://www.prelovedkicks.co.uk";
 const HEADER_IMAGE_URL =
-  "https://jwvybofahjxtldjjjdpo.supabase.co/storage/v1/object/public/marketing-assets/post1_60seconds_nobutton.png";
+  "https://jwvybofahjxtldjjjdpo.supabase.co/storage/v1/object/public/marketing-assets/post1_60seconds.png";
 
 async function sendEmail(to: string, subject: string, html: string, password: string) {
   const encoder = new TextEncoder();
@@ -139,6 +139,17 @@ Deno.serve(async (req) => {
       if (!userPage.users.length) break;
 
       for (const u of userPage.users) {
+        // In-platform notification (bell icon) -- independent of the email
+        // send below, so it still lands even if that user's email bounces.
+        await supabaseAdmin.from("notifications").insert({
+          user_id: u.id,
+          type: "campaign",
+          title: "I listed my trainers in 47 seconds",
+          body: "Snap a photo, our AI checks it, set your price and post. See how fast you can list.",
+          link: "/sell",
+          read: false,
+        });
+
         if (!u.email) continue;
         const firstName = (nameByUserId.get(u.id) || "").split(" ")[0];
         try {
