@@ -1063,7 +1063,7 @@ const Profile = () => {
                 <Card className="p-6 rounded-2xl space-y-3">
                   <h2 className="font-display font-bold text-lg">Refer a friend</h2>
                   <p className="text-sm text-muted-foreground">
-                    Share your link. When they list their first pair, you get free tag scanning — no more £2.50 fee.
+                    Share your link. When they list their first pair, you get free tag scanning, no more £2.50 fee.
                   </p>
                   <div className="flex items-center gap-2">
                     <Input
