@@ -1059,7 +1059,7 @@ const Profile = () => {
           {/* ACCOUNT SETTINGS */}
           <TabsContent value="account">
             <div className="space-y-4">
-              {username && (
+              {user?.id && (
                 <Card className="p-6 rounded-2xl space-y-3">
                   <h2 className="font-display font-bold text-lg">Refer a friend</h2>
                   <p className="text-sm text-muted-foreground">
@@ -1068,7 +1068,7 @@ const Profile = () => {
                   <div className="flex items-center gap-2">
                     <Input
                       readOnly
-                      value={`https://www.prelovedkicks.co.uk/?ref=${username}`}
+                      value={`https://www.prelovedkicks.co.uk/?ref=${user.id}`}
                       className="bg-muted text-sm"
                       onFocus={(e) => e.target.select()}
                     />
@@ -1077,7 +1077,7 @@ const Profile = () => {
                       variant="outline"
                       className="rounded-full shrink-0"
                       onClick={() => {
-                        navigator.clipboard.writeText(`https://www.prelovedkicks.co.uk/?ref=${username}`);
+                        navigator.clipboard.writeText(`https://www.prelovedkicks.co.uk/?ref=${user.id}`);
                         toast.success("Referral link copied");
                       }}
                     >

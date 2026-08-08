@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const pendingRef = localStorage.getItem("pending_referral");
         if (pendingRef) {
           localStorage.removeItem("pending_referral");
-          void supabase.rpc("claim_referral", { _ref_username: pendingRef });
+          void supabase.rpc("claim_referral", { _ref_user_id: pendingRef });
         }
       }
     });

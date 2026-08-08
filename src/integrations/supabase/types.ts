@@ -672,7 +672,7 @@ export type Database = {
       }
       claim_referral: {
         Args: {
-          _ref_username: string
+          _ref_user_id: string
         }
         Returns: undefined
       }
