@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -33,7 +34,19 @@ import ShippingLabel from "./pages/ShippingLabel.tsx";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+// Referral links (?ref=username) can land on any page, and the visitor
+// won't have an account yet -- stash the code so it survives the trip
+// through /auth, then useAuth attributes it once a session exists.
+const useCaptureReferral = () => {
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) localStorage.setItem("pending_referral", ref);
+  }, []);
+};
+
+const App = () => {
+  useCaptureReferral();
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -75,6 +88,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

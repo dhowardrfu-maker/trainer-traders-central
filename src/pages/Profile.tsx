@@ -1059,6 +1059,33 @@ const Profile = () => {
           {/* ACCOUNT SETTINGS */}
           <TabsContent value="account">
             <div className="space-y-4">
+              {username && (
+                <Card className="p-6 rounded-2xl space-y-3">
+                  <h2 className="font-display font-bold text-lg">Refer a friend</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Share your link. When they list their first pair, you both get free tag scanning — no more £2.50 fee.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value={`https://www.prelovedkicks.co.uk/?ref=${username}`}
+                      className="bg-muted text-sm"
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full shrink-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://www.prelovedkicks.co.uk/?ref=${username}`);
+                        toast.success("Referral link copied");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </Card>
+              )}
               <Card className="p-6 rounded-2xl space-y-5">
                 <h2 className="font-display font-bold text-lg">Account settings</h2>
                 <div className="grid gap-2">

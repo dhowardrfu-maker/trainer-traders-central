@@ -410,6 +410,8 @@ export type Database = {
           location: string | null
           phone: string | null
           postcode: string | null
+          referral_rewarded: boolean
+          referred_by: string | null
           scanning_enabled: boolean
           scanning_payment_intent_id: string | null
           scanning_purchased_at: string | null
@@ -432,6 +434,8 @@ export type Database = {
           location?: string | null
           phone?: string | null
           postcode?: string | null
+          referral_rewarded?: boolean
+          referred_by?: string | null
           scanning_enabled?: boolean
           scanning_payment_intent_id?: string | null
           scanning_purchased_at?: string | null
@@ -454,6 +458,8 @@ export type Database = {
           location?: string | null
           phone?: string | null
           postcode?: string | null
+          referral_rewarded?: boolean
+          referred_by?: string | null
           scanning_enabled?: boolean
           scanning_payment_intent_id?: string | null
           scanning_purchased_at?: string | null
@@ -661,6 +667,12 @@ export type Database = {
       activate_scanning: {
         Args: {
           _stripe_payment_intent_id: string
+        }
+        Returns: undefined
+      }
+      claim_referral: {
+        Args: {
+          _ref_username: string
         }
         Returns: undefined
       }

@@ -38,6 +38,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!mounted) return;
       setSession(newSession);
       setUser(newSession?.user ?? null);
+
+      // If they arrived via a ?ref=username link (stashed in localStorage
+      // by App.tsx on first load, since the referral link takes them to
+      // /auth before an account exists), attribute it now that they have a
+      // session. claim_referral no-ops safely if already attributed.
+      if (newSession?.user) {
+        const pendingRef = localStorage.getItem("pending_referral");
+        if (pendingRef) {
+          localStorage.removeItem("pending_referral");
+          void supabase.rpc("claim_referral", { _ref_username: pendingRef });
+        }
+      }
     });
 
     return () => {
