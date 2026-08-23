@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,11 +36,18 @@ const GoogleIcon = () => (
 
 const AuthPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, loading } = useAuth();
   const [busy, setBusy] = useState(false);
-  const [isRecovery, setIsRecovery] = useState(false);
+  // The reset link carries ?mode=reset, so we can show the new-password form
+  // without waiting on the PASSWORD_RECOVERY event (which would race the
+  // redirect-home effect below).
+  const [isRecovery, setIsRecovery] = useState(searchParams.get("mode") === "reset");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
 
   const [signInData, setSignInData] = useState({ email: "", password: "" });
   const [signUpData, setSignUpData] = useState({
@@ -74,6 +81,21 @@ const AuthPage = () => {
     setIsRecovery(false);
     await supabase.auth.signOut();
     navigate("/auth", { replace: true });
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = z.string().email().safeParse(forgotEmail.trim());
+    if (!parsed.success) { toast.error("Enter a valid email"); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+      redirectTo: `${window.location.origin}/auth?mode=reset`,
+    });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    // Deliberately the same message whether or not the account exists, so the
+    // form can't be used to probe which emails are registered.
+    setForgotSent(true);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -150,6 +172,62 @@ const AuthPage = () => {
     );
   }
 
+  if (forgotOpen) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center px-5 pb-16">
+          <div className="w-full max-w-md bg-card rounded-3xl shadow-card p-8">
+            {forgotSent ? (
+              <div className="text-center space-y-4">
+                <h1 className="font-display font-bold text-3xl tracking-tight">Check your email</h1>
+                <p className="text-sm text-muted-foreground">
+                  If an account exists for <span className="font-medium text-foreground">{forgotEmail.trim()}</span>,
+                  we've sent a link to reset your password. It expires in an hour.
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full rounded-full font-semibold"
+                  onClick={() => { setForgotOpen(false); setForgotSent(false); }}
+                >
+                  Back to sign in
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword}>
+                <div className="text-center mb-6">
+                  <h1 className="font-display font-bold text-3xl tracking-tight">Reset your password</h1>
+                  <p className="text-sm text-muted-foreground mt-1.5">
+                    Enter your email and we'll send you a link to set a new one.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <Input
+                    type="email"
+                    placeholder="Email"
+                    autoFocus
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                  />
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send reset link"}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setForgotOpen(false)}
+                    className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Back to sign in
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -192,6 +270,13 @@ const AuthPage = () => {
               <Button onClick={handleSignIn} className="w-full" disabled={busy}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
               </Button>
+              <button
+                type="button"
+                onClick={() => { setForgotEmail(signInData.email); setForgotOpen(true); }}
+                className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Forgot your password?
+              </button>
             </TabsContent>
 
             <TabsContent value="signup" className="mt-5 space-y-4">
