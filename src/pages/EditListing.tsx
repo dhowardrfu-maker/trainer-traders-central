@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useSEO } from "@/hooks/useSEO";
 import { compressForUpload, uploadListingPhoto } from "@/lib/photo-upload";
+import { CONDITIONS } from "@/data/listing-options";
 
 // Resolve a storage path or existing URL to a display URL
 const resolvePhotoUrl = (path: string): string => {
@@ -41,6 +42,7 @@ const EditListing = () => {
     retail_price: "" as number | "",
     postage: "" as number | "",
     color: "",
+    condition: "",
     status: "active" as "active" | "draft" | "sold" | "removed",
   });
   const [promotionActive, setPromotionActive] = useState(false);
@@ -76,6 +78,7 @@ const EditListing = () => {
         retail_price: data.retail_price_pence != null ? data.retail_price_pence / 100 : "",
         postage: data.postage_pence / 100,
         color: data.color ?? "",
+        condition: data.condition ?? "",
         status: (data.status ?? "active") as "active" | "draft" | "sold" | "removed",
       });
       setPromotionActive(Boolean(data.promotion_active));
@@ -150,6 +153,10 @@ const EditListing = () => {
       toast.error("Title and price are required");
       return;
     }
+    if (!form.condition) {
+      toast.error("Pick a condition");
+      return;
+    }
     const parsedPromotionPercent = promotionPercent.trim() === "" ? null : Number(promotionPercent);
     const promotionInvalid =
       promotionActive &&
@@ -173,6 +180,7 @@ const EditListing = () => {
         retail_price_pence: form.retail_price ? Math.round(Number(form.retail_price) * 100) : null,
         postage_pence: Math.round(Number(form.postage) * 100),
         color: form.color.trim() || null,
+        condition: form.condition,
         status: form.status,
         photos: JSON.stringify(photos),
         promotion_active: promotionActive,
@@ -330,6 +338,21 @@ const EditListing = () => {
         <div className="space-y-2">
           <Label htmlFor="color">Colour</Label>
           <Input id="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} />
+        </div>
+        <div className="space-y-2">
+          <Label>Condition</Label>
+          <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v })}>
+            <SelectTrigger>
+              <SelectValue placeholder="Condition" />
+            </SelectTrigger>
+            <SelectContent>
+              {CONDITIONS.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="description">Description</Label>
