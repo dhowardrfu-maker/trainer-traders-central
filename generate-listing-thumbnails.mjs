@@ -119,6 +119,13 @@ async function processPhoto(path) {
 
   const { error: upErr } = await supabase.storage.from(BUCKET).upload(thumbPath, outputBuffer, {
     contentType: "image/webp",
+    // Filenames are permanent random IDs -- editing a listing uploads a NEW
+    // file rather than overwriting this one, so it's safe to tell browsers
+    // and Supabase's CDN to cache this for a year and never re-check.
+    // Repeat views (same visitor revisiting, or a popular listing loaded by
+    // many visitors) then cost little to no egress instead of re-downloading
+    // the same bytes every time.
+    cacheControl: "31536000, immutable",
     upsert: FORCE, // FORCE=true overwrites an existing thumbnail (e.g. to apply new quality settings); otherwise refuses to overwrite
   });
 
