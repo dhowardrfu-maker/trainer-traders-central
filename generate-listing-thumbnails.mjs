@@ -17,8 +17,11 @@
  *      before the file extension — e.g. "userId/abc123.webp" becomes
  *      "userId/abc123-thumb.webp". This matches exactly what the app's
  *      photo-resolving code expects to find.
- *   4. NEVER overwrites or deletes anything. If a thumbnail already exists
- *      for a photo, it's skipped — safe to re-run this script any time.
+ *   4. By default, skips any photo that already has a thumbnail — safe to
+ *      re-run any time to backfill new photos. Pass FORCE=true to
+ *      overwrite existing thumbnails too (e.g. after raising THUMB_WIDTH /
+ *      THUMB_WEBP_QUALITY below, to regenerate everyone's existing
+ *      thumbnails at the new, better quality).
  *
  * Unlike the photo-recompression script, this does NOT require any
  * follow-up database step — thumbnails are found automatically by their
@@ -32,6 +35,11 @@
  *   SUPABASE_SERVICE_ROLE_KEY=xxxx \
  *   node generate-listing-thumbnails.mjs
  *
+ * To regenerate existing thumbnails at the current quality settings:
+ *   SUPABASE_URL=https://xxxx.supabase.co \
+ *   SUPABASE_SERVICE_ROLE_KEY=xxxx \
+ *   FORCE=true node generate-listing-thumbnails.mjs
+ *
  * The service role key is required to read every listing regardless of RLS
  * policies, and to read/write Storage. Never expose this key client-side —
  * run this only as a local/admin script.
@@ -41,8 +49,13 @@ import { createClient } from "@supabase/supabase-js";
 import sharp from "sharp";
 
 const BUCKET = "listing-photos";
-const THUMB_WIDTH = 400;
-const THUMB_WEBP_QUALITY = 70;
+// 400px / quality 70 was forcing the encoder to smear detail on busy photos
+// to hit the byte budget implied by such a low quality setting at that
+// resolution. Raised with plenty of headroom on the current Supabase plan
+// (storage/egress both under 15% of the free tier caps).
+const THUMB_WIDTH = 640;
+const THUMB_WEBP_QUALITY = 82;
+const FORCE = process.env.FORCE === "true";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -106,11 +119,11 @@ async function processPhoto(path) {
 
   const { error: upErr } = await supabase.storage.from(BUCKET).upload(thumbPath, outputBuffer, {
     contentType: "image/webp",
-    upsert: false, // refuses to overwrite — if a thumbnail already exists, this fails loudly and we treat it as "already done"
+    upsert: FORCE, // FORCE=true overwrites an existing thumbnail (e.g. to apply new quality settings); otherwise refuses to overwrite
   });
 
   if (upErr) {
-    if (upErr.message?.toLowerCase().includes("already exists")) {
+    if (!FORCE && upErr.message?.toLowerCase().includes("already exists")) {
       console.log(`  already has a thumbnail, skipping: ${path}`);
       return "already_exists";
     }

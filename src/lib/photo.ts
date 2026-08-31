@@ -8,7 +8,7 @@ const isFullUrl = (s: string) => /^(https?:|data:|blob:|\/)/.test(s);
  * Used for grid/card contexts where a small image is enough, instead of
  * loading the full-size photo and shrinking it with CSS.
  */
-const toThumbPath = (path: string): string => {
+export const toThumbPath = (path: string): string => {
   const lastDot = path.lastIndexOf(".");
   if (lastDot === -1) return path; // no extension found, can't safely derive a thumb name
   return `${path.slice(0, lastDot)}-thumb${path.slice(lastDot)}`;

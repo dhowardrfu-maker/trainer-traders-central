@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useSEO } from "@/hooks/useSEO";
+import { compressForUpload, uploadListingPhoto } from "@/lib/photo-upload";
 
 // Resolve a storage path or existing URL to a display URL
 const resolvePhotoUrl = (path: string): string => {
@@ -106,12 +107,18 @@ const EditListing = () => {
     setUploading(true);
     const uploaded: string[] = [];
     for (const file of files) {
-      const ext = file.name.split(".").pop();
-      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from("listing-photos").upload(path, file);
-      if (error) { toast.error(`Failed to upload ${file.name}`); continue; }
-      // Store the path (not the public URL) so it's consistent with how Sell.tsx saves
-      uploaded.push(path);
+      try {
+        // Same pipeline as Sell.tsx: compress to the display target, upload,
+        // and generate the card-sized thumbnail. Without this, photos added
+        // while editing went up as raw camera files with no thumbnail.
+        const compressed = await compressForUpload(file);
+        const { path } = await uploadListingPhoto(compressed, user.id);
+        // Store the path (not the public URL) so it's consistent with how Sell.tsx saves
+        uploaded.push(path);
+      } catch (err) {
+        console.error("[EditListing] photo upload failed", err);
+        toast.error(`Failed to upload ${file.name}`);
+      }
     }
     setPhotos((prev) => [...prev, ...uploaded]);
     setUploading(false);

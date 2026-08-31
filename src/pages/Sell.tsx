@@ -13,29 +13,10 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ukToEu, BRANDS, CONDITIONS, GENDERS, UK_SIZES } from "@/data/listing-options";
 import { runTagCheck, type TagVerificationResult } from "@/lib/tagCheck";
+import { COMPRESSION_OPTIONS, compressForUpload, uploadListingPhoto } from "@/lib/photo-upload";
 
 const MAX_PHOTOS = 6;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-
-// Compression target: keeps listing photos sharp on screen while cutting
-// upload size and storage/egress dramatically compared to raw camera photos
-// (which were coming in at 3-4.5MB each).
-const COMPRESSION_OPTIONS = {
-  maxSizeMB: 0.5,
-  maxWidthOrHeight: 1600,
-  useWebWorker: true,
-  fileType: "image/webp" as const,
-};
-
-// Thumbnail target: small enough for grid/card views (homepage, search,
-// category browse) where loading the full-size image and shrinking it with
-// CSS wastes bandwidth on every page view.
-const THUMBNAIL_COMPRESSION_OPTIONS = {
-  maxSizeMB: 0.05,
-  maxWidthOrHeight: 400,
-  useWebWorker: true,
-  fileType: "image/webp" as const,
-};
 
 const SIZE_OPTIONS = [
   { value: "small", label: "Small parcel — up to 2kg" },
@@ -221,10 +202,7 @@ const Sell = () => {
       const compressed = await Promise.all(
         incoming.map(async (file) => {
           try {
-            const result = await imageCompression(file, COMPRESSION_OPTIONS);
-            // Preserve a sensible filename with the new extension
-            const baseName = file.name.replace(/\.[^.]+$/, "");
-            return new File([result], `${baseName}.webp`, { type: "image/webp" });
+            return await compressForUpload(file);
           } catch (err) {
             console.warn("[Sell] compression failed, using original file", err);
             return file;
@@ -262,38 +240,10 @@ const Sell = () => {
     if (!user) throw new Error("Not signed in");
     const paths: string[] = [];
     for (const file of photos) {
-      const ext = (file.name.split(".").pop() || "webp").toLowerCase();
-      const id = crypto.randomUUID();
-      const path = `${user.id}/${id}.${ext}`;
-      const thumbPath = `${user.id}/${id}-thumb.${ext}`;
-
-      const { error: upErr } = await supabase.storage
-        .from("listing-photos")
-        .upload(path, file, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: file.type || "image/webp",
-        });
-      if (upErr) {
-        console.error("[Sell] upload error", upErr);
-        throw new Error(`Photo upload failed: ${upErr.message}`);
-      }
-
-      // Generate and upload a small thumbnail for grid/card views.
-      // Best-effort: if this fails, the listing still works fine — grid
-      // views simply fall back to the full-size image for this one photo.
-      try {
-        const thumbFile = await imageCompression(file, THUMBNAIL_COMPRESSION_OPTIONS);
-        await supabase.storage
-          .from("listing-photos")
-          .upload(thumbPath, thumbFile, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: "image/webp",
-          });
-      } catch (thumbErr) {
-        console.warn("[Sell] thumbnail generation/upload failed, grid will fall back to full image", thumbErr);
-      }
+      // Photos are already compressed at selection time (onAddPhotos), so
+      // this re-encodes as-is; uploadListingPhoto handles both the
+      // full-size upload and the grid-view thumbnail.
+      const { path, thumbPath } = await uploadListingPhoto(file, user.id);
 
       const { data: signed } = await supabase.storage
         .from("listing-photos")
