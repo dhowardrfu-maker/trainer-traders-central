@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     // Get order details
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
-      .select("id, seller_id, buyer_id, total_pence, postage_pence, protection_pence, stripe_payment_intent_id, payout_sent, status")
+      .select("id, seller_id, buyer_id, total_pence, postage_pence, protection_pence, shipping_protection_fee_pence, stripe_payment_intent_id, payout_sent, status")
       .eq("id", order_id)
       .maybeSingle();
 
@@ -73,7 +73,11 @@ Deno.serve(async (req) => {
     // buyer-protection rate is set to now or was when this order was placed.
     const postagePence = order.postage_pence ?? 0;
     const protectionPence = order.protection_pence ?? 0;
-    const sellerPence = order.total_pence - postagePence - protectionPence;
+    // shipping_protection_fee_pence is never added to total_pence (the
+    // buyer is never charged for it) -- it's funded by the seller, so it
+    // comes straight off their payout here instead.
+    const shippingProtectionFeePence = order.shipping_protection_fee_pence ?? 0;
+    const sellerPence = order.total_pence - postagePence - protectionPence - shippingProtectionFeePence;
 
     // Transfer seller's share to their connected account
     const transfer = await stripe.transfers.create({
@@ -96,7 +100,7 @@ Deno.serve(async (req) => {
       success: true,
       transfer_id: transfer.id,
       seller_pence: sellerPence,
-      platform_keeps_pence: protectionPence + postagePence,
+      platform_keeps_pence: protectionPence + postagePence + shippingProtectionFeePence,
     });
   } catch (e) {
     console.error(e);

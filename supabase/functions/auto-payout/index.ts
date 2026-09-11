@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     // payout somehow never got recorded, not a "shipped" case.
     const { data: orders, error } = await supabase
       .from("orders")
-      .select("id, seller_id, buyer_id, total_pence, postage_pence, protection_pence, stripe_payment_intent_id, payout_sent")
+      .select("id, seller_id, buyer_id, total_pence, postage_pence, protection_pence, shipping_protection_fee_pence, stripe_payment_intent_id, payout_sent")
       .eq("status", "delivered")
       .is("dispute_status", null)
       .eq("payout_sent", false)
@@ -75,7 +75,11 @@ Deno.serve(async (req) => {
         // not reverse-derived from a rate -- correct regardless of what the
         // buyer-protection rate is set to now or was when this order was placed.
         const protectionPence = order.protection_pence ?? 0;
-        const sellerPence = order.total_pence - postagePence - protectionPence;
+        // shipping_protection_fee_pence is never added to total_pence (the
+        // buyer is never charged for it) -- it's funded by the seller, so
+        // it comes straight off their payout here instead.
+        const shippingProtectionFeePence = order.shipping_protection_fee_pence ?? 0;
+        const sellerPence = order.total_pence - postagePence - protectionPence - shippingProtectionFeePence;
 
         const transfer = await stripe.transfers.create({
           amount: sellerPence,

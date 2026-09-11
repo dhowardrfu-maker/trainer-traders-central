@@ -746,6 +746,7 @@ export type Database = {
           _ship_to_phone?: string
           _ship_to_postcode: string
           _stripe_payment_intent_id?: string
+          _want_shipping_protection?: boolean
         }
         Returns: string
       }
