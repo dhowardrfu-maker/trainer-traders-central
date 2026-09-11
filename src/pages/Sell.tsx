@@ -10,10 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { ukToEu, BRANDS, CONDITIONS, GENDERS, UK_SIZES } from "@/data/listing-options";
 import { runTagCheck, type TagVerificationResult } from "@/lib/tagCheck";
 import { COMPRESSION_OPTIONS, compressForUpload, uploadListingPhoto } from "@/lib/photo-upload";
+import { SHIPPING_PROTECTION_MIN_ITEM_PENCE, shippingProtectionFeePence } from "@/lib/shipping-protection";
 
 const MAX_PHOTOS = 6;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -70,6 +72,7 @@ const Sell = () => {
   const [submitting, setSubmitting] = useState(false);
   const [compressing, setCompressing] = useState(false);
   const dragIndex = useRef<number | null>(null);
+  const [shippingProtectionOptedIn, setShippingProtectionOptedIn] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -322,6 +325,7 @@ const Sell = () => {
         photos: photoUrls as unknown as string,
         status: "active",
         tag_verified: checkResult?.verified ?? false,
+        shipping_protection_opted_in: pricePence > SHIPPING_PROTECTION_MIN_ITEM_PENCE ? shippingProtectionOptedIn : false,
       });
       if (error) throw error;
       toast.success("Listing posted");
@@ -599,6 +603,23 @@ const Sell = () => {
             Adds a Deal Score to your listing showing buyers how much they're saving vs. retail.
           </p>
         </div>
+
+        {/* SHIPPING PROTECTION */}
+        {typeof form.price === "number" && form.price * 100 > SHIPPING_PROTECTION_MIN_ITEM_PENCE && (
+          <div className="rounded-2xl border border-border p-4">
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <Checkbox
+                checked={shippingProtectionOptedIn}
+                onCheckedChange={(checked) => setShippingProtectionOptedIn(checked === true)}
+              />
+              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+              <span className="font-semibold">Protect this item in shipping</span>
+            </label>
+            <p className="text-xs text-muted-foreground mt-2 pl-[26px]">
+              If it's lost or damaged in transit, you're covered. Costs £{(shippingProtectionFeePence(form.price * 100) / 100).toFixed(2)}, deducted from your payout only if it sells. The buyer never pays extra for this.
+            </p>
+          </div>
+        )}
 
         {/* PARCEL SIZE */}
         <Select

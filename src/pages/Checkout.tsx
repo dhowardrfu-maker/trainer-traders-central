@@ -70,17 +70,6 @@ const defaultAddress: AddressState = {
 // so checkout still works for older listings.
 const DEFAULT_SIZE_CATEGORY: ParcelSize = "medium";
 
-// Mirrors the tiers computed server-side in create_order — this copy is
-// display-only, the real fee is worked out in the database and never
-// trusted from the client.
-const SHIPPING_PROTECTION_MIN_ITEM_PENCE = 2000; // £20
-const shippingProtectionFeePence = (itemPence: number): number => {
-  if (itemPence <= SHIPPING_PROTECTION_MIN_ITEM_PENCE) return 0;
-  if (itemPence <= 7500) return 300;
-  if (itemPence <= 15000) return 500;
-  return 750;
-};
-
 const loadSavedAddress = (): AddressState => {
   try {
     const saved = sessionStorage.getItem(ADDRESS_KEY);
@@ -284,7 +273,6 @@ interface PayFormProps {
   postagePence: number;
   totalPence: number;
   offerId: string | null;
-  wantShippingProtection: boolean;
   onSuccess: (orderId: string) => void;
 }
 
@@ -300,7 +288,6 @@ function StripePayForm({
   postagePence,
   totalPence,
   offerId,
-  wantShippingProtection,
   onSuccess,
 }: PayFormProps) {
   const stripe = useStripe();
@@ -380,7 +367,6 @@ function StripePayForm({
       _service_point_id: servicePointId ?? null,
       _ship_to_phone: parsed.data.ship_to_phone?.trim() || null,
       _protection_pence: protectionPence,
-      _want_shipping_protection: wantShippingProtection,
     });
 
     if (error || !data) {
@@ -441,7 +427,7 @@ const Checkout = () => {
   const [acceptedOfferPence, setAcceptedOfferPence] = useState<number | null>(null);
   const [showProtectionModal, setShowProtectionModal] = useState(false);
   const [selectedLocker, setSelectedLocker] = useState<ServicePoint | null>(null);
-  const [wantShippingProtection, setWantShippingProtection] = useState(false);
+  const [sellerOptedInProtection, setSellerOptedInProtection] = useState(false);
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [itemPence, setItemPence] = useState(0);
@@ -476,7 +462,7 @@ const Checkout = () => {
 
       const { data: row, error } = await supabase
         .from("listings")
-        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, postage_pence, size_category, photos, created_at, seller_id")
+        .select("id, title, brand, size_uk, size_eu, condition, gender, color, description, price_pence, promotion_active, promotion_percent, postage_pence, size_category, photos, created_at, seller_id, shipping_protection_opted_in")
         .eq("id", Number(id))
         .maybeSingle();
 
@@ -485,6 +471,7 @@ const Checkout = () => {
 
       const resolvedSize: ParcelSize = (row.size_category as ParcelSize | null) ?? DEFAULT_SIZE_CATEGORY;
       setSizeCategory(resolvedSize);
+      setSellerOptedInProtection(row.shipping_protection_opted_in === true);
 
       // Default to the first carrier that supports this size (Evri always does)
       const available = carriersForSize(resolvedSize);
@@ -676,7 +663,6 @@ const Checkout = () => {
                       postagePence={postagePence}
                       totalPence={totalPence}
                       offerId={offerId}
-                      wantShippingProtection={wantShippingProtection}
                       onSuccess={handleSuccess}
                     />
                   </Elements>
@@ -716,22 +702,12 @@ const Checkout = () => {
                   </div>
                 </div>
 
-                {itemPence > SHIPPING_PROTECTION_MIN_ITEM_PENCE && (
-                  <div className="border-t border-border pt-4">
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={wantShippingProtection}
-                        onChange={(e) => setWantShippingProtection(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-border accent-primary shrink-0"
-                      />
-                      <span className="text-sm">
-                        <span className="font-semibold">Protect this item in shipping</span>
-                        <span className="block text-xs text-muted-foreground mt-0.5">
-                          If it's lost or damaged in transit, the seller is covered. Paid by the seller, £{(shippingProtectionFeePence(itemPence) / 100).toFixed(2)}, not added to your total.
-                        </span>
-                      </span>
-                    </label>
+                {sellerOptedInProtection && (
+                  <div className="border-t border-border pt-4 flex items-start gap-2.5">
+                    <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <span className="text-xs text-muted-foreground">
+                      This item is protected against loss or damage in shipping, arranged by the seller at no extra cost to you.
+                    </span>
                   </div>
                 )}
 

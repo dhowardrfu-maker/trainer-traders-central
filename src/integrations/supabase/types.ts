@@ -85,6 +85,7 @@ export type Database = {
           promotion_percent: number | null
           retail_price_pence: number | null
           seller_id: string | null
+          shipping_protection_opted_in: boolean
           size_category: Database["public"]["Enums"]["parcel_size"] | null
           size_eu: number | null
           size_uk: number
@@ -109,6 +110,7 @@ export type Database = {
           promotion_percent?: number | null
           retail_price_pence?: number | null
           seller_id?: string | null
+          shipping_protection_opted_in?: boolean
           size_category?: Database["public"]["Enums"]["parcel_size"] | null
           size_eu?: number | null
           size_uk: number
@@ -133,6 +135,7 @@ export type Database = {
           promotion_percent?: number | null
           retail_price_pence?: number | null
           seller_id?: string | null
+          shipping_protection_opted_in?: boolean
           size_category?: Database["public"]["Enums"]["parcel_size"] | null
           size_eu?: number | null
           size_uk?: number
@@ -746,7 +749,6 @@ export type Database = {
           _ship_to_phone?: string
           _ship_to_postcode: string
           _stripe_payment_intent_id?: string
-          _want_shipping_protection?: boolean
         }
         Returns: string
       }

@@ -64,6 +64,8 @@ const Terms = () => {
               <li>Stolen goods</li>
               <li>Items that are illegal to sell in the United Kingdom</li>
             </ul>
+            <h3 className="font-semibold mt-3 mb-1">5.6 Shipping Protection (Optional)</h3>
+            <p>When listing an item priced over £20, you may opt in to shipping protection. This is arranged through our shipping partner's third-party insurance provider and covers you if the item is lost or damaged in transit. The cost (£3 to £7.50 depending on the item's price) is deducted from your payout only if the item sells, and is never charged if it doesn't. This is entirely optional, is not offered or sold by PrelovedKicks itself, and does not change what the buyer pays or is entitled to under Buyer Protection.</p>
           </div>
 
           <div>

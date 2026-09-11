@@ -131,6 +131,10 @@ const sections: Section[] = [
         q: "What fees does PrelovedKicks charge sellers?",
         a: "We don't charge sellers a listing fee or commission. Buyers pay a 5% Buyer Protection fee on top of the item price. Postage is also paid by the buyer on top.",
       },
+      {
+        q: "What is shipping protection and should I add it?",
+        a: "For listings priced over £20, you can opt in to shipping protection when you list or edit your item. If it's lost or damaged in transit, you're covered rather than left out of pocket. It costs £3 to £7.50 depending on the item's price, taken from your payout only if the item actually sells, never charged upfront. The buyer never pays anything extra for it. It's entirely optional.",
+      },
     ],
   },
   {
@@ -184,6 +188,10 @@ const sections: Section[] = [
       {
         q: "What if my parcel is lost or damaged?",
         a: "Raise a dispute from your order page tap 'I have an issue' and describe what happened. Include photos if the item arrived damaged. We'll review and issue a refund if the claim is valid.",
+      },
+      {
+        q: "What does the shipping protection badge on checkout mean?",
+        a: "Some sellers choose to protect their items against loss or damage in transit. If you see this badge on a listing, it doesn't change anything for you as the buyer, you're already covered by Buyer Protection either way. It just means the seller has taken extra cover on their end, at their own cost.",
       },
     ],
   },

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useSEO } from "@/hooks/useSEO";
 import { compressForUpload, uploadListingPhoto } from "@/lib/photo-upload";
 import { CONDITIONS } from "@/data/listing-options";
+import { SHIPPING_PROTECTION_MIN_ITEM_PENCE, shippingProtectionFeePence } from "@/lib/shipping-protection";
 
 // Resolve a storage path or existing URL to a display URL
 const resolvePhotoUrl = (path: string): string => {
@@ -48,6 +49,7 @@ const EditListing = () => {
   const [promotionActive, setPromotionActive] = useState(false);
   const [promotionPercent, setPromotionPercent] = useState("");
   const [promotionError, setPromotionError] = useState(false);
+  const [shippingProtectionOptedIn, setShippingProtectionOptedIn] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth", { replace: true });
@@ -83,6 +85,7 @@ const EditListing = () => {
       });
       setPromotionActive(Boolean(data.promotion_active));
       setPromotionPercent(data.promotion_percent != null ? String(data.promotion_percent) : "");
+      setShippingProtectionOptedIn(Boolean(data.shipping_protection_opted_in));
       const rawPhotos = data.photos;
       const parsedPhotos: string[] = Array.isArray(rawPhotos)
         ? rawPhotos
@@ -185,6 +188,8 @@ const EditListing = () => {
         photos: JSON.stringify(photos),
         promotion_active: promotionActive,
         promotion_percent: promotionActive ? parsedPromotionPercent : null,
+        shipping_protection_opted_in:
+          Math.round(Number(form.price) * 100) > SHIPPING_PROTECTION_MIN_ITEM_PENCE ? shippingProtectionOptedIn : false,
       })
       .eq("id", Number(id));
     setSaving(false);
@@ -293,6 +298,21 @@ const EditListing = () => {
           <Input id="postage" type="number" min={0} step="0.01" value={form.postage}
             onChange={(e) => setForm({ ...form, postage: e.target.value === "" ? "" : Number(e.target.value) })} />
         </div>
+
+        {typeof form.price === "number" && form.price * 100 > SHIPPING_PROTECTION_MIN_ITEM_PENCE && (
+          <div className="space-y-2 rounded-2xl border border-border p-4">
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <Checkbox
+                checked={shippingProtectionOptedIn}
+                onCheckedChange={(checked) => setShippingProtectionOptedIn(checked === true)}
+              />
+              <span className="font-semibold">Protect this item in shipping</span>
+            </label>
+            <p className="text-xs text-muted-foreground pl-[26px]">
+              If it's lost or damaged in transit, you're covered. Costs £{(shippingProtectionFeePence(form.price * 100) / 100).toFixed(2)}, deducted from your payout only if it sells. The buyer never pays extra for this.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-3 rounded-2xl border border-border p-4">
           <label className="flex items-center gap-2.5 cursor-pointer">
