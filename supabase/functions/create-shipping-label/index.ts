@@ -147,6 +147,13 @@ Deno.serve(async (req) => {
         {
           weight: { value: 1.0, unit: "kg" },
           order_number: String(order.id),
+          // Only present when the seller bought Shipment Protection at
+          // checkout. Omitted entirely otherwise, so every order that
+          // didn't opt in gets exactly the same payload as before this
+          // change existed.
+          ...(order.shipping_protection_fee_pence > 0
+            ? { insured_value: order.price_pence / 100 }
+            : {}),
         },
       ],
       ship_with: {

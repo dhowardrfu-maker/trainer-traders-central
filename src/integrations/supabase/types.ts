@@ -303,6 +303,7 @@ export type Database = {
           ship_to_name: string
           ship_to_phone: string | null
           ship_to_postcode: string
+          shipping_protection_fee_pence: number
           status: Database["public"]["Enums"]["order_status"]
           stripe_payment_intent_id: string | null
           total_pence: number
@@ -343,6 +344,7 @@ export type Database = {
           ship_to_name: string
           ship_to_phone?: string | null
           ship_to_postcode: string
+          shipping_protection_fee_pence?: number
           status?: Database["public"]["Enums"]["order_status"]
           stripe_payment_intent_id?: string | null
           total_pence: number
@@ -383,6 +385,7 @@ export type Database = {
           ship_to_name?: string
           ship_to_phone?: string | null
           ship_to_postcode?: string
+          shipping_protection_fee_pence?: number
           status?: Database["public"]["Enums"]["order_status"]
           stripe_payment_intent_id?: string | null
           total_pence?: number
