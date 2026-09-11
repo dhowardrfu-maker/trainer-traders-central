@@ -366,6 +366,7 @@ function StripePayForm({
       _stripe_payment_intent_id: paymentIntent.id,
       _service_point_id: servicePointId ?? null,
       _ship_to_phone: parsed.data.ship_to_phone?.trim() || null,
+      _protection_pence: protectionPence,
     });
 
     if (error || !data) {

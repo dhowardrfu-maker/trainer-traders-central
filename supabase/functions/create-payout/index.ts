@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     // Get order details
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
-      .select("id, seller_id, buyer_id, total_pence, postage_pence, stripe_payment_intent_id, payout_sent, status")
+      .select("id, seller_id, buyer_id, total_pence, postage_pence, protection_pence, stripe_payment_intent_id, payout_sent, status")
       .eq("id", order_id)
       .maybeSingle();
 
@@ -65,11 +65,14 @@ Deno.serve(async (req) => {
     }
 
     // Calculate payout amounts
-    // total_pence = item_pence + protection_pence (4%) + postage_pence
+    // total_pence = item_pence + protection_pence + postage_pence
     // We keep: protection_pence + postage_pence
     // Seller gets: item_pence = total_pence - protection_pence - postage_pence
+    // protection_pence is stored directly on the order (set at checkout),
+    // not reverse-derived from a rate -- correct regardless of what the
+    // buyer-protection rate is set to now or was when this order was placed.
     const postagePence = order.postage_pence ?? 0;
-    const protectionPence = Math.round((order.total_pence - postagePence) / 1.04 * 0.04);
+    const protectionPence = order.protection_pence ?? 0;
     const sellerPence = order.total_pence - postagePence - protectionPence;
 
     // Transfer seller's share to their connected account

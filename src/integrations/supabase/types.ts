@@ -287,6 +287,7 @@ export type Database = {
           payout_transfer_id: string | null
           postage_pence: number
           price_pence: number
+          protection_pence: number
           qr_payload: string | null
           seller_id: string
           sendcloud_label_url: string | null
@@ -326,6 +327,7 @@ export type Database = {
           payout_transfer_id?: string | null
           postage_pence?: number
           price_pence: number
+          protection_pence?: number
           qr_payload?: string | null
           seller_id: string
           sendcloud_label_url?: string | null
@@ -365,6 +367,7 @@ export type Database = {
           payout_transfer_id?: string | null
           postage_pence?: number
           price_pence?: number
+          protection_pence?: number
           qr_payload?: string | null
           seller_id?: string
           sendcloud_label_url?: string | null
@@ -724,41 +727,25 @@ export type Database = {
         }
         Returns: undefined
       }
-      create_order:
-        | {
-            Args: {
-              _carrier: Database["public"]["Enums"]["carrier"]
-              _listing_id: number
-              _offer_id?: string
-              _postage_pence: number
-              _service_label: string
-              _ship_to_city: string
-              _ship_to_line1: string
-              _ship_to_line2: string
-              _ship_to_name: string
-              _ship_to_postcode: string
-              _stripe_payment_intent_id?: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              _carrier: Database["public"]["Enums"]["carrier"]
-              _listing_id: number
-              _offer_id?: string
-              _postage_pence: number
-              _service_label: string
-              _service_point_id?: string
-              _ship_to_city: string
-              _ship_to_line1: string
-              _ship_to_line2: string
-              _ship_to_name: string
-              _ship_to_phone?: string
-              _ship_to_postcode: string
-              _stripe_payment_intent_id?: string
-            }
-            Returns: string
-          }
+      create_order: {
+        Args: {
+          _carrier: Database["public"]["Enums"]["carrier"]
+          _listing_id: number
+          _offer_id?: string
+          _postage_pence: number
+          _protection_pence?: number
+          _service_label: string
+          _service_point_id?: string
+          _ship_to_city: string
+          _ship_to_line1: string
+          _ship_to_line2: string
+          _ship_to_name: string
+          _ship_to_phone?: string
+          _ship_to_postcode: string
+          _stripe_payment_intent_id?: string
+        }
+        Returns: string
+      }
       get_my_sales: {
         Args: never
         Returns: {

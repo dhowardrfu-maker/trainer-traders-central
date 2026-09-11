@@ -129,7 +129,7 @@ const sections: Section[] = [
       },
       {
         q: "What fees does PrelovedKicks charge sellers?",
-        a: "We don't charge sellers a listing fee or commission. Buyers pay a 4% Buyer Protection fee on top of the item price. Postage is also paid by the buyer on top.",
+        a: "We don't charge sellers a listing fee or commission. Buyers pay a 5% Buyer Protection fee on top of the item price. Postage is also paid by the buyer on top.",
       },
     ],
   },
@@ -147,7 +147,7 @@ const sections: Section[] = [
         a: "Yes. All payments are handled by Stripe, one of the world's most trusted payment processors. Your card details are never stored on our servers. Every purchase includes Buyer Protection.",
       },
       {
-        q: "What is the 4% Buyer Protection fee?",
+        q: "What is the 5% Buyer Protection fee?",
         a: "The Buyer Protection fee covers the cost of protecting your purchase if anything goes wrong we can issue a refund. It's calculated on the item price only and shown clearly at checkout before you pay.",
       },
       {

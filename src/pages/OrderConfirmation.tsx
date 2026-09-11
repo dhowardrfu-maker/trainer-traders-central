@@ -22,6 +22,7 @@ interface OrderRow {
   total_pence: number;
   price_pence: number;
   postage_pence: number;
+  protection_pence: number;
   ship_to_name: string;
   ship_to_line1: string;
   ship_to_line2: string | null;
@@ -256,7 +257,9 @@ const OrderConfirmation = () => {
         const sellerProfile = await supabase.from("profiles_public").select("display_name, username").eq("user_id", order.seller_id).maybeSingle();
         const sellerName = sellerProfile.data?.display_name ?? sellerProfile.data?.username ?? "there";
         const postagePence = order.postage_pence ?? 0;
-        const protectionPence = Math.round((order.total_pence - postagePence) / 1.04 * 0.04);
+        // protection_pence is stored directly on the order (set at checkout),
+        // not reverse-derived from a rate.
+        const protectionPence = order.protection_pence ?? 0;
         const sellerPence = order.total_pence - postagePence - protectionPence;
         await sendEmailNotification(order.seller_id, {
           type: "sale_completed",

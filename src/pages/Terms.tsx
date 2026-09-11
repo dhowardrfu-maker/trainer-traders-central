@@ -54,7 +54,7 @@ const Terms = () => {
               <li>You are responsible for the accuracy of your listings including condition, size, and brand.</li>
             </ul>
             <h3 className="font-semibold mt-3 mb-1">5.3 Seller Fees</h3>
-            <p>PrelovedKicks does not charge sellers a listing fee or commission. Selling on the platform is free. The buyer pays a 4% buyer protection fee on top of the item price at checkout, and this fee is not deducted from the seller&apos;s payout.</p>
+            <p>PrelovedKicks does not charge sellers a listing fee or commission. Selling on the platform is free. The buyer pays a 5% buyer protection fee on top of the item price at checkout, and this fee is not deducted from the seller&apos;s payout.</p>
             <h3 className="font-semibold mt-3 mb-1">5.4 Seller Payouts</h3>
             <p>To receive payment for your sales, you must connect a UK bank account via our secure payment provider, Stripe, and complete Stripe&apos;s identity verification process. Until verification is complete, payouts cannot be processed. Once verified, payouts are made automatically once the buyer confirms receipt of the item, or after 48 hours from confirmed delivery with no dispute raised. Postage costs are deducted from the payout as they are paid directly to the shipping provider.</p>
             <h3 className="font-semibold mt-3 mb-1">5.5 Prohibited Items</h3>
@@ -71,7 +71,7 @@ const Terms = () => {
             <h3 className="font-semibold mt-3 mb-1">6.1 Purchases</h3>
             <p>By completing a purchase, you enter into a contract with the seller, not with PrelovedKicks. PrelovedKicks acts as an intermediary platform only.</p>
             <h3 className="font-semibold mt-3 mb-1">6.2 Buyer Protection Fee</h3>
-            <p>A buyer protection fee of 4% of the item price (excluding postage) is added to every purchase. This fee helps fund platform operations and dispute resolution, is non-refundable except where a refund is granted due to an item not as described, and is displayed clearly at checkout before payment is taken.</p>
+            <p>A buyer protection fee of 5% of the item price (excluding postage) is added to every purchase. This fee helps fund platform operations and dispute resolution, is non-refundable except where a refund is granted due to an item not as described, and is displayed clearly at checkout before payment is taken.</p>
             <h3 className="font-semibold mt-3 mb-1">6.3 Postage</h3>
             <p>Postage costs are paid by the buyer and are displayed at checkout. Items are shipped via one of our delivery partners, including Evri and InPost, depending on the option selected at checkout. Postage fees are non-refundable once an item has been dispatched.</p>
           </div>
