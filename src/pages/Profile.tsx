@@ -111,22 +111,6 @@ const notify = async (userId: string, type: string, title: string, body: string 
   });
 };
 
-// Fire and forget — get user email via edge function then send email notification
-const sendEmailNotification = async (userId: string, emailPayload: Record<string, unknown>) => {
-  try {
-    const { data } = await supabase.functions.invoke("get-user-email", {
-      body: { user_id: userId },
-    });
-    if (data?.email) {
-      await supabase.functions.invoke("send-email", {
-        body: { ...emailPayload, to: data.email },
-      });
-    }
-  } catch (err) {
-    console.error("Email notification failed:", err);
-  }
-};
-
 const Profile = () => {
   const { user, loading: authLoading } = useAuth();
   const { ids: favIds } = useFavourites();
@@ -486,16 +470,12 @@ const Profile = () => {
       `/checkout/${listingId}?offer=${offerId}`
     );
 
-    // Email notification to buyer — fire and forget
-    sendEmailNotification(buyerId, {
-      type: "offer_accepted",
-      buyerName: "there",
-      amountGbp: (amountPence / 100).toFixed(2),
-      listingTitle: listingTitle ?? "a listing",
-      brand: listingBrand ?? "",
-      listingId,
-      offerId,
-    });
+    // Email notification to buyer — fire and forget. send-email now looks
+    // up the recipient and details itself from the offer row (validating
+    // the caller is actually that offer's seller).
+    supabase.functions.invoke("send-email", {
+      body: { type: "offer_accepted", offer_id: offerId },
+    }).catch((err) => console.error("offer_accepted email failed:", err));
 
     setOfferBusy(null);
     toast.success("Offer accepted — buyer has been notified");

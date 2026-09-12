@@ -13,6 +13,7 @@ import { toast } from "sonner";
 interface OrderRow {
   id: string;
   seller_id: string;
+  buyer_id: string;
   carrier: string;
   service_label: string | null;
   ship_to_name: string;
@@ -63,6 +64,8 @@ const ShippingLabel = () => {
   const [generating, setGenerating] = useState(false);
   const [labelUrl, setLabelUrl] = useState<string | null>(null);
   const [trackingNumber, setTrackingNumber] = useState<string | null>(null);
+  const [marking, setMarking] = useState(false);
+  const [marked, setMarked] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth", { replace: true });
@@ -90,6 +93,7 @@ const ShippingLabel = () => {
       setOrder(data as OrderRow);
       if (data.sendcloud_label_url) setLabelUrl(data.sendcloud_label_url);
       if (data.sendcloud_tracking_number) setTrackingNumber(data.sendcloud_tracking_number);
+      if (data.status === "shipped") setMarked(true);
       setLoading(false);
     };
     void load();
@@ -135,6 +139,30 @@ const ShippingLabel = () => {
     setLabelUrl(data.label_url);
     setTrackingNumber(data.tracking_number);
     toast.success(successToast[order.carrier] ?? "Label generated!");
+  };
+
+  const handleMarkShipped = async () => {
+    if (!order) return;
+    setMarking(true);
+    const { error } = await supabase.rpc("update_order_status", {
+      _order_id: order.id,
+      _status: "shipped",
+    });
+    setMarking(false);
+    if (error) {
+      toast.error(error.message ?? "Couldn't mark this order as shipped");
+      return;
+    }
+    await supabase.from("notifications").insert({
+      user_id: order.buyer_id,
+      type: "order_shipped",
+      title: "Your order has shipped",
+      body: "The seller has dropped off your parcel. You'll be able to track it and confirm receipt once it arrives.",
+      link: `/order/${order.id}`,
+      read: false,
+    });
+    setMarked(true);
+    toast.success("Order marked as shipped — the buyer's been notified");
   };
 
   // Derive display values from the order's carrier, with safe fallbacks
@@ -244,6 +272,33 @@ const ShippingLabel = () => {
                 </>
               )}
             </div>
+
+            {/* Mark as shipped — the step that actually moves the order
+                forward so the buyer can track it, confirm receipt, and
+                the seller gets paid. Only shown once a label exists. */}
+            {labelUrl && (
+              <div className="rounded-2xl border border-border p-5 space-y-3">
+                {marked ? (
+                  <p className="text-sm font-medium text-primary">✓ Marked as shipped</p>
+                ) : (
+                  <>
+                    <h2 className="font-display font-bold text-lg">Dropped it off?</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Once you've handed the parcel to the carrier, mark this order as shipped so the buyer can track it and confirm receipt.
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-full font-semibold"
+                      onClick={handleMarkShipped}
+                      disabled={marking}
+                    >
+                      {marking ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Mark as shipped
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
 
           </div>
         )}

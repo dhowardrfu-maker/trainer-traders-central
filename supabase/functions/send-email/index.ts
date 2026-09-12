@@ -1,4 +1,6 @@
 // Supabase Edge Function: send-email
+import { createClient } from "npm:@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -55,6 +57,15 @@ async function sendEmail(to: string, subject: string, html: string, password: st
   conn.close();
 }
 
+// Defense in depth: display_name/title/brand/description are all still
+// user-authored text (a seller's own display name, a dispute description
+// they typed) even though they're now resolved server-side rather than
+// trusted from the caller directly -- escape before interpolating into
+// HTML so nobody can inject markup/links into a transactional email sent
+// from PrelovedKicks' own address.
+const esc = (s: string) =>
+  String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
 function wrapper(content: string) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"><table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px;"><tr><td align="center"><table width="100%" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;"><tr><td style="background:#18181b;padding:24px 32px;text-align:center;"><span style="color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">PrelovedKicks</span></td></tr><tr><td style="padding:32px;">${content}</td></tr><tr><td style="background:#f4f4f5;padding:20px 32px;text-align:center;"><p style="margin:0;font-size:12px;color:#a1a1aa;">© ${new Date().getFullYear()} PrelovedKicks · <a href="${BASE_URL}/terms" style="color:#a1a1aa;">Terms</a> · <a href="${BASE_URL}/privacy" style="color:#a1a1aa;">Privacy</a></p></td></tr></table></td></tr></table></body></html>`;
 }
@@ -81,19 +92,151 @@ function saleCompletedHtml(p: { sellerName: string; amountGbp: string; listingTi
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+
   const password = Deno.env.get("ZOHO_SMTP_PASSWORD");
   if (!password) return json({ error: "SMTP password not configured" }, 500);
+
+  // This sends real email from PrelovedKicks' own address -- previously
+  // had no authentication at all, and trusted the caller for the
+  // recipient address and every displayed name/amount/description
+  // directly, making it an open relay anyone on the internet could use
+  // to send PrelovedKicks-branded HTML email, with attacker-controlled
+  // content, to any address. Now requires a real signed-in caller, and
+  // every identity-sensitive value (who it's sent to, whose name is
+  // shown, the amount, the dispute text) is looked up server-side from
+  // the order/offer the caller is validated to actually be a party to --
+  // the caller only ever supplies which order/offer this concerns.
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+  const anonClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+  const { data: { user: caller }, error: authErr } = await anonClient.auth.getUser();
+  if (authErr || !caller) return json({ error: "Unauthorized" }, 401);
+
+  const adminClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  const getEmail = async (userId: string): Promise<string | null> => {
+    const { data } = await adminClient.auth.admin.getUserById(userId);
+    return data?.user?.email ?? null;
+  };
+  const getName = async (userId: string): Promise<string> => {
+    const { data } = await adminClient
+      .from("profiles")
+      .select("display_name, username")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return data?.display_name ?? data?.username ?? "there";
+  };
+
   try {
     const body = await req.json();
-    const { type, to, ...params } = body;
-    if (!type || !to) return json({ error: "Missing type or to" }, 400);
-    let html = "";
-    let subject = "PrelovedKicks notification";
-    if (type === "offer_received") { html = offerReceivedHtml(params); subject = `New offer on your listing — ${params.brand} ${params.listingTitle}`; }
-    else if (type === "offer_accepted") { html = offerAcceptedHtml(params); subject = `Your offer was accepted — ${params.brand} ${params.listingTitle}`; }
-    else if (type === "dispute_raised") { html = disputeRaisedHtml(params); subject = "A buyer has raised an issue with their order"; }
-    else if (type === "sale_completed") { html = saleCompletedHtml(params); subject = `Sale complete — payout for ${params.brand} ${params.listingTitle} on its way`; }
-    else return json({ error: "Unknown email type" }, 400);
+    const { type } = body;
+
+    let to: string;
+    let html: string;
+    let subject: string;
+
+    if (type === "offer_received") {
+      const { offer_id } = body;
+      if (!offer_id) return json({ error: "Missing offer_id" }, 400);
+      const { data: offer } = await adminClient
+        .from("offers")
+        .select("id, listing_id, buyer_id, seller_id, amount_pence")
+        .eq("id", offer_id)
+        .maybeSingle();
+      if (!offer) return json({ error: "Offer not found" }, 404);
+      if (offer.buyer_id !== caller.id) return json({ error: "Unauthorized" }, 403);
+
+      const { data: listing } = await adminClient
+        .from("listings").select("title, brand").eq("id", offer.listing_id).maybeSingle();
+      const sellerEmail = await getEmail(offer.seller_id);
+      if (!sellerEmail) return json({ error: "Recipient not found" }, 404);
+      const sellerName = esc(await getName(offer.seller_id));
+      const buyerName = esc(await getName(offer.buyer_id));
+      const listingTitle = esc(listing?.title ?? "your listing");
+      const brand = esc(listing?.brand ?? "");
+
+      to = sellerEmail;
+      html = offerReceivedHtml({ sellerName, buyerName, amountGbp: (offer.amount_pence / 100).toFixed(2), listingTitle, brand, offerId: String(offer.id) });
+      subject = `New offer on your listing — ${listing?.brand ?? ""} ${listing?.title ?? ""}`;
+    } else if (type === "offer_accepted") {
+      const { offer_id } = body;
+      if (!offer_id) return json({ error: "Missing offer_id" }, 400);
+      const { data: offer } = await adminClient
+        .from("offers")
+        .select("id, listing_id, buyer_id, seller_id, amount_pence")
+        .eq("id", offer_id)
+        .maybeSingle();
+      if (!offer) return json({ error: "Offer not found" }, 404);
+      if (offer.seller_id !== caller.id) return json({ error: "Unauthorized" }, 403);
+
+      const { data: listing } = await adminClient
+        .from("listings").select("title, brand").eq("id", offer.listing_id).maybeSingle();
+      const buyerEmail = await getEmail(offer.buyer_id);
+      if (!buyerEmail) return json({ error: "Recipient not found" }, 404);
+      const buyerName = esc(await getName(offer.buyer_id));
+      const listingTitle = esc(listing?.title ?? "a listing");
+      const brand = esc(listing?.brand ?? "");
+
+      to = buyerEmail;
+      html = offerAcceptedHtml({ buyerName, amountGbp: (offer.amount_pence / 100).toFixed(2), listingTitle, brand, listingId: String(offer.listing_id), offerId: String(offer.id) });
+      subject = `Your offer was accepted — ${listing?.brand ?? ""} ${listing?.title ?? ""}`;
+    } else if (type === "dispute_raised") {
+      const { order_id } = body;
+      if (!order_id) return json({ error: "Missing order_id" }, 400);
+      const { data: order } = await adminClient
+        .from("orders")
+        .select("id, buyer_id, seller_id, dispute_description")
+        .eq("id", order_id)
+        .maybeSingle();
+      if (!order) return json({ error: "Order not found" }, 404);
+      if (order.buyer_id !== caller.id) return json({ error: "Unauthorized" }, 403);
+
+      const sellerEmail = await getEmail(order.seller_id);
+      if (!sellerEmail) return json({ error: "Recipient not found" }, 404);
+      const sellerName = esc(await getName(order.seller_id));
+      const description = esc(order.dispute_description ?? "");
+
+      to = sellerEmail;
+      html = disputeRaisedHtml({ sellerName, description, orderId: String(order.id) });
+      subject = "A buyer has raised an issue with their order";
+    } else if (type === "sale_completed") {
+      const { order_id } = body;
+      if (!order_id) return json({ error: "Missing order_id" }, 400);
+      const { data: order } = await adminClient
+        .from("orders")
+        .select("id, buyer_id, seller_id, listing_id, total_pence, postage_pence, protection_pence, shipping_protection_fee_pence")
+        .eq("id", order_id)
+        .maybeSingle();
+      if (!order) return json({ error: "Order not found" }, 404);
+      if (order.buyer_id !== caller.id) return json({ error: "Unauthorized" }, 403);
+
+      const { data: listing } = await adminClient
+        .from("listings").select("title, brand").eq("id", order.listing_id).maybeSingle();
+      const sellerEmail = await getEmail(order.seller_id);
+      if (!sellerEmail) return json({ error: "Recipient not found" }, 404);
+      const sellerName = esc(await getName(order.seller_id));
+      const listingTitle = esc(listing?.title ?? "your item");
+      const brand = esc(listing?.brand ?? "");
+
+      const postagePence = order.postage_pence ?? 0;
+      const protectionPence = order.protection_pence ?? 0;
+      const shippingProtectionFeePence = order.shipping_protection_fee_pence ?? 0;
+      const sellerPence = order.total_pence - postagePence - protectionPence - shippingProtectionFeePence;
+
+      to = sellerEmail;
+      html = saleCompletedHtml({ sellerName, amountGbp: (sellerPence / 100).toFixed(2), listingTitle, brand, orderId: String(order.id) });
+      subject = `Sale complete — payout for ${listing?.brand ?? ""} ${listing?.title ?? ""} on its way`;
+    } else {
+      return json({ error: "Unknown email type" }, 400);
+    }
+
     await sendEmail(to, subject, html, password);
     return json({ ok: true });
   } catch (e) {

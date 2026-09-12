@@ -249,7 +249,11 @@ Deno.serve(async (req) => {
 
     const qrUrl = labelPrinterUrl;
 
-    await supabase
+    // orders has no client-writable UPDATE grant at all (every legitimate
+    // mutation goes through a SECURITY DEFINER RPC) -- this write needs
+    // the service-role client, same as the email lookups above, or it
+    // silently no-ops and the order never advances past pending_postage.
+    await adminClient
       .from("orders")
       .update({
         sendcloud_parcel_id: String(sendcloudParcelId),

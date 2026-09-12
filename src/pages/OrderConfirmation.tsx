@@ -74,21 +74,6 @@ const notify = async (userId: string, type: string, title: string, body: string 
   });
 };
 
-// Fire and forget email notification via edge functions
-const sendEmailNotification = async (userId: string, emailPayload: Record<string, unknown>) => {
-  try {
-    const { data } = await supabase.functions.invoke("get-user-email", {
-      body: { user_id: userId },
-    });
-    if (data?.email) {
-      await supabase.functions.invoke("send-email", {
-        body: { ...emailPayload, to: data.email },
-      });
-    }
-  } catch (err) {
-    console.error("Email notification failed:", err);
-  }
-};
 
 const OrderConfirmation = () => {
   const { id } = useParams<{ id: string }>();
@@ -221,15 +206,13 @@ const OrderConfirmation = () => {
     // Bell notification to seller
     await notify(order.seller_id, "dispute_raised", "A buyer has raised an issue with their order", disputeDescription.trim(), `/order/${order.id}`);
 
-    // Email notification to seller — fire and forget
-    const sellerProfile = await supabase.from("profiles_public").select("display_name, username").eq("user_id", order.seller_id).maybeSingle();
-    const sellerName = sellerProfile.data?.display_name ?? sellerProfile.data?.username ?? "there";
-    sendEmailNotification(order.seller_id, {
-      type: "dispute_raised",
-      sellerName,
-      description: disputeDescription.trim(),
-      orderId: order.id,
-    });
+    // Email notification to seller — fire and forget. send-email now looks
+    // up the recipient, name, and dispute text itself from the order row
+    // (validating the caller is actually that order's buyer), rather than
+    // trusting any of that from the client.
+    supabase.functions.invoke("send-email", {
+      body: { type: "dispute_raised", order_id: order.id },
+    }).catch((err) => console.error("dispute_raised email failed:", err));
 
     setBusy(false);
     toast.success("Issue raised — the seller has been notified");
@@ -251,28 +234,13 @@ const OrderConfirmation = () => {
     // Bell notification to buyer
     await notify(order.buyer_id, "item_delivered", "Great choice! Your item has been marked as received", "We hope you love your kicks. Enjoy!", `/order/${order.id}`);
 
-    // Email notification to seller — fire and forget
-    ;(async () => {
-      try {
-        const sellerProfile = await supabase.from("profiles_public").select("display_name, username").eq("user_id", order.seller_id).maybeSingle();
-        const sellerName = sellerProfile.data?.display_name ?? sellerProfile.data?.username ?? "there";
-        const postagePence = order.postage_pence ?? 0;
-        // protection_pence is stored directly on the order (set at checkout),
-        // not reverse-derived from a rate.
-        const protectionPence = order.protection_pence ?? 0;
-        const sellerPence = order.total_pence - postagePence - protectionPence;
-        await sendEmailNotification(order.seller_id, {
-          type: "sale_completed",
-          sellerName,
-          amountGbp: (sellerPence / 100).toFixed(2),
-          listingTitle: listing?.title ?? "your item",
-          brand: listing?.brand ?? "",
-          orderId: order.id,
-        });
-      } catch (err) {
-        console.error("sale_completed email failed:", err);
-      }
-    })();
+    // Email notification to seller — fire and forget. send-email now looks
+    // up the recipient, name, and payout amount itself from the order row
+    // (validating the caller is actually that order's buyer), rather than
+    // trusting any of that from the client.
+    supabase.functions.invoke("send-email", {
+      body: { type: "sale_completed", order_id: order.id },
+    }).catch((err) => console.error("sale_completed email failed:", err));
 
     setBusy(false);
     toast.success("Receipt confirmed — the seller will be paid out");

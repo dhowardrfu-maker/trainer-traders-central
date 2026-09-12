@@ -40,14 +40,18 @@ Deno.serve(async (req) => {
     // Get order details
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
-      .select("id, seller_id, buyer_id, total_pence, postage_pence, protection_pence, shipping_protection_fee_pence, stripe_payment_intent_id, payout_sent, status")
+      .select("id, seller_id, buyer_id, total_pence, postage_pence, protection_pence, shipping_protection_fee_pence, stripe_payment_intent_id, payout_sent, status, evri_delivered_at")
       .eq("id", order_id)
       .maybeSingle();
 
     if (orderErr || !order) return json({ error: "Order not found" }, 404);
     if (order.buyer_id !== user.id && order.seller_id !== user.id) return json({ error: "Unauthorized" }, 403);
     if (order.payout_sent) return json({ error: "Payout already sent" }, 400);
-    if (order.status !== "delivered") return json({ error: "Order not yet delivered" }, 400);
+    // status alone isn't enough -- it only ever reaches "delivered" via
+    // confirm_order_receipt, which sets evri_delivered_at in the same
+    // update, so this is a real check, not a redundant one. Matches what
+    // auto-payout already correctly requires.
+    if (order.status !== "delivered" || !order.evri_delivered_at) return json({ error: "Order not yet delivered" }, 400);
 
     // Get seller's Stripe Connect ID
     const { data: sellerProfile } = await supabaseAdmin

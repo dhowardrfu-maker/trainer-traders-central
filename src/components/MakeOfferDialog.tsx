@@ -67,43 +67,15 @@ export const MakeOfferDialog = ({ listingId, sellerId, buyerId, askingPrice, lis
       read: false,
     });
 
-    // Fetch seller email and name, then send email notification — fire and forget
-    ;(async () => {
-      try {
-        const { data: sellerProfile } = await supabase
-          .from("profiles_public")
-          .select("username, display_name")
-          .eq("user_id", sellerId)
-          .maybeSingle();
-
-        const { data: buyerProfile } = await supabase
-          .from("profiles_public")
-          .select("username, display_name")
-          .eq("user_id", buyerId)
-          .maybeSingle();
-
-        const { data: authData } = await supabase.functions.invoke("get-user-email", {
-          body: { user_id: sellerId },
-        });
-
-        if (authData?.email) {
-          await supabase.functions.invoke("send-email", {
-            body: {
-              type: "offer_received",
-              to: authData.email,
-              sellerName: sellerProfile?.display_name ?? sellerProfile?.username ?? "there",
-              buyerName: buyerProfile?.display_name ?? buyerProfile?.username ?? "A buyer",
-              amountGbp: num.toFixed(2),
-              listingTitle: listingTitle ?? "your listing",
-              brand: brand ?? "",
-              offerId: offerData?.id ?? "",
-            },
-          });
-        }
-      } catch (err) {
-        console.error("offer_received email failed:", err);
-      }
-    })();
+    // Email notification — fire and forget. send-email now looks up the
+    // recipient, names, and amounts itself from the offer row (validating
+    // the caller is actually that offer's buyer), rather than trusting
+    // any of that from the client.
+    if (offerData?.id) {
+      supabase.functions.invoke("send-email", {
+        body: { type: "offer_received", offer_id: offerData.id },
+      }).catch((err) => console.error("offer_received email failed:", err));
+    }
 
     setBusy(false);
     toast.success("Offer sent!");
