@@ -22,16 +22,23 @@ export const COMPRESSION_OPTIONS = {
  * Thumbnail target: what grid/card views load (homepage, search, browse).
  *
  * 640px covers the largest place a card is drawn on a high-DPR phone
- * screen without upscaling. The byte cap is what actually governs
- * sharpness -- too tight and the encoder keeps dropping quality to fit,
- * which smears busy photos (patterned backgrounds, laces, texture) even
- * at the right pixel dimensions. Previous target here (400px / 0.05MB)
- * was doing exactly that; there's plenty of headroom on the current
- * Supabase plan to raise it.
+ * screen without upscaling. This was previously governed purely by a byte
+ * cap (0.05MB, then 0.13MB), which still forces the encoder to smear
+ * detail on busy/textured photos (leafy backgrounds, patterned interiors)
+ * regardless of the cap chosen, since a busy 640px image just needs more
+ * bytes to encode cleanly than a simple studio-style shot does.
+ *
+ * initialQuality pins a fixed quality target (matching the 82 used by the
+ * backfill script, generate-listing-thumbnails.mjs) instead of an
+ * open-ended search for whatever quality fits the byte budget. maxSizeMB
+ * is raised well above what a 640px/quality-82 WebP normally needs (a
+ * busy photo at this size rarely exceeds ~250KB) so it only acts as a
+ * safety ceiling, not the thing actually deciding image quality.
  */
 export const THUMBNAIL_COMPRESSION_OPTIONS = {
-  maxSizeMB: 0.13,
+  maxSizeMB: 0.35,
   maxWidthOrHeight: 640,
+  initialQuality: 0.82,
   useWebWorker: true,
   fileType: "image/webp" as const,
 };
