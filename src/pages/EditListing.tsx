@@ -106,8 +106,8 @@ const EditListing = () => {
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length || !user) return;
-    if (photos.length + files.length > 8) {
-      toast.error("Maximum 8 photos allowed");
+    if (photos.length + files.length > 10) {
+      toast.error("Maximum 10 photos allowed");
       return;
     }
     setUploading(true);
@@ -248,7 +248,7 @@ const EditListing = () => {
                 </button>
               </div>
             ))}
-            {photos.length < 8 && (
+            {photos.length < 10 && (
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
@@ -273,7 +273,7 @@ const EditListing = () => {
             className="hidden"
             onChange={handlePhotoUpload}
           />
-          <p className="text-xs text-muted-foreground">{photos.length}/8 photos</p>
+          <p className="text-xs text-muted-foreground">{photos.length}/10 photos</p>
         </div>
 
         <div className="space-y-2">

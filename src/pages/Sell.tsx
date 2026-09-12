@@ -17,8 +17,13 @@ import { runTagCheck, type TagVerificationResult } from "@/lib/tagCheck";
 import { COMPRESSION_OPTIONS, compressForUpload, uploadListingPhoto } from "@/lib/photo-upload";
 import { SHIPPING_PROTECTION_MIN_ITEM_PENCE, shippingProtectionFeePence } from "@/lib/shipping-protection";
 
-const MAX_PHOTOS = 6;
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_PHOTOS = 10;
+// compressForUpload shrinks raw camera photos down to ~0.5MB regardless of
+// how large the original is, so this only needs to catch pathological
+// files, not ordinary phone camera output (routinely 5-15MB, sometimes
+// more for portrait/burst modes) which the old 5MB cap was silently
+// rejecting before compression ever got a chance to run.
+const MAX_FILE_BYTES = 30 * 1024 * 1024;
 
 const SIZE_OPTIONS = [
   { value: "small", label: "Small parcel — up to 2kg" },
@@ -193,11 +198,12 @@ const Sell = () => {
   // camera photos (often 3-4.5MB) never reach Storage at full size.
   const onAddPhotos = async (files: FileList | null) => {
     if (!files) return;
-    const incoming = Array.from(files).filter((f) => {
-      if (!f.type.startsWith("image/")) return false;
-      if (f.size > MAX_FILE_BYTES) return false;
-      return true;
-    });
+    const all = Array.from(files);
+    const incoming = all.filter((f) => f.type.startsWith("image/") && f.size <= MAX_FILE_BYTES);
+    const rejected = all.length - incoming.length;
+    if (rejected > 0) {
+      toast.error(`${rejected} file${rejected > 1 ? "s" : ""} couldn't be added (not an image, or too large)`);
+    }
     if (incoming.length === 0) return;
 
     setCompressing(true);
@@ -212,7 +218,13 @@ const Sell = () => {
           }
         })
       );
-      setPhotos((prev) => [...prev, ...compressed].slice(0, MAX_PHOTOS));
+      setPhotos((prev) => {
+        const combined = [...prev, ...compressed];
+        if (combined.length > MAX_PHOTOS) {
+          toast.error(`Only added ${MAX_PHOTOS - prev.length} of ${compressed.length} photos, max ${MAX_PHOTOS} per listing`);
+        }
+        return combined.slice(0, MAX_PHOTOS);
+      });
     } finally {
       setCompressing(false);
     }
