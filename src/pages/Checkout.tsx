@@ -371,8 +371,20 @@ function StripePayForm({
     });
 
     if (error || !data) {
+      // Stripe has already been charged at this point -- most commonly
+      // this happens because someone else bought the same listing a
+      // second earlier, so create_order correctly refused (listing no
+      // longer active). Without this, the buyer was left charged with no
+      // order and no refund until they noticed and contacted support.
+      const { error: refundErr } = await supabase.functions.invoke("refund-failed-checkout", {
+        body: { payment_intent_id: paymentIntent.id },
+      });
       setBusy(false);
-      toast.error(error?.message ?? "Order creation failed — contact support");
+      toast.error(
+        refundErr
+          ? (error?.message ?? "Order creation failed — contact support@prelovedkicks.co.uk, your payment will be refunded")
+          : (error?.message ?? "That item is no longer available — you have not been charged (refunded automatically)")
+      );
       return;
     }
 

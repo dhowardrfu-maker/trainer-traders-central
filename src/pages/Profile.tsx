@@ -1243,8 +1243,12 @@ const ScanningPayForm = ({ onSuccess }: { onSuccess: () => void }) => {
       return;
     }
 
-    const { error } = await supabase.rpc("activate_scanning", {
-      _stripe_payment_intent_id: paymentIntent.id,
+    // confirm-scan-payment verifies the payment with Stripe itself
+    // (status, amount, and that it was really for this account) before
+    // activating anything, rather than trusting the client's word that
+    // payment succeeded.
+    const { error } = await supabase.functions.invoke("confirm-scan-payment", {
+      body: { payment_intent_id: paymentIntent.id },
     });
 
     setBusy(false);
