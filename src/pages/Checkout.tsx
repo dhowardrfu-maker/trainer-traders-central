@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { SAMPLE_LISTINGS, mapDbListing, type Listing } from "@/data/listings";
 import { CARRIERS, type CarrierId, type ParcelSize, carriersForSize, carrierPriceForSize } from "@/data/carriers";
+import { SHIPPING_PROTECTION_MIN_ITEM_PENCE } from "@/lib/shipping-protection";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { loadStripe } from "@stripe/stripe-js/pure";
@@ -702,7 +703,12 @@ const Checkout = () => {
                   </div>
                 </div>
 
-                {sellerOptedInProtection && (
+                {/* The listing-level opt-in doesn't account for an accepted
+                    offer bringing the actual price below the £20 floor
+                    create_order applies server-side -- in that case no fee
+                    actually gets charged or sent to Sendcloud, so the badge
+                    must not claim otherwise. */}
+                {sellerOptedInProtection && itemPence > SHIPPING_PROTECTION_MIN_ITEM_PENCE && (
                   <div className="border-t border-border pt-4 flex items-start gap-2.5">
                     <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                     <span className="text-xs text-muted-foreground">

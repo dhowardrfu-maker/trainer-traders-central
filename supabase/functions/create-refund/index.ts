@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     // Get order — use admin client so RLS doesn't block
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
-      .select("id, buyer_id, seller_id, listing_id, stripe_payment_intent_id, status, payout_sent")
+      .select("id, buyer_id, seller_id, listing_id, stripe_payment_intent_id, status, payout_sent, cancellation_agreed, dispute_status")
       .eq("id", order_id)
       .maybeSingle();
 
@@ -55,6 +55,22 @@ Deno.serve(async (req) => {
 
     if (!isAdmin && !isParty) {
       return json({ error: "Unauthorized" }, 403);
+    }
+
+    // This endpoint only checks WHO is calling, not WHETHER a refund is
+    // actually due yet -- meaning any buyer could call it directly on any
+    // of their own orders, at any point, and get a full refund with no
+    // seller agreement, even after the item shipped. Only two flows are
+    // legitimate, both already gated by their own RPC before this ever
+    // runs: mutual cancellation (agree_order_cancellation requires the
+    // OTHER party to act, so cancellation_agreed can't be faked by one
+    // side), and a seller resolving a dispute the buyer actually raised.
+    if (!isAdmin) {
+      const mutualCancellation = order.cancellation_agreed === true;
+      const sellerResolvingDispute = order.seller_id === user.id && order.dispute_status === "open";
+      if (!mutualCancellation && !sellerResolvingDispute) {
+        return json({ error: "This order isn't in a state that allows a refund yet" }, 400);
+      }
     }
 
     // Can't refund if payout already sent

@@ -79,21 +79,51 @@ Deno.serve(async (req) => {
     const shippingProtectionFeePence = order.shipping_protection_fee_pence ?? 0;
     const sellerPence = order.total_pence - postagePence - protectionPence - shippingProtectionFeePence;
 
-    // Transfer seller's share to their connected account
-    const transfer = await stripe.transfers.create({
-      amount: sellerPence,
-      currency: "gbp",
-      destination: sellerProfile.stripe_connect_id,
-      metadata: {
-        order_id: String(order.id),
-        seller_id: order.seller_id,
-      },
-    });
+    // Atomically claim this payout before calling Stripe. The earlier
+    // payout_sent check above is a fast, friendly error for the common
+    // case, but on its own it's a check-then-act race: two near-
+    // simultaneous calls (a retry, a double-click, or this running at the
+    // same moment auto-payout's hourly cron processes the same order)
+    // could both pass that check before either finishes, firing two
+    // Stripe transfers. This UPDATE only succeeds for whichever call gets
+    // there first, since payout_sent = false is part of the WHERE clause.
+    const { data: claimed } = await supabaseAdmin
+      .from("orders")
+      .update({ payout_sent: true })
+      .eq("id", order_id)
+      .eq("payout_sent", false)
+      .select("id")
+      .maybeSingle();
 
-    // Mark payout as sent on the order
+    if (!claimed) {
+      return json({ error: "Payout already sent or in progress" }, 400);
+    }
+
+    let transfer;
+    try {
+      transfer = await stripe.transfers.create(
+        {
+          amount: sellerPence,
+          currency: "gbp",
+          destination: sellerProfile.stripe_connect_id,
+          metadata: {
+            order_id: String(order.id),
+            seller_id: order.seller_id,
+          },
+        },
+        { idempotencyKey: `payout-${order.id}` }
+      );
+    } catch (stripeErr) {
+      // Release the claim so a genuine retry (after a transient Stripe
+      // error) isn't permanently blocked by payout_sent staying true with
+      // no transfer having actually happened.
+      await supabaseAdmin.from("orders").update({ payout_sent: false }).eq("id", order_id);
+      throw stripeErr;
+    }
+
     await supabaseAdmin
       .from("orders")
-      .update({ payout_sent: true, payout_transfer_id: transfer.id })
+      .update({ payout_transfer_id: transfer.id })
       .eq("id", order_id);
 
     return json({

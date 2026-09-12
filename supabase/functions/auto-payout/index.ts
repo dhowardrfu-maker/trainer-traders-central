@@ -81,18 +81,49 @@ Deno.serve(async (req) => {
         const shippingProtectionFeePence = order.shipping_protection_fee_pence ?? 0;
         const sellerPence = order.total_pence - postagePence - protectionPence - shippingProtectionFeePence;
 
-        const transfer = await stripe.transfers.create({
-          amount: sellerPence,
-          currency: "gbp",
-          destination: sellerProfile.stripe_connect_id,
-          metadata: { order_id: String(order.id), seller_id: order.seller_id, reason: "auto_payout_48h" },
-        });
+        // Atomically claim this payout before calling Stripe -- the
+        // original SELECT above already filtered on payout_sent = false,
+        // but that's a check-then-act race against a manual create-payout
+        // call (or another concurrent run of this same cron) hitting the
+        // same order in the gap between that SELECT and this UPDATE. This
+        // WHERE clause makes the claim itself atomic: only one caller can
+        // ever flip payout_sent from false to true for a given order.
+        const { data: claimed } = await supabase
+          .from("orders")
+          .update({ payout_sent: true })
+          .eq("id", order.id)
+          .eq("payout_sent", false)
+          .select("id")
+          .maybeSingle();
+
+        if (!claimed) {
+          results.push({ order_id: order.id, status: "skipped", reason: "Payout already sent or in progress" });
+          continue;
+        }
+
+        let transfer;
+        try {
+          transfer = await stripe.transfers.create(
+            {
+              amount: sellerPence,
+              currency: "gbp",
+              destination: sellerProfile.stripe_connect_id,
+              metadata: { order_id: String(order.id), seller_id: order.seller_id, reason: "auto_payout_48h" },
+            },
+            { idempotencyKey: `payout-${order.id}` }
+          );
+        } catch (stripeErr) {
+          // Release the claim so the next hourly run can retry after a
+          // transient Stripe error, instead of the order being stuck
+          // "paid" with no transfer having actually happened.
+          await supabase.from("orders").update({ payout_sent: false }).eq("id", order.id);
+          throw stripeErr;
+        }
 
         await supabase
           .from("orders")
           .update({
             status: "delivered",
-            payout_sent: true,
             payout_transfer_id: transfer.id,
           })
           .eq("id", order.id);
