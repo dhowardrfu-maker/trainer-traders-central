@@ -31,14 +31,22 @@ Deno.serve(async (req) => {
     if (!listing_id || !carrier_id || postage_pence == null) return json({ error: "Missing fields" }, 400);
 
     const { data: listing, error: listErr } = await supabase
-      .from("listings").select("id, title, brand, price_pence, seller_id, status")
+      .from("listings").select("id, title, brand, price_pence, seller_id, status, promotion_active, promotion_percent")
       .eq("id", listing_id).maybeSingle();
 
     if (listErr || !listing) return json({ error: "Listing not found" }, 404);
     if (listing.status !== "active") return json({ error: "Listing no longer available" }, 400);
     if (listing.seller_id === user.id) return json({ error: "Cannot buy your own listing" }, 400);
 
+    // Must mirror create_order's effective_price exactly (same condition,
+    // same rounding), otherwise Stripe charges the buyer one amount while
+    // the order records another -- this was never applied here before,
+    // so a promoted listing charged the buyer full price via Stripe while
+    // the order/seller-payout math assumed the discounted price.
     let item_pence = listing.price_pence;
+    if (listing.promotion_active && listing.promotion_percent != null) {
+      item_pence = Math.round((listing.price_pence * (100 - listing.promotion_percent)) / 100);
+    }
     if (offer_id) {
       const { data: offer } = await supabase.from("offers")
         .select("amount_pence, status, buyer_id, listing_id")
