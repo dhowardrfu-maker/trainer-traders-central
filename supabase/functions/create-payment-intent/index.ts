@@ -58,13 +58,18 @@ Deno.serve(async (req) => {
     const protection_pence = Math.round(item_pence * BUYER_PROTECTION_RATE);
     const total_pence = item_pence + protection_pence + postage_pence;
 
-    // Check if seller has a verified Connect account
-    const { data: sellerProfile } = await supabase
-      .from("profiles")
-      .select("stripe_connect_id, stripe_connect_enabled")
-      .eq("user_id", listing.seller_id)
-      .maybeSingle();
-
+    // Every payment goes to the platform's own Stripe balance -- the
+    // seller is paid later, exclusively via create-payout/auto-payout,
+    // once the buyer confirms receipt or the 48-hour window passes. This
+    // used to also set transfer_data.destination when a seller already
+    // had Connect verified at checkout time, which makes Stripe transfer
+    // funds to the seller immediately and automatically on payment. That
+    // directly contradicts the "money held until delivery confirmed"
+    // buyer-protection model, and would double-pay the seller once
+    // create-payout/auto-payout's separate manual transfer also fires for
+    // the same order. Confirmed via a live DB check that no past order
+    // has ever hit this branch (no seller had stripe_connect_enabled at
+    // time of purchase), so removing it now is safe, before it's not.
     const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: total_pence,
       currency: "gbp",
@@ -81,15 +86,6 @@ Deno.serve(async (req) => {
       },
       description: `PrelovedKicks — ${listing.brand} ${listing.title}`,
     };
-
-    // If seller has a verified Connect account, route funds via Connect
-    if (sellerProfile?.stripe_connect_id && sellerProfile?.stripe_connect_enabled) {
-      const platform_fee = protection_pence + postage_pence;
-      paymentIntentParams.application_fee_amount = platform_fee;
-      paymentIntentParams.transfer_data = {
-        destination: sellerProfile.stripe_connect_id,
-      };
-    }
 
     const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
