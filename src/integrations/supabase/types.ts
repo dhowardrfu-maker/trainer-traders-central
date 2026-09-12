@@ -89,6 +89,7 @@ export type Database = {
           size_category: Database["public"]["Enums"]["parcel_size"] | null
           size_eu: number | null
           size_uk: number
+          sold_via_order: boolean
           status: string | null
           tag_verified: boolean
           title: string | null
@@ -114,6 +115,7 @@ export type Database = {
           size_category?: Database["public"]["Enums"]["parcel_size"] | null
           size_eu?: number | null
           size_uk: number
+          sold_via_order?: boolean
           status?: string | null
           tag_verified?: boolean
           title?: string | null
@@ -139,6 +141,7 @@ export type Database = {
           size_category?: Database["public"]["Enums"]["parcel_size"] | null
           size_eu?: number | null
           size_uk?: number
+          sold_via_order?: boolean
           status?: string | null
           tag_verified?: boolean
           title?: string | null

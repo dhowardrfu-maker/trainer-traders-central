@@ -103,6 +103,10 @@ const Index = () => {
         .from("listings")
         .select(LISTING_COLUMNS)
         .eq("status", "sold")
+        // Excludes listings a seller marked "Sold" themselves via Edit
+        // Listing (e.g. for an off-platform sale) -- only genuine
+        // create_order purchases should appear as a real platform sale here.
+        .eq("sold_via_order", true)
         .order("updated_at", { ascending: false })
         .limit(8);
 
