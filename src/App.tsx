@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { FavouritesProvider } from "@/hooks/useFavourites";
 import { NotificationsProvider } from "@/hooks/useNotifications";
 import { CookieBanner } from "@/components/CookieBanner";
+import { DisplayNameGate } from "@/components/DisplayNameGate";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Admin from "./pages/Admin.tsx";
@@ -55,6 +56,7 @@ const App = () => {
         <AuthProvider>
           <NotificationsProvider>
             <FavouritesProvider>
+              <DisplayNameGate />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />

@@ -398,12 +398,17 @@ const Profile = () => {
 
   const handleSaveProfile = async () => {
     if (!user) return;
+    if (!displayName.trim()) {
+      toast.error("Display name can't be empty");
+      return;
+    }
     setSaving(true);
     const trimmedUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
     const { error } = await supabase
       .from("profiles")
       .update({
-        display_name: displayName.trim() || null,
+        display_name: displayName.trim(),
+        has_chosen_display_name: true,
         username: trimmedUsername || null,
         bio: bio.trim() || null,
         location: location.trim() || null,
