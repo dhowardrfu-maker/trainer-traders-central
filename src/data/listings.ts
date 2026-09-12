@@ -159,8 +159,8 @@ export const mapDbListing = (row: DbListingRow): Listing => {
 
     seller: {
       name:
-        row.profile?.username ??
         row.profile?.display_name ??
+        row.profile?.username ??
         "seller",
       rating: 5.0,
       id: row.seller_id,
