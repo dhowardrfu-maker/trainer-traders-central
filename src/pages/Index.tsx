@@ -99,14 +99,15 @@ const Index = () => {
       // the main load succeeds, so it never blocks the primary homepage
       // render. Sorted by updated_at, which the DB already keeps in sync
       // via trigger whenever create_order() flips status to 'sold'.
+      // Deliberately shows every sold listing, not just ones that went
+      // through checkout -- a seller marking an item sold themselves still
+      // signals real marketplace activity, which is the point of this
+      // carousel. sold_via_order exists on the row if that distinction is
+      // ever needed again, it's just not used as a filter here.
       const { data: soldRows } = await supabase
         .from("listings")
         .select(LISTING_COLUMNS)
         .eq("status", "sold")
-        // Excludes listings a seller marked "Sold" themselves via Edit
-        // Listing (e.g. for an off-platform sale) -- only genuine
-        // create_order purchases should appear as a real platform sale here.
-        .eq("sold_via_order", true)
         .order("updated_at", { ascending: false })
         .limit(8);
 
