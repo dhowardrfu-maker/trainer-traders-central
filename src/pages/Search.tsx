@@ -29,7 +29,10 @@ const SearchPage = () => {
   const [dbListings, setDbListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const initialPriceMax = Number(params.get("priceMax"));
+  const [filters, setFilters] = useState<Filters>(
+    initialPriceMax > 0 ? { ...DEFAULT_FILTERS, priceMax: initialPriceMax } : DEFAULT_FILTERS
+  );
   const [sort, setSort] = useState<SortKey>("relevance");
 
   useSEO({
@@ -171,7 +174,18 @@ const SearchPage = () => {
         </div>
 
         <div className="-mx-5 mb-5">
-          <CategoryChips active={activeCategory} onChange={setActiveCategory} showClear />
+          <CategoryChips
+            active={activeCategory}
+            onChange={(label) => {
+              // Picking a brand chip is a fresh way to browse, not an
+              // additional filter on top of whatever text is still in the
+              // search box (e.g. arriving from a homepage ?q= link) — so it
+              // replaces any leftover text search rather than stacking with it.
+              setActiveCategory(label);
+              setQuery("");
+            }}
+            showClear
+          />
         </div>
 
         <div className="mb-5">

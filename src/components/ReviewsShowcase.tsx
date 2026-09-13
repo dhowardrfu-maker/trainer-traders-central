@@ -68,6 +68,9 @@ export const ReviewsShowcase = () => {
 
   return (
     <section className="container py-6 md:py-10">
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary mb-1">
+        Real people, real reviews
+      </p>
       <h2 className="font-display font-bold text-2xl md:text-3xl tracking-tight mb-4">
         What buyers are saying
       </h2>
@@ -77,17 +80,22 @@ export const ReviewsShowcase = () => {
             key={r.id}
             className="shrink-0 w-[260px] md:w-auto rounded-2xl border bg-card p-4"
           >
-            <div className="flex items-center gap-0.5 mb-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={
-                    i < r.rating
-                      ? "h-3.5 w-3.5 fill-foreground stroke-foreground"
-                      : "h-3.5 w-3.5 stroke-muted-foreground"
-                  }
-                />
-              ))}
+            <div className="flex items-center gap-2 mb-2.5">
+              <div className="h-8 w-8 rounded-full bg-primary-soft text-primary flex items-center justify-center text-xs font-bold shrink-0">
+                {r.buyer_name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={
+                      i < r.rating
+                        ? "h-3.5 w-3.5 fill-primary stroke-primary"
+                        : "h-3.5 w-3.5 stroke-muted-foreground"
+                    }
+                  />
+                ))}
+              </div>
             </div>
             <p className="text-sm leading-snug line-clamp-3">"{r.comment}"</p>
             <p className="text-xs text-muted-foreground mt-2 font-medium">

@@ -1,30 +1,39 @@
 import { Link } from "react-router-dom";
 import { Smartphone } from "lucide-react";
 
-const Footer = () => {
+interface FooterProps {
+  /** Homepage has its own dedicated "Get the app" section further up the
+   * page, so this repeats it — every other page still needs this as its
+   * only app-install prompt. */
+  hideAppBar?: boolean;
+}
+
+const Footer = ({ hideAppBar = false }: FooterProps) => {
   return (
     <footer className="border-t mt-12 bg-muted/30">
 
       {/* Get the App banner */}
-      <div className="border-b border-border">
-        <div className="container mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
-              <Smartphone className="h-5 w-5 text-primary-foreground" />
+      {!hideAppBar && (
+        <div className="border-b border-border">
+          <div className="container mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
+                <Smartphone className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Get the PrelovedKicks app</p>
+                <p className="text-xs text-muted-foreground">Install on your phone for the best experience</p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-sm">Get the PrelovedKicks app</p>
-              <p className="text-xs text-muted-foreground">Install on your phone for the best experience</p>
-            </div>
+            <Link
+              to="/help#get-the-app"
+              className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              <Smartphone className="h-4 w-4" /> How to install
+            </Link>
           </div>
-          <Link
-            to="/help#get-the-app"
-            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-          >
-            <Smartphone className="h-4 w-4" /> How to install
-          </Link>
         </div>
-      </div>
+      )}
 
       <div className="container mx-auto px-4 py-10 grid gap-8 md:grid-cols-4">
         <div>
