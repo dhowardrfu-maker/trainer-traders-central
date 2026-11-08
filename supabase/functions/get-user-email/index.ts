@@ -13,6 +13,10 @@ Deno.serve(async (req) => {
   const { data: { user: caller }, error: authErr } = await anonClient.auth.getUser();
   if (authErr || !caller) return json({ error: "Unauthorized" }, 401);
   const adminClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  // Returning an arbitrary user's email is PII -- any signed-in user used to be
+  // able to look up anyone. Admin-only (nothing in the app calls this today).
+  const { data: callerProfile } = await adminClient.from("profiles").select("is_admin").eq("user_id", caller.id).maybeSingle();
+  if (!callerProfile?.is_admin) return json({ error: "Forbidden" }, 403);
   try {
     const { user_id } = await req.json();
     if (!user_id) return json({ error: "Missing user_id" }, 400);

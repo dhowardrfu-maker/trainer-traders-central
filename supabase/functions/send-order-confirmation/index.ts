@@ -10,6 +10,18 @@ const ZOHO_PORT = 465;
 const ZOHO_USER = "support@prelovedkicks.co.uk";
 const FROM_NAME = "PrelovedKicks";
 
+// Seller/buyer-controlled text ends up in the email body, so escape it.
+const esc = (v: unknown) =>
+  String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+// Strip CR/LF so user text can never inject extra SMTP headers via the subject.
+const headerSafe = (v: unknown) => String(v ?? "").replace(/[\r\n]+/g, " ").trim();
+
 async function sendEmail(to: string, subject: string, html: string, password: string) {
   const encoder = new TextEncoder();
 
@@ -62,7 +74,7 @@ async function sendEmail(to: string, subject: string, html: string, password: st
   const message = [
     `From: ${FROM_NAME} <${ZOHO_USER}>`,
     `To: ${to}`,
-    `Subject: ${subject}`,
+    `Subject: ${headerSafe(subject)}`,
     `MIME-Version: 1.0`,
     `Content-Type: text/html; charset=UTF-8`,
     ``,
@@ -116,14 +128,14 @@ function orderConfirmationHtml(params: {
         <tr>
           <td style="padding:32px;">
             <h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#18181b;">Order confirmed!</h1>
-            <p style="margin:0 0 24px;color:#71717a;font-size:15px;">Hi ${params.buyerName}, your payment was successful and your order is on its way.</p>
+            <p style="margin:0 0 24px;color:#71717a;font-size:15px;">Hi ${esc(params.buyerName)}, your payment was successful and your order is on its way.</p>
 
             <table width="100%" style="background:#f4f4f5;border-radius:12px;padding:16px;margin-bottom:24px;" cellpadding="0" cellspacing="0">
               <tr>
                 <td>
-                  <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#71717a;">${params.brand}</p>
-                  <p style="margin:0 0 4px;font-size:16px;font-weight:600;color:#18181b;">${params.listingTitle}</p>
-                  <p style="margin:0;font-size:13px;color:#71717a;">UK ${params.sizeUk} · ${params.condition}</p>
+                  <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#71717a;">${esc(params.brand)}</p>
+                  <p style="margin:0 0 4px;font-size:16px;font-weight:600;color:#18181b;">${esc(params.listingTitle)}</p>
+                  <p style="margin:0;font-size:13px;color:#71717a;">UK ${esc(params.sizeUk)} · ${esc(params.condition)}</p>
                 </td>
               </tr>
             </table>
@@ -154,11 +166,11 @@ function orderConfirmationHtml(params: {
               <tr><td>
                 <p style="margin:0 0 8px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#71717a;">Delivery address</p>
                 <p style="margin:0;font-size:14px;color:#18181b;line-height:1.6;">
-                  ${params.shipToName}<br>
-                  ${params.shipToLine1}<br>
-                  ${params.shipToLine2 ? params.shipToLine2 + "<br>" : ""}
-                  ${params.shipToCity}<br>
-                  ${params.shipToPostcode}
+                  ${esc(params.shipToName)}<br>
+                  ${esc(params.shipToLine1)}<br>
+                  ${params.shipToLine2 ? esc(params.shipToLine2) + "<br>" : ""}
+                  ${esc(params.shipToCity)}<br>
+                  ${esc(params.shipToPostcode)}
                 </p>
               </td></tr>
             </table>
@@ -199,6 +211,17 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
+  // verify_jwt only proves the caller holds *a* valid Supabase key, which
+  // includes the public anon key shipped in the site bundle. Identify the
+  // actual signed-in user so we can check they are this order's buyer.
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+  const { data: authData, error: authErr } = await supabase.auth.getUser(
+    authHeader.replace("Bearer ", "")
+  );
+  if (authErr || !authData?.user) return json({ error: "Unauthorized" }, 401);
+  const callerId = authData.user.id;
+
   try {
     const { order_id } = await req.json();
     if (!order_id) return json({ error: "Missing order_id" }, 400);
@@ -210,7 +233,10 @@ Deno.serve(async (req) => {
       .eq("id", order_id)
       .maybeSingle();
 
-    if (orderErr || !order) return json({ error: "Order not found" }, 404);
+    // Same response for "missing" and "not yours" so order IDs can't be probed.
+    if (orderErr || !order || order.buyer_id !== callerId) {
+      return json({ error: "Order not found" }, 404);
+    }
 
     // Fetch listing
     const { data: listing, error: listingErr } = await supabase
@@ -263,7 +289,7 @@ Deno.serve(async (req) => {
     return json({ ok: true });
   } catch (e) {
     console.error(e);
-    return json({ error: String(e) }, 500);
+    return json({ error: "Failed to send confirmation email" }, 500);
   }
 });
 

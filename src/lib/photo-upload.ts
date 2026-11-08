@@ -100,3 +100,34 @@ export async function uploadListingPhoto(
 
   return { path, thumbPath };
 }
+
+/**
+ * Run an already-uploaded listing photo through the moderate-image function.
+ * Deletes the photo (and its thumbnail) and throws if it is rejected.
+ *
+ * If the moderation service itself is unreachable we log and let the photo
+ * through, matching the existing behaviour in Sell.tsx, so a moderation
+ * outage cannot block every listing.
+ */
+export async function moderateUploadedPhoto(path: string, thumbPath: string): Promise<void> {
+  const { data: signed } = await supabase.storage
+    .from("listing-photos")
+    .createSignedUrl(path, 300);
+  if (!signed?.signedUrl) return;
+
+  let rejectedReason: string | null = null;
+  try {
+    const { data: mod } = await supabase.functions.invoke("moderate-image", {
+      body: { imageUrl: signed.signedUrl },
+    });
+    if (mod && mod.allowed === false) rejectedReason = mod.reason ?? "";
+  } catch (err) {
+    console.warn("[photo-upload] moderation skipped", err);
+    return;
+  }
+
+  if (rejectedReason !== null) {
+    await supabase.storage.from("listing-photos").remove([path, thumbPath]);
+    throw new Error(`Photo rejected by moderation${rejectedReason ? `: ${rejectedReason}` : ""}`);
+  }
+}

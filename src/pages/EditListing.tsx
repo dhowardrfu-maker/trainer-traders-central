@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useSEO } from "@/hooks/useSEO";
-import { compressForUpload, uploadListingPhoto } from "@/lib/photo-upload";
+import { compressForUpload, moderateUploadedPhoto, uploadListingPhoto } from "@/lib/photo-upload";
 import { CONDITIONS } from "@/data/listing-options";
 import { SHIPPING_PROTECTION_MIN_ITEM_PENCE, shippingProtectionFeePence } from "@/lib/shipping-protection";
 
@@ -118,12 +118,19 @@ const EditListing = () => {
         // and generate the card-sized thumbnail. Without this, photos added
         // while editing went up as raw camera files with no thumbnail.
         const compressed = await compressForUpload(file);
-        const { path } = await uploadListingPhoto(compressed, user.id);
+        const { path, thumbPath } = await uploadListingPhoto(compressed, user.id);
+        // Same moderation gate as Sell.tsx -- without it, photos could be
+        // swapped in after a listing was created. Throws (and deletes the
+        // file) if rejected.
+        await moderateUploadedPhoto(path, thumbPath);
         // Store the path (not the public URL) so it's consistent with how Sell.tsx saves
         uploaded.push(path);
       } catch (err) {
         console.error("[EditListing] photo upload failed", err);
-        toast.error(`Failed to upload ${file.name}`);
+        const msg = err instanceof Error && err.message.startsWith("Photo rejected")
+          ? err.message
+          : `Failed to upload ${file.name}`;
+        toast.error(msg);
       }
     }
     setPhotos((prev) => [...prev, ...uploaded]);

@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ReviewForm } from "@/components/ReviewForm";
 import { carrierLabel } from "@/data/carriers";
 import { toast } from "sonner";
+import { moderateUploadedPhoto } from "@/lib/photo-upload";
 
 interface OrderRow {
   id: string;
@@ -190,11 +191,18 @@ const OrderConfirmation = () => {
     const imagePaths: string[] = [];
     for (const file of disputeImages) {
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `disputes/${order.id}/${crypto.randomUUID()}.${ext}`;
+      // First folder must be the uploader's user id -- that is what the storage upload rule checks.
+      const path = `${user.id}/disputes/${order.id}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("listing-photos")
         .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
-      if (!upErr) imagePaths.push(path);
+      if (upErr) continue;
+      try {
+        await moderateUploadedPhoto(path, path);
+        imagePaths.push(path);
+      } catch (modErr) {
+        toast.error(modErr instanceof Error ? modErr.message : "A photo was rejected");
+      }
     }
     const { error } = await supabase.rpc("raise_order_dispute", {
       _order_id: order.id,
