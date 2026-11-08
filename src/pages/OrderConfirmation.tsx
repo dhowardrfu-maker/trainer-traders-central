@@ -12,6 +12,7 @@ import { ReviewForm } from "@/components/ReviewForm";
 import { carrierLabel } from "@/data/carriers";
 import { toast } from "sonner";
 import { moderateUploadedPhoto } from "@/lib/photo-upload";
+import { createPreviewUrl } from "@/lib/safe-url";
 
 interface OrderRow {
   id: string;
@@ -127,7 +128,7 @@ const OrderConfirmation = () => {
   }, [id]);
 
   useEffect(() => {
-    const urls = disputeImages.map((f) => URL.createObjectURL(f));
+    const urls = disputeImages.map((f) => createPreviewUrl(f));
     setDisputePreviews(urls);
     return () => urls.forEach(URL.revokeObjectURL);
   }, [disputeImages]);

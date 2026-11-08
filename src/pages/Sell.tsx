@@ -16,6 +16,7 @@ import { ukToEu, BRANDS, CONDITIONS, GENDERS, UK_SIZES } from "@/data/listing-op
 import { runTagCheck, type TagVerificationResult } from "@/lib/tagCheck";
 import { COMPRESSION_OPTIONS, compressForUpload, uploadListingPhoto } from "@/lib/photo-upload";
 import { SHIPPING_PROTECTION_MIN_ITEM_PENCE, shippingProtectionFeePence } from "@/lib/shipping-protection";
+import { createPreviewUrl } from "@/lib/safe-url";
 
 const MAX_PHOTOS = 10;
 // compressForUpload shrinks raw camera photos down to ~0.5MB regardless of
@@ -98,7 +99,7 @@ const Sell = () => {
   }, [user, loading]);
 
   useEffect(() => {
-    const urls = photos.map((f) => URL.createObjectURL(f));
+    const urls = photos.map((f) => createPreviewUrl(f));
     setPreviews(urls);
     return () => urls.forEach(URL.revokeObjectURL);
   }, [photos]);
