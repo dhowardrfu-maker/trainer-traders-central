@@ -30,6 +30,18 @@ async function paymentProblem(
   return null;
 }
 
+// Constant-time string comparison so the secret can't be guessed byte by byte
+// from response timing.
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const x = enc.encode(a);
+  const y = enc.encode(b);
+  let diff = x.length ^ y.length;
+  const len = Math.max(x.length, y.length);
+  for (let i = 0; i < len; i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return diff === 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -41,7 +53,18 @@ Deno.serve(async (req) => {
   // not just any authenticated caller.
   const authHeader = req.headers.get("Authorization");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  if (authHeader !== `Bearer ${serviceRoleKey}`) return json({ error: "Unauthorized" }, 401);
+  //
+  // The service-role key the platform injects into the function does not
+  // always match the key stored for the cron job (key rotation / the move to
+  // the new API keys), which left the hourly job getting 401 forever. So the
+  // cron job also sends a dedicated AUTO_PAYOUT_CRON_SECRET in x-cron-secret.
+  // That secret can do nothing except trigger this payout run.
+  const cronSecret = Deno.env.get("AUTO_PAYOUT_CRON_SECRET");
+  const providedSecret = req.headers.get("x-cron-secret");
+  const isServiceKey = authHeader === `Bearer ${serviceRoleKey}`;
+  const isCronSecret =
+    !!cronSecret && cronSecret.length >= 32 && !!providedSecret && timingSafeEqual(providedSecret, cronSecret);
+  if (!isServiceKey && !isCronSecret) return json({ error: "Unauthorized" }, 401);
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
