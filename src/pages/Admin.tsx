@@ -23,6 +23,7 @@ import { Loader2, Search, ShieldAlert, Package, Users, AlertTriangle, Mail, Imag
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { createPreviewUrl } from "@/lib/safe-url";
 
 interface AdminOrder {
   id: string;
@@ -176,7 +177,7 @@ const Admin = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     setCampaignImageFile(file);
-    setCampaignImagePreview(URL.createObjectURL(file));
+    setCampaignImagePreview(createPreviewUrl(file));
   };
 
   const handleRemoveCampaignImage = () => {
