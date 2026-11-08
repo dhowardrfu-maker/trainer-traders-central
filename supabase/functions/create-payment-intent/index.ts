@@ -29,6 +29,12 @@ Deno.serve(async (req) => {
   try {
     const { listing_id, carrier_id, postage_pence, offer_id } = await req.json();
     if (!listing_id || !carrier_id || postage_pence == null) return json({ error: "Missing fields" }, 400);
+    // postage comes from the browser; stop it being zeroed/negative to dodge
+    // the carrier cost. Carriers currently cost £2.56-£7.99, so this leaves
+    // room for price changes. Must match create_order's bounds.
+    if (!Number.isInteger(postage_pence) || postage_pence < 250 || postage_pence > 2000) {
+      return json({ error: "Invalid postage" }, 400);
+    }
 
     const { data: listing, error: listErr } = await supabase
       .from("listings").select("id, title, brand, price_pence, seller_id, status, promotion_active, promotion_percent")

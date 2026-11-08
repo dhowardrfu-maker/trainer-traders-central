@@ -7,6 +7,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Confirm with Stripe that an order was actually paid for before any money
+// leaves the platform. create_order cannot do this itself (it only records
+// the payment intent id the caller supplies). Returns null when the payment
+// checks out, otherwise the reason it doesn't.
+async function paymentProblem(
+  stripe: Stripe,
+  order: { stripe_payment_intent_id: string | null; total_pence: number; buyer_id: string; listing_id: number | string },
+): Promise<string | null> {
+  if (!order.stripe_payment_intent_id) return "No payment recorded for this order";
+  let pi: Stripe.PaymentIntent;
+  try {
+    pi = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id);
+  } catch {
+    return "Payment not found at Stripe";
+  }
+  if (pi.status !== "succeeded") return "Payment has not succeeded";
+  if ((pi.amount_received ?? 0) < order.total_pence) return "Payment is less than the order total";
+  if (pi.metadata?.buyer_id !== order.buyer_id) return "Payment belongs to a different buyer";
+  if (pi.metadata?.listing_id !== String(order.listing_id)) return "Payment is for a different listing";
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -40,7 +62,7 @@ Deno.serve(async (req) => {
     // Get order details
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
-      .select("id, seller_id, buyer_id, total_pence, postage_pence, protection_pence, shipping_protection_fee_pence, stripe_payment_intent_id, payout_sent, status, evri_delivered_at")
+      .select("id, seller_id, buyer_id, listing_id, total_pence, postage_pence, protection_pence, shipping_protection_fee_pence, stripe_payment_intent_id, payout_sent, status, evri_delivered_at")
       .eq("id", order_id)
       .maybeSingle();
 
@@ -66,6 +88,13 @@ Deno.serve(async (req) => {
 
     if (!sellerProfile.stripe_connect_enabled) {
       return json({ error: "Seller payout account not fully verified" }, 400);
+    }
+
+    // Never pay out on an order Stripe can't confirm was paid for.
+    const unpaid = await paymentProblem(stripe, order);
+    if (unpaid) {
+      console.error(`Payout blocked for order ${order.id}: ${unpaid}`);
+      return json({ error: "Payout can't be released for this order yet. Please contact support." }, 400);
     }
 
     // Calculate payout amounts
