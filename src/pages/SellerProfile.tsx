@@ -152,4 +152,4 @@ const SellerProfile = () => {
   );
 };
 
-export default SellerProfile;
+export default SellerProfile;

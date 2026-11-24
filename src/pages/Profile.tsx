@@ -1326,4 +1326,4 @@ const OrderSection = ({
   </section>
 );
 
-export default Profile;
+export default Profile;

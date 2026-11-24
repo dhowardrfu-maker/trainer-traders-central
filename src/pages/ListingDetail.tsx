@@ -400,4 +400,4 @@ const ListingDetail = () => {
   );
 };
 
-export default ListingDetail;
+export default ListingDetail;
