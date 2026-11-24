@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { AlertTriangle, Camera, CheckCircle2, CreditCard, Heart, Loader2, Package, Pencil, Plus, ScanLine, Settings, ShieldCheck, ShoppingBag, Tag, Trash2, Truck, User as UserIcon, X } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyDbError } from "@/lib/dbErrors";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavourites } from "@/hooks/useFavourites";
 import { supabase } from "@/integrations/supabase/client";
@@ -407,7 +408,7 @@ const Profile = () => {
       .eq("user_id", user.id);
     setSaving(false);
     if (error) {
-      toast.error(error.message.includes("duplicate") ? "Username already taken" : "Couldn't save profile");
+      toast.error(friendlyDbError(error, "Couldn't save profile"));
       return;
     }
     toast.success("Profile updated");
@@ -583,7 +584,7 @@ const Profile = () => {
       .single();
 
     setMessageBusy(null);
-    if (error || !created) { toast.error("Couldn't start chat"); return; }
+    if (error || !created) { toast.error(friendlyDbError(error, "Couldn't start chat")); return; }
     navigate(`/messages/${created.id}`);
   };
 
@@ -1325,4 +1326,4 @@ const OrderSection = ({
   </section>
 );
 
-export default Profile;
+export default Profile;

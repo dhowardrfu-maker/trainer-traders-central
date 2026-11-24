@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { OfficialBadge } from "@/components/OfficialBadge";
 
 interface CampaignMessage {
   id: string;
@@ -27,6 +28,7 @@ interface ThreadRow {
 
 interface DisplayThread extends ThreadRow {
   other_name: string;
+  other_is_official: boolean;
   listing_title: string | null;
   listing_photo: string | null;
   last_body: string | null;
@@ -72,7 +74,7 @@ const Messages = () => {
 
     const [profilesRes, listingsRes] = await Promise.all([
       otherIds.length
-        ? supabase.from("profiles_public").select("user_id, display_name, username").in("user_id", otherIds)
+        ? supabase.from("profiles_public").select("user_id, display_name, username, is_official").in("user_id", otherIds)
         : Promise.resolve({ data: [] as any[] }),
       listingIds.length
         ? supabase.from("listings").select("id, title, photos").in("id", listingIds)
@@ -106,6 +108,7 @@ const Messages = () => {
         ...r,
         listing_id: String(r.listing_id),
         other_name: p?.display_name || p?.username || otherRole,
+        other_is_official: !!p?.is_official,
         listing_title: l?.title ?? null,
         listing_photo: l?.photos?.[0] ?? null,
         last_body: last?.body ?? null,
@@ -220,7 +223,10 @@ const Messages = () => {
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className={`truncate ${t.unread ? "font-bold" : "font-semibold"}`}>{t.other_name}</p>
+                    <p className={`truncate flex items-center gap-1.5 min-w-0 ${t.unread ? "font-bold" : "font-semibold"}`}>
+                      <span className="truncate">{t.other_name}</span>
+                      {t.other_is_official && <OfficialBadge />}
+                    </p>
                     <span className="text-[10px] text-muted-foreground shrink-0">
                       {new Date(t.last_message_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                     </span>

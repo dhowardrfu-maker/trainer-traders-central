@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { ProductCard } from "@/components/ProductCard";
 import { SellerReviews } from "@/components/SellerReviews";
+import { OfficialBadge } from "@/components/OfficialBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { mapDbListing, type Listing } from "@/data/listings";
@@ -17,6 +18,7 @@ interface PublicProfile {
   bio: string | null;
   location: string | null;
   avatar_url: string | null;
+  is_official: boolean | null;
 }
 
 const LISTING_COLUMNS =
@@ -43,7 +45,7 @@ const SellerProfile = () => {
 
       const { data: prof } = await supabase
         .from("profiles_public")
-        .select("user_id, username, display_name, bio, location, avatar_url")
+        .select("user_id, username, display_name, bio, location, avatar_url, is_official")
         .eq("user_id", id)
         .maybeSingle();
 
@@ -113,7 +115,10 @@ const SellerProfile = () => {
                 )}
               </div>
               <div className="min-w-0">
-                <h1 className="font-display font-bold text-2xl tracking-tight">{displayName}</h1>
+                <h1 className="font-display font-bold text-2xl tracking-tight flex items-center gap-2 flex-wrap">
+                  {displayName}
+                  {profile?.is_official && <OfficialBadge />}
+                </h1>
                 {profile.location && (
                   <p className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                     <MapPin className="h-3.5 w-3.5" /> {profile.location}
@@ -147,4 +152,4 @@ const SellerProfile = () => {
   );
 };
 
-export default SellerProfile;
+export default SellerProfile;

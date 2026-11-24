@@ -671,6 +671,7 @@ export type Database = {
           bio: string | null
           created_at: string | null
           display_name: string | null
+          is_official: boolean | null
           location: string | null
           user_id: string | null
           username: string | null

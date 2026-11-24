@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { friendlyDbError } from "@/lib/dbErrors";
 
 const CompleteProfile = () => {
   const { user, loading: authLoading } = useAuth();
@@ -60,7 +61,7 @@ const CompleteProfile = () => {
     setSaving(false);
 
     if (error) {
-      toast.error("Couldn't save, please try again");
+      toast.error(friendlyDbError(error, "Couldn't save, please try again"));
       return;
     }
 

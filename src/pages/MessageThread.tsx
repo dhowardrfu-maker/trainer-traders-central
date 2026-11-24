@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ReportDialog } from "@/components/ReportDialog";
+import { OfficialBadge } from "@/components/OfficialBadge";
+import { friendlyDbError } from "@/lib/dbErrors";
 
 interface Message {
   id: string;
@@ -26,6 +28,7 @@ interface ThreadInfo {
   seller_id: string;
   listing_id: string | number;
   other_name: string;
+  other_is_official: boolean;
   listing_title: string | null;
   listing_photo: string | null;
 }
@@ -66,7 +69,7 @@ const MessageThread = () => {
       const otherId = t.buyer_id === user.id ? t.seller_id : t.buyer_id;
       const otherRole = t.buyer_id === user.id ? "Seller" : "Buyer";
       const [pRes, lRes, mRes] = await Promise.all([
-        supabase.from("profiles_public").select("display_name, username").eq("user_id", otherId).maybeSingle(),
+        supabase.from("profiles_public").select("display_name, username, is_official").eq("user_id", otherId).maybeSingle(),
         supabase.from("listings").select("title, photos").eq("id", t.listing_id).maybeSingle(),
         supabase.from("messages").select("id, thread_id, sender_id, body, created_at").eq("thread_id", id).order("created_at", { ascending: true }),
       ]);
@@ -78,6 +81,7 @@ const MessageThread = () => {
         ...t,
         listing_id: String(t.listing_id),
         other_name: pRes.data?.display_name || pRes.data?.username || otherRole,
+        other_is_official: !!pRes.data?.is_official,
         listing_title: lRes.data?.title ?? null,
         listing_photo: photos[0] ?? null,
       });
@@ -121,7 +125,7 @@ const MessageThread = () => {
     const { error } = await supabase.from("messages").insert({ thread_id: id, sender_id: user.id, body: text });
     setSending(false);
     if (error) {
-      toast.error("Couldn't send message");
+      toast.error(friendlyDbError(error, "Couldn't send message"));
       setBody(text);
     }
   };
@@ -150,7 +154,10 @@ const MessageThread = () => {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="font-semibold truncate">{info.other_name}</p>
+            <p className="font-semibold truncate flex items-center gap-1.5">
+              <span className="truncate">{info.other_name}</span>
+              {info.other_is_official && <OfficialBadge />}
+            </p>
             {info.listing_title && (
               <Link to={`/listing/${info.listing_id}`} className="text-xs text-muted-foreground truncate hover:underline block">
                 re: {info.listing_title}
@@ -170,6 +177,11 @@ const MessageThread = () => {
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="container max-w-2xl py-6 space-y-2">
+          {!info.other_is_official && (
+            <p className="text-center text-xs text-muted-foreground pb-2">
+              PrelovedKicks staff will never ask you to verify your account through a link, or ask for your password or bank details.
+            </p>
+          )}
           {messages.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-12">Say hello 👋</p>
           ) : messages.map((m) => {
@@ -206,4 +218,4 @@ const MessageThread = () => {
   );
 };
 
-export default MessageThread;
+export default MessageThread;

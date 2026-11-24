@@ -17,6 +17,7 @@ import { ReportDialog } from "@/components/ReportDialog";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { useSEO } from "@/hooks/useSEO";
 import { toast } from "sonner";
+import { friendlyDbError } from "@/lib/dbErrors";
 import { cn } from "@/lib/utils";
 import { computeDealScore, type DealScore } from "@/lib/dealScore";
 import { DealScorePanel } from "@/components/DealScorePanel";
@@ -191,7 +192,7 @@ const ListingDetail = () => {
       .select("id")
       .single();
 
-    if (error || !created) return toast.error("Couldn't start chat");
+    if (error || !created) return toast.error(friendlyDbError(error, "Couldn't start chat"));
     navigate(`/messages/${created.id}`);
   };
 
@@ -399,4 +400,4 @@ const ListingDetail = () => {
   );
 };
 
-export default ListingDetail;
+export default ListingDetail;

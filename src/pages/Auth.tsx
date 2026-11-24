@@ -109,7 +109,11 @@ const AuthPage = () => {
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message === "Invalid login credentials" ? "Wrong email or password" : error.message);
+      toast.error(
+        error.message === "Invalid login credentials" ? "Wrong email or password"
+        : error.message.toLowerCase().includes("not confirmed") ? "Please confirm your email first. Check your inbox for the link we sent you."
+        : error.message
+      );
       return;
     }
     toast.success("Welcome back 👟");
@@ -135,7 +139,7 @@ const AuthPage = () => {
       toast.success("Account created 🎉 Welcome to PrelovedKicks!");
       navigate("/");
     } else {
-      toast.success("Account created 🎉 Please sign in.");
+      toast.success("Account created 🎉 Check your email and click the link to confirm your account, then sign in.", { duration: 10000 });
       navigate("/auth");
     }
   };
@@ -295,4 +299,4 @@ const AuthPage = () => {
   );
 };
 
-export default AuthPage;
+export default AuthPage;
